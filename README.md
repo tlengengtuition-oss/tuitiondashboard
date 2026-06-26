@@ -70,4 +70,6 @@ db/schema.sql       Run this in Supabase
 3. **Ledger** — paid, unpaid-by-student, total pending, projected month
 4. **Add lesson** — auto-fills from a student's slot; "generate this week from template"
 5. **Extras** — dashboard KPIs, monthly income chart, exam countdown, WhatsApp reminders, export
-6. **Import** — load your existing 2026 spreadsheet so you launch with real data
+6. **PayNow invoice** — per unpaid balance, an "Invoice + QR" button that renders a
+   scannable PayNow (SGQR) code with the amount and reference (generated in-browser, no backend)
+7. **Import** — load your existing 2026 spreadsheet so you launch with real data
