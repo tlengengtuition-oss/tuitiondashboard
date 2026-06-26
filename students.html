@@ -8,15 +8,66 @@
 </head>
 <body>
 <div id="view">
-  <div class="card empty">
-    <h3>Students</h3>
-    <p>Your roster with add-student and per-student history &mdash; the first data screen we'll wire up.</p>
+  <div class="toolbar">
+    <div class="sub" id="s-count">Loading your roster…</div>
+    <button class="btn btn-gold" id="add-btn">+ Add student</button>
+  </div>
+
+  <div class="card">
+    <div class="empty" id="s-empty" style="display:none">
+      <h3>No students yet</h3>
+      <p>Add your first student to start logging lessons against them.</p>
+    </div>
+    <table class="tbl" id="s-table" style="display:none">
+      <thead><tr>
+        <th>Name</th><th>Type</th><th>Level</th><th>Contact</th><th></th>
+      </tr></thead>
+      <tbody id="s-body"></tbody>
+    </table>
+  </div>
+
+  <div class="modal-backdrop" id="modal">
+    <div class="modal card">
+      <h2>Add student</h2>
+      <div class="field">
+        <label for="m-name">Name</label>
+        <input id="m-name" type="text" placeholder="e.g. Miya, or Xavier/Jaylon">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="m-kind">Type</label>
+          <select id="m-kind">
+            <option value="individual">Individual</option>
+            <option value="pair">Pair / siblings</option>
+            <option value="org">Centre / org</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="m-level">Level</label>
+          <input id="m-level" type="text" placeholder="e.g. Sec 3 G3, P6, JC1">
+        </div>
+      </div>
+      <div class="field">
+        <label for="m-contact">Contact <span class="muted">(for reminders)</span></label>
+        <input id="m-contact" type="text" placeholder="e.g. +65 8123 4567">
+      </div>
+      <div class="field">
+        <label for="m-notes">Notes</label>
+        <input id="m-notes" type="text" placeholder="optional">
+      </div>
+      <div class="msg" id="m-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="m-cancel">Cancel</button>
+        <button class="btn btn-primary" id="m-save">Save student</button>
+      </div>
+    </div>
   </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/supabase.js"></script>
 <script src="assets/js/app.js"></script>
-<script>TL.requireAuth("students");</script>
+<script src="assets/js/students.js"></script>
 </body>
 </html>
