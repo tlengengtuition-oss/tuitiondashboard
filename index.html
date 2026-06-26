@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard · T-Leng Tuition</title>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+<div id="view">
+  <div class="kpi-grid">
+    <div class="card kpi accent"><div class="label">Earned this month</div>
+      <div class="val" id="k-earned">—</div><div class="note">paid + done</div></div>
+    <div class="card kpi owed"><div class="label">Pending payment</div>
+      <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">awaiting collection</div></div>
+    <div class="card kpi"><div class="label">Projected month</div>
+      <div class="val" id="k-proj">—</div><div class="note">if no cancellations</div></div>
+    <div class="card kpi"><div class="label">Lessons this week</div>
+      <div class="val" id="k-week">—</div><div class="note">from your schedule</div></div>
+  </div>
+  <div class="card empty">
+    <h3>Dashboard wiring comes next</h3>
+    <p>The shell, navigation and auth are live. Once your roster and lessons exist,
+       these tiles fill in automatically and we'll add the income chart and exam countdown.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/app.js"></script>
+<script>TL.requireAuth("dashboard");</script>
+</body>
+</html>

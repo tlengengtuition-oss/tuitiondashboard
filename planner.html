@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Weekly planner · T-Leng Tuition</title>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+<div id="view">
+  <div class="card empty">
+    <h3>Weekly planner</h3>
+    <p>Mon&ndash;Sun grid of students, timings, rates and per-lesson cost &mdash; built next from your recurring schedule.</p>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/app.js"></script>
+<script>TL.requireAuth("planner");</script>
+</body>
+</html>
