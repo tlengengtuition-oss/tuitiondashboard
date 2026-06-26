@@ -8,15 +8,34 @@
 </head>
 <body>
 <div id="view">
-  <div class="card empty">
-    <h3>Ledger</h3>
-    <p>Paid &amp; unpaid lessons, total pending grouped by student, and projected monthly income &mdash; coming in the ledger step.</p>
+  <div class="kpi-grid">
+    <div class="card kpi owed"><div class="label">Total pending</div>
+      <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">conducted, not paid</div></div>
+    <div class="card kpi paid"><div class="label">Collected this month</div>
+      <div class="val" id="k-collected">—</div><div class="note" id="k-collected-n">&nbsp;</div></div>
+    <div class="card kpi accent"><div class="label">Projected this month</div>
+      <div class="val" id="k-projected">—</div><div class="note">if no cancellations</div></div>
+  </div>
+
+  <div class="section-title">Outstanding by student
+    <span class="hint" id="out-hint"></span></div>
+  <div id="outstanding"></div>
+
+  <div class="section-title">This month
+    <span class="hint" id="month-hint"></span></div>
+  <div class="card">
+    <div class="empty" id="month-empty" style="display:none"><h3>No lessons this month yet</h3></div>
+    <table class="tbl" id="month-table" style="display:none">
+      <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Amount</th><th>Status</th></tr></thead>
+      <tbody id="month-body"></tbody>
+    </table>
   </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/supabase.js"></script>
 <script src="assets/js/app.js"></script>
-<script>TL.requireAuth("ledger");</script>
+<script src="assets/js/ledger.js"></script>
 </body>
 </html>
