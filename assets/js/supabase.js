@@ -14,7 +14,7 @@
   }
   // Use placeholders if unconfigured so pages still render (with a banner).
   window.sb = window.supabase.createClient(
-    cfg.SUPABASE_URL || "https://rnjvswkejbrhbaytutai.supabase.co",
-    cfg.SUPABASE_ANON_KEY || "sb_publishable_IKUtlGhnwJT0Hld5A8cglw_0iF6Y5J9"
+    cfg.SUPABASE_URL || "https://placeholder.supabase.co",
+    cfg.SUPABASE_ANON_KEY || "placeholder"
   );
 })();
