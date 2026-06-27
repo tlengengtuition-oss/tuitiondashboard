@@ -26,12 +26,13 @@
     </table>
   </div>
 
+  <!-- add / edit modal -->
   <div class="modal-backdrop" id="modal">
     <div class="modal card">
-      <h2>Add student</h2>
+      <h2 id="m-title">Add student</h2>
       <div class="field">
         <label for="m-name">Name</label>
-        <input id="m-name" type="text" placeholder="e.g. Miya, or Xavier/Jaylon">
+        <input id="m-name" type="text" placeholder="e.g. Qin Heng">
       </div>
       <div class="row2">
         <div class="field">
@@ -44,7 +45,7 @@
         </div>
         <div class="field">
           <label for="m-level">Level</label>
-          <input id="m-level" type="text" placeholder="e.g. Sec 3 G3, P6, JC1">
+          <input id="m-level" type="text" placeholder="e.g. Sec 3 G3">
         </div>
       </div>
       <div class="field">
@@ -59,6 +60,25 @@
       <div class="modal-actions">
         <button class="btn" id="m-cancel">Cancel</button>
         <button class="btn btn-primary" id="m-save">Save student</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- merge modal -->
+  <div class="modal-backdrop" id="merge-modal">
+    <div class="modal card">
+      <h2>Merge student</h2>
+      <p class="muted" style="font-size:13.5px;margin-bottom:16px">
+        Move all lessons, slots and exams from <b id="mg-source"></b> onto another
+        student, then remove the duplicate. Nothing is lost.</p>
+      <div class="field">
+        <label for="mg-target">Merge into</label>
+        <select id="mg-target"></select>
+      </div>
+      <div class="msg" id="mg-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="mg-cancel">Cancel</button>
+        <button class="btn btn-primary" id="mg-save">Merge &amp; remove duplicate</button>
       </div>
     </div>
   </div>
