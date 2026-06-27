@@ -218,3 +218,12 @@ a{color:inherit}
 .tact.warn{color:var(--gold-2)}
 td.acts{white-space:nowrap;text-align:right}
 td.acts .tact{margin-left:12px}
+
+/* period navigation + discontinued */
+.period{display:inline-flex;gap:6px;align-items:center;margin-left:auto}
+.period button{padding:6px 11px;font-size:13px;border-radius:8px}
+.period .lbl{min-width:130px;text-align:center;font-size:13.5px;color:var(--ink);font-weight:600;font-family:var(--sans)}
+.period .on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.disc-head{cursor:pointer;user-select:none}
+.disc-head:hover{color:var(--navy)}
+tr.inactive td.name{color:var(--muted)}

@@ -1,6 +1,6 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
-  var userId = null, nameById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null;
+  var userId = null, nameById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null;
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -33,10 +33,22 @@
     $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",function(){if(confirm("Mark all these lessons as paid?"))markPaid(b.dataset.payall.split(","));});});
     $("outstanding").querySelectorAll("[data-inv]").forEach(function(b){b.addEventListener("click",function(){openInvoice(b.dataset.inv);});});
   }
-  function renderMonth(rows){
+  function periodLabel(){return period.mode==="all"?"All time":new Date(period.y,period.m,1).toLocaleString("en-SG",{month:"long",year:"numeric"});}
+  function renderRecords(){
+    if(!period)period={mode:"month",y:new Date().getFullYear(),m:new Date().getMonth()};
+    $("period-label").textContent=periodLabel();
+    $("all-time").classList.toggle("on",period.mode==="all");
+    var rows=allLessons.filter(function(l){
+      if(period.mode==="all")return true;
+      return l.lesson_date.slice(0,7)===period.y+"-"+pad(period.m+1);
+    });
     var table=$("month-table"),empty=$("month-empty"),body=$("month-body");
     monthById={};rows.forEach(function(l){monthById[l.id]=l;});
-    if(!rows.length){table.style.display="none";empty.style.display="block";$("month-hint").textContent="";return;}
+    if(!rows.length){
+      table.style.display="none";empty.style.display="block";
+      empty.innerHTML="<h3>No lessons in "+periodLabel()+"</h3>";
+      $("month-hint").textContent="";return;
+    }
     empty.style.display="none";table.style.display="table";
     rows.sort(function(a,b){return b.lesson_date.localeCompare(a.lesson_date);});
     $("month-hint").textContent=rows.length+" lessons";
@@ -53,6 +65,8 @@
     body.querySelectorAll("[data-restore]").forEach(function(b){b.addEventListener("click",function(){restoreLesson(monthById[b.dataset.restore]);});});
     body.querySelectorAll("[data-delete]").forEach(function(b){b.addEventListener("click",function(){deleteLesson(b.dataset.delete);});});
   }
+  function shiftMonth(d){period.mode="month";var dt=new Date(period.y,period.m+d,1);period.y=dt.getFullYear();period.m=dt.getMonth();renderRecords();}
+  function toggleAll(){period.mode=period.mode==="all"?"month":"all";if(period.mode==="month"){period.y=new Date().getFullYear();period.m=new Date().getMonth();}renderRecords();}
 
   async function cancelLesson(id){
     if(!confirm("Mark this lesson as cancelled? It won't count toward income or pending."))return;
@@ -81,7 +95,8 @@
   }
 
   function studentOptions(){
-    $("m-student").innerHTML=students.length?students.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+"</option>";}).join(""):'<option value="">— add a student first —</option>';
+    var act=students.filter(function(s){return s.active!==false;});
+    $("m-student").innerHTML=act.length?act.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+"</option>";}).join(""):'<option value="">— add a student first —</option>';
   }
   function recalcCost(){
     var r=parseFloat($("m-rate").value),s=$("m-start").value,e=$("m-end").value;
@@ -253,7 +268,7 @@
     var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix").eq("id",userId).single();
     profile=pr.error?null:pr.data;
 
-    var st=await window.sb.from("students").select("id,name").order("name");
+    var st=await window.sb.from("students").select("id,name,active").order("name");
     students=st.data||[];nameById={};students.forEach(function(s){nameById[s.id]=s.name;});
     studentOptions();
 
@@ -278,7 +293,8 @@
     $("k-collected-n").textContent=mr.label;
 
     renderOutstanding(unpaid);
-    renderMonth(month);
+    allLessons=lessons;
+    renderRecords();
   }
 
   function init(user){
@@ -293,6 +309,9 @@
     $("inv-close").addEventListener("click",function(){$("inv-backdrop").classList.remove("on");});
     $("inv-backdrop").addEventListener("click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
     $("inv-print").addEventListener("click",printInvoice);
+    $("prev-m").addEventListener("click",function(){shiftMonth(-1);});
+    $("next-m").addEventListener("click",function(){shiftMonth(1);});
+    $("all-time").addEventListener("click",toggleAll);
     load();
   }
   TL.requireAuth("ledger",init);

@@ -75,30 +75,54 @@
     if(res.error){alert("Couldn't remove: "+res.error.message);return;}
     load();
   }
+  async function setActive(id,active){
+    var res=await window.sb.from("students").update({active:active}).eq("id",id);
+    if(res.error){alert("Couldn't update: "+res.error.message);return;}
+    load();
+  }
 
   // ---------- list ----------
+  function rowHtml(r,active){
+    var acts=active
+      ? '<button class="tact" data-edit="'+r.id+'">Edit</button>'+
+        '<button class="tact warn" data-merge="'+r.id+'">Merge</button>'+
+        '<button class="tact" data-off="'+r.id+'">Discontinue</button>'+
+        '<button class="tact del" data-del="'+r.id+'">Remove</button>'
+      : '<button class="tact" data-edit="'+r.id+'">Edit</button>'+
+        '<button class="tact" data-on="'+r.id+'">Reactivate</button>'+
+        '<button class="tact del" data-del="'+r.id+'">Remove</button>';
+    return '<tr class="'+(active?"":"inactive")+'" data-id="'+r.id+'">'+
+      '<td class="name">'+esc(r.name)+"</td>"+
+      '<td><span class="kind-tag">'+esc(r.kind)+"</span></td>"+
+      "<td>"+(r.level?esc(r.level):'<span class="muted">—</span>')+"</td>"+
+      "<td>"+(r.contact?esc(r.contact):'<span class="muted">—</span>')+"</td>"+
+      '<td class="acts">'+acts+"</td></tr>";
+  }
+  function wire(scope){
+    function find(id){return students.filter(function(s){return s.id===id;})[0];}
+    scope.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openModal(true,find(b.dataset.edit));});});
+    scope.querySelectorAll("[data-merge]").forEach(function(b){b.addEventListener("click",function(){openMerge(true,find(b.dataset.merge));});});
+    scope.querySelectorAll("[data-off]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.off,false);});});
+    scope.querySelectorAll("[data-on]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.on,true);});});
+    scope.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){remove(b.dataset.del,find(b.dataset.del).name);});});
+  }
   async function load(){
-    var res=await window.sb.from("students").select("id,name,kind,level,contact,notes").order("name");
+    var res=await window.sb.from("students").select("id,name,kind,level,contact,notes,active").order("name");
     if(res.error){$("s-count").textContent="Couldn't load students: "+res.error.message;return;}
     students=res.data||[];
-    $("s-count").textContent=students.length?students.length+(students.length===1?" student":" students"):"";
+    var act=students.filter(function(s){return s.active!==false;});
+    var off=students.filter(function(s){return s.active===false;});
+    $("s-count").textContent=act.length?act.length+(act.length===1?" active student":" active students"):"";
+
     var table=$("s-table"),empty=$("s-empty"),body=$("s-body");
-    if(!students.length){table.style.display="none";empty.style.display="block";return;}
-    empty.style.display="none";table.style.display="table";
-    body.innerHTML=students.map(function(r){
-      return '<tr data-id="'+r.id+'">'+
-        '<td class="name">'+esc(r.name)+"</td>"+
-        '<td><span class="kind-tag">'+esc(r.kind)+"</span></td>"+
-        "<td>"+(r.level?esc(r.level):'<span class="muted">—</span>')+"</td>"+
-        "<td>"+(r.contact?esc(r.contact):'<span class="muted">—</span>')+"</td>"+
-        '<td class="acts"><button class="tact" data-edit="'+r.id+'">Edit</button>'+
-          '<button class="tact warn" data-merge="'+r.id+'">Merge</button>'+
-          '<button class="tact del" data-del="'+r.id+'">Remove</button></td></tr>';
-    }).join("");
-    function find(id){return students.filter(function(s){return s.id===id;})[0];}
-    body.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openModal(true,find(b.dataset.edit));});});
-    body.querySelectorAll("[data-merge]").forEach(function(b){b.addEventListener("click",function(){openMerge(true,find(b.dataset.merge));});});
-    body.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){remove(b.dataset.del,find(b.dataset.del).name);});});
+    if(!act.length){table.style.display="none";empty.style.display="block";}
+    else{empty.style.display="none";table.style.display="table";body.innerHTML=act.map(function(r){return rowHtml(r,true);}).join("");wire(body);}
+
+    if(off.length){
+      $("disc-title").style.display="";$("disc-card").style.display="";
+      $("disc-hint").textContent=off.length+" hidden from slot & lesson pickers";
+      $("disc-body").innerHTML=off.map(function(r){return rowHtml(r,false);}).join("");wire($("disc-body"));
+    }else{$("disc-title").style.display="none";$("disc-card").style.display="none";}
   }
 
   function init(user){

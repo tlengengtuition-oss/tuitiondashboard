@@ -28,7 +28,14 @@
   <div class="section-title">Outstanding by student <span class="hint" id="out-hint"></span></div>
   <div id="outstanding"></div>
 
-  <div class="section-title">This month <span class="hint" id="month-hint"></span></div>
+  <div class="section-title">Records <span class="hint" id="month-hint"></span>
+    <span class="period">
+      <button class="btn" id="prev-m">&lsaquo;</button>
+      <span class="lbl" id="period-label"></span>
+      <button class="btn" id="next-m">&rsaquo;</button>
+      <button class="btn" id="all-time">All time</button>
+    </span>
+  </div>
   <div class="card">
     <div class="empty" id="month-empty" style="display:none"><h3>No lessons this month yet</h3></div>
     <table class="tbl" id="month-table" style="display:none">

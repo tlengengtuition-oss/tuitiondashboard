@@ -2,11 +2,11 @@
 (function () {
   var DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   var SHORT=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  var userId=null, students=[], allSlots=[], editingId=null;
+  var userId=null, students=[], allStudents=[], allSlots=[], editingId=null;
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function hhmm(t){return t?t.slice(0,5):"";}
-  function nameOf(id){for(var i=0;i<students.length;i++)if(students[i].id===id)return students[i].name;return "—";}
+  function nameOf(id){for(var i=0;i<allStudents.length;i++)if(allStudents[i].id===id)return allStudents[i].name;return "—";}
 
   function studentOptions(){
     $("m-student").innerHTML=students.length?students.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+"</option>";}).join(""):'<option value="">— no students yet —</option>';
@@ -59,8 +59,8 @@
   }
 
   async function load(){
-    var st=await window.sb.from("students").select("id,name").order("name");
-    if(!st.error){students=st.data||[];studentOptions();}
+    var st=await window.sb.from("students").select("id,name,active").order("name");
+    if(!st.error){allStudents=st.data||[];students=allStudents.filter(function(s){return s.active!==false;});studentOptions();}
     var res=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,rate");
     if(res.error){$("p-total").textContent="Couldn't load schedule: "+res.error.message;return;}
     allSlots=res.data||[];render();
