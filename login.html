@@ -12,26 +12,35 @@
     <div class="brand"><span class="mono">TL</span>
       <span><b>T-Leng Tuition</b><small>Dashboard</small></span></div>
 
-    <div class="tabs">
-      <button id="tab-in" class="on">Sign in</button>
-      <button id="tab-up">Create account</button>
+    <!-- sign in / sign up form -->
+    <div id="form-area">
+      <div class="tabs">
+        <button id="tab-in" class="on">Sign in</button>
+        <button id="tab-up">Create account</button>
+      </div>
+      <div class="field" id="name-field" style="display:none">
+        <label for="name">Your name</label>
+        <input id="name" type="text" autocomplete="name" placeholder="T-Leng">
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="pw">Password</label>
+        <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" id="go">Sign in</button>
+      <div class="msg" id="msg"></div>
     </div>
 
-    <div class="field" id="name-field" style="display:none">
-      <label for="name">Your name</label>
-      <input id="name" type="text" autocomplete="name" placeholder="T-Leng">
+    <!-- account-created success state -->
+    <div id="created" style="display:none">
+      <div class="ok-check">✓</div>
+      <h2>Account created</h2>
+      <p class="created-msg" id="created-msg"></p>
+      <button class="btn btn-primary" id="to-login">Go to sign in</button>
     </div>
-    <div class="field">
-      <label for="email">Email</label>
-      <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
-    </div>
-    <div class="field">
-      <label for="pw">Password</label>
-      <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••">
-    </div>
-
-    <button class="btn btn-primary" id="go">Sign in</button>
-    <div class="msg" id="msg"></div>
   </div>
 </div>
 
@@ -58,12 +67,24 @@
 
   function show(text, ok) { msg.textContent = text; msg.className = "msg " + (ok ? "ok" : "err"); }
 
+  function showCreated(email, confirmNeeded) {
+    $("form-area").style.display = "none";
+    $("created").style.display = "block";
+    $("created-msg").innerHTML = confirmNeeded
+      ? "We've sent a confirmation link to <b>" + email + "</b>. Open it to verify your " +
+        "address, then come back and sign in.<br><br>Didn't get it? Check spam, or your project " +
+        "may have email confirmation disabled — in which case you can just sign in now."
+      : "Your account <b>" + email + "</b> is ready. You can sign in now.";
+  }
+  $("to-login").onclick = function () {
+    $("created").style.display = "none";
+    $("form-area").style.display = "block";
+    $("pw").value = ""; setMode("in"); $("email").focus();
+  };
+
   if (!window.TL_CONFIGURED) {
     show("Set your Supabase URL + anon key in assets/js/config.js first.", false);
-  }
-
-  // If already signed in, skip the form.
-  if (window.TL_CONFIGURED) {
+  } else {
     window.sb.auth.getSession().then(function (r) {
       if (r.data && r.data.session) location.replace("index.html");
     });
@@ -80,9 +101,8 @@
         var up = await window.sb.auth.signUp(
           { email: email, password: pw, options: { data: { full_name: name } } });
         if (up.error) throw up.error;
-        if (up.data.session) { location.replace("index.html"); return; }
-        show("Account created. Check your email to confirm, then sign in.", true);
-        setMode("in");
+        if (up.data.session) { location.replace("index.html"); return; }  // confirm off → logged in
+        showCreated(email, true);                                         // confirm on → success screen
       } else {
         var inn = await window.sb.auth.signInWithPassword({ email: email, password: pw });
         if (inn.error) throw inn.error;
