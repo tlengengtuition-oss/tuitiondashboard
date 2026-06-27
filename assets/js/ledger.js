@@ -12,6 +12,14 @@
   function monthOccurrences(weekday){var now=new Date(),y=now.getFullYear(),m=now.getMonth(),c=0,d=new Date(y,m,1);while(d.getMonth()===m){if(((d.getDay()+6)%7)===weekday)c++;d.setDate(d.getDate()+1);}return c;}
   function monthRange(){var now=new Date(),y=now.getFullYear(),m=now.getMonth();return{first:y+"-"+pad(m+1)+"-01",last:y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate()),label:now.toLocaleString("en-SG",{month:"long"})};}
   function mondayOf(date){var d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d;}
+  function setGenLabel(){
+    var mon=mondayOf(new Date()),sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    var range=mon.getMonth()===sun.getMonth()
+      ? mon.getDate()+"–"+sun.getDate()+" "+mo[sun.getMonth()]
+      : mon.getDate()+" "+mo[mon.getMonth()]+" – "+sun.getDate()+" "+mo[sun.getMonth()];
+    var b=$("gen-btn");if(b)b.textContent="Log this week ("+range+")";
+  }
 
   // ---------- rendering ----------
   function renderOutstanding(unpaid){
@@ -302,6 +310,7 @@
     userId=user.id;
     $("add-btn").addEventListener("click",function(){openAdd(true);});
     $("gen-btn").addEventListener("click",generateWeek);
+    setGenLabel();
     $("m-cancel").addEventListener("click",function(){openAdd(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openAdd(false);});
     $("m-save").addEventListener("click",saveLesson);
