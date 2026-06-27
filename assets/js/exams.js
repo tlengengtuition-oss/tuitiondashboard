@@ -59,7 +59,8 @@
   function row(ex, upcoming){
     var acts='<button class="tact" data-edit="'+ex.id+'">Edit</button><button class="tact del" data-del="'+ex.id+'">Delete</button>';
     var base="<td>"+prettyDate(ex.exam_date)+'</td><td class="name">'+esc(nameById[ex.student_id]||"—")+"</td>"+
-      "<td>"+( (ex.assessment_type?'<span class="kind-tag">'+esc(ex.assessment_type)+'</span> ':'') + (ex.subject?esc(ex.subject):(ex.assessment_type?'':'<span class="muted">—</span>')) )+"</td>"+
+      "<td>"+(ex.assessment_type?'<span class="kind-tag">'+esc(ex.assessment_type)+'</span>':'<span class="muted">—</span>')+"</td>"+
+      "<td>"+(ex.subject?esc(ex.subject):'<span class="muted">—</span>')+"</td>"+
       "<td>"+(ex.topics?esc(ex.topics):'<span class="muted">—</span>')+"</td>";
     if(upcoming){
       var d=daysAway(ex.exam_date);
