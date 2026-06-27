@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings · T-Leng Tuition</title>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+<div id="view">
+  <div class="card panel" style="max-width:560px">
+    <h2>Business &amp; PayNow</h2>
+    <p class="muted" style="font-size:13.5px;margin-bottom:18px">
+      Used on invoices and to generate your PayNow QR. Stored on your account only.</p>
+
+    <div class="field">
+      <label for="biz">Business name <span class="muted">(shown on invoices &amp; QR)</span></label>
+      <input id="biz" type="text" placeholder="T-Leng Tuition" maxlength="25">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="ptype">PayNow type</label>
+        <select id="ptype">
+          <option value="mobile">Mobile number</option>
+          <option value="uen">UEN</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="pid">PayNow ID</label>
+        <input id="pid" type="text" placeholder="e.g. 9123 4567">
+      </div>
+    </div>
+
+    <div class="field" style="max-width:200px">
+      <label for="prefix">Invoice prefix</label>
+      <input id="prefix" type="text" placeholder="INV" maxlength="8">
+    </div>
+
+    <div class="msg" id="s-msg"></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+      <button class="btn btn-primary" id="save">Save</button>
+      <span class="muted" id="preview" style="font-size:12.5px"></span>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/paynow.js"></script>
+<script src="assets/js/settings.js"></script>
+</body>
+</html>

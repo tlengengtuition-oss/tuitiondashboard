@@ -58,18 +58,24 @@
         <input type="checkbox" id="m-paid"> Already paid
       </label>
       <div class="msg" id="m-msg"></div>
-      <div class="modal-actions">
-        <button class="btn" id="m-cancel">Cancel</button>
-        <button class="btn btn-primary" id="m-save">Save lesson</button>
+  <!-- invoice overlay -->
+  <div class="modal-backdrop" id="inv-backdrop">
+    <div class="modal card wide">
+      <div id="inv-body"></div>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn" id="inv-close">Close</button>
+        <button class="btn btn-primary" id="inv-print">Print / Save PDF</button>
       </div>
     </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/supabase.js"></script>
 <script src="assets/js/app.js"></script>
+<script src="assets/js/paynow.js"></script>
 <script src="assets/js/ledger.js"></script>
 </body>
 </html>

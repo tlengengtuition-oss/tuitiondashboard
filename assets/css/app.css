@@ -186,3 +186,25 @@ a{color:inherit}
 #created .btn{width:100%;justify-content:center}
 .link-btn{all:unset;cursor:pointer;color:var(--gold);font-weight:600;font-size:13px;margin-top:16px;display:inline-block}
 .link-btn:hover{text-decoration:underline}
+
+/* ---------- invoice ---------- */
+.modal.wide{max-width:640px}
+.invoice{color:var(--ink);font-size:13.5px}
+.inv-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:2px solid var(--navy);padding-bottom:12px;margin-bottom:14px}
+.inv-biz{font-family:var(--serif);font-size:22px;color:var(--navy);line-height:1.15}
+.inv-biz small{display:block;font-family:var(--sans);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-top:3px}
+.inv-meta{text-align:right;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.inv-meta b{color:var(--ink)}
+.inv-to{margin-bottom:10px;font-size:13px}
+.inv-to .lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.inv-table{width:100%;border-collapse:collapse;margin:6px 0 4px}
+.inv-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;padding:7px 8px;border-bottom:1px solid var(--line)}
+.inv-table td{padding:8px;border-bottom:1px solid var(--line)}
+.inv-table .r{text-align:right;white-space:nowrap}
+.inv-total{display:flex;justify-content:space-between;align-items:baseline;font-weight:800;font-size:17px;color:var(--navy);padding:12px 8px 4px}
+.inv-pay{display:flex;gap:18px;align-items:center;margin-top:16px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.inv-pay img{width:148px;height:148px;background:#fff;border:1px solid var(--line);border-radius:8px;flex:none}
+.inv-pay .pn-h{font-weight:800;color:var(--navy);display:flex;align-items:center;gap:7px}
+.inv-pay .pn-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#7B1FA2}
+.inv-pay .pn-sub{color:var(--muted);font-size:12.5px;margin-top:5px;line-height:1.5}
+.inv-pay .pn-sub b{color:var(--ink)}

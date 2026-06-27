@@ -7,7 +7,8 @@ window.TL = (function () {
     { id: "dashboard", label: "Dashboard", href: "index.html",    ic: "◧" },
     { id: "planner",   label: "Planner",   href: "planner.html",  ic: "▦" },
     { id: "ledger",    label: "Ledger",    href: "ledger.html",   ic: "₪" },
-    { id: "students",  label: "Students",  href: "students.html", ic: "☺" }
+    { id: "students",  label: "Students",  href: "students.html", ic: "☺" },
+    { id: "settings",  label: "Settings",  href: "settings.html", ic: "⚙" }
   ];
 
   function mono() {
@@ -57,6 +58,7 @@ window.TL = (function () {
     var meta = { dashboard: ["Dashboard", "Your week at a glance"],
                  planner: ["Weekly planner", "Mon–Sun schedule"],
                  ledger: ["Ledger", "Lessons, payments & projections"],
+                 settings: ["Settings", "Business & PayNow details"],
                  students: ["Students", "Your roster"] }[active] || ["", ""];
 
     if (!window.TL_CONFIGURED) {

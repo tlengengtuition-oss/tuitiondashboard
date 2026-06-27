@@ -1,6 +1,6 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
-  var userId = null, nameById = {}, students = [], slots = [];
+  var userId = null, nameById = {}, students = [], slots = [], profile = null, outGroups = {};
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -16,6 +16,7 @@
   // ---------- rendering ----------
   function renderOutstanding(unpaid){
     var groups={};unpaid.forEach(function(l){(groups[l.student_id]=groups[l.student_id]||[]).push(l);});
+    outGroups=groups;
     var ids=Object.keys(groups).sort(function(a,b){
       var sa=groups[a].reduce(function(t,l){return t+Number(l.amount);},0);
       var sb=groups[b].reduce(function(t,l){return t+Number(l.amount);},0);return sb-sa;});
@@ -26,10 +27,11 @@
       var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
       var lessonIds=rows.map(function(l){return l.id;});
       var inner=rows.map(function(l){return '<div class="lrow"><span class="lwhen">'+prettyDate(l.lesson_date)+"</span><span>"+(l.subject?esc(l.subject):'<span class="muted">lesson</span>')+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
-      return '<div class="card group"><div class="group-head"><span class="gname">'+esc(nameById[id]||"—")+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+      return '<div class="card group"><div class="group-head"><span class="gname">'+esc(nameById[id]||"—")+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-inv="'+id+'">Invoice</button><button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }).join("");
     $("outstanding").querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){markPaid([b.dataset.pay]);});});
     $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",function(){if(confirm("Mark all these lessons as paid?"))markPaid(b.dataset.payall.split(","));});});
+    $("outstanding").querySelectorAll("[data-inv]").forEach(function(b){b.addEventListener("click",function(){openInvoice(b.dataset.inv);});});
   }
   function renderMonth(rows){
     var table=$("month-table"),empty=$("month-empty"),body=$("month-body");
@@ -111,8 +113,70 @@
     load();
   }
 
+  // ---------- invoice ----------
+  function invoiceHTML(d, qrUrl){
+    var rows=d.lessons.map(function(l){
+      return "<tr><td>"+prettyDate(l.lesson_date)+"</td><td>"+(l.subject?esc(l.subject):"Lesson")+
+        '</td><td class="r">'+TL.sgd(l.amount)+"</td></tr>";
+    }).join("");
+    return '<div class="invoice">'+
+      '<div class="inv-head"><div class="inv-biz">'+esc(d.biz)+'<small>Invoice</small></div>'+
+        '<div class="inv-meta"><b>'+esc(d.invoiceNo)+'</b><br>'+d.dateStr+'</div></div>'+
+      '<div class="inv-to"><span class="lbl">Bill to</span><br><b>'+esc(d.student)+'</b></div>'+
+      '<table class="inv-table"><thead><tr><th>Date</th><th>Description</th><th class="r">Amount</th></tr></thead>'+
+        '<tbody>'+rows+'</tbody></table>'+
+      '<div class="inv-total"><span>Total due</span><span>'+TL.sgd(d.total)+'</span></div>'+
+      '<div class="inv-pay"><img src="'+qrUrl+'" alt="PayNow QR">'+
+        '<div><div class="pn-h"><span class="pn-dot"></span>PayNow</div>'+
+        '<div class="pn-sub">Scan with any Singapore banking app to pay.<br>'+
+        'Pays to <b>'+esc(d.payTo)+'</b><br>Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>'+
+      '</div>';
+  }
+
+  function openInvoice(studentId){
+    if(!profile||!profile.paynow_id){
+      if(confirm("Set your PayNow details first. Go to Settings now?")) location.href="settings.html";
+      return;
+    }
+    var lessons=(outGroups[studentId]||[]).slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
+    if(!lessons.length)return;
+    var total=Math.round(lessons.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
+    var student=nameById[studentId]||"Student";
+    var now=new Date();
+    var slug=student.replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase();
+    var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
+    var payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
+    var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
+
+    var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,
+      dateStr:now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}),
+      student:student,lessons:lessons,total:total,payTo:payTo};
+
+    QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
+      if(err){alert("Couldn't generate QR: "+err.message);return;}
+      window._invHTML=invoiceHTML(data,url);   // stash for printing
+      $("inv-body").innerHTML=window._invHTML;
+      $("inv-backdrop").classList.add("on");
+    });
+  }
+
+  function printInvoice(){
+    if(!window._invHTML)return;
+    var css=document.querySelector('link[rel="stylesheet"]').href;
+    var w=window.open("","_blank","width=720,height=900");
+    if(!w){alert("Allow pop-ups to print, or use your browser's print on this page.");return;}
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Invoice</title>'+
+      '<link rel="stylesheet" href="'+css+'"><style>body{background:#fff;padding:28px;max-width:640px;margin:auto}</style></head>'+
+      '<body>'+window._invHTML+'</body></html>');
+    w.document.close();
+    w.onload=function(){ setTimeout(function(){ w.focus(); w.print(); }, 250); };
+  }
+
   // ---------- load ----------
   async function load(){
+    var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix").eq("id",userId).single();
+    profile=pr.error?null:pr.data;
+
     var st=await window.sb.from("students").select("id,name").order("name");
     students=st.data||[];nameById={};students.forEach(function(s){nameById[s.id]=s.name;});
     studentOptions();
@@ -150,6 +214,9 @@
     $("m-save").addEventListener("click",saveLesson);
     $("m-student").addEventListener("change",prefillFromSlot);
     ["m-rate","m-start","m-end"].forEach(function(id){$(id).addEventListener("input",recalcCost);});
+    $("inv-close").addEventListener("click",function(){$("inv-backdrop").classList.remove("on");});
+    $("inv-backdrop").addEventListener("click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
+    $("inv-print").addEventListener("click",printInvoice);
     load();
   }
   TL.requireAuth("ledger",init);
