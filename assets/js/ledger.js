@@ -58,7 +58,7 @@
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
       return "<tr><td>"+prettyDate(l.lesson_date)+'</td><td class="name">'+esc(nameById[l.student_id]||"—")+"</td><td>"+(l.subject?esc(l.subject):'<span class="muted">—</span>')+"</td><td>"+TL.sgd(l.amount)+"</td><td>"+badge+'</td>'+
-        '<td class="acts"><button class="tact" data-edit="'+l.id+'">Edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
+        '<td class="acts"><button class="tact" data-edit="'+l.id+'">Postpone / edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("");
     body.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openAdd(true,monthById[b.dataset.edit]);});});
     body.querySelectorAll("[data-cancel]").forEach(function(b){b.addEventListener("click",function(){cancelLesson(b.dataset.cancel);});});
@@ -119,7 +119,7 @@
     if(!open)return;
     if(lesson){
       editLessonId=lesson.id;
-      $("m-title").textContent="Edit lesson";$("m-save").textContent="Save changes";
+      $("m-title").textContent="Postpone / edit lesson";$("m-save").textContent="Save changes";
       $("m-student").value=lesson.student_id;
       $("m-date").value=lesson.lesson_date;
       $("m-subject").value=lesson.subject||"";
