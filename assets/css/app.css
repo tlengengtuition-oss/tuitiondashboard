@@ -208,3 +208,13 @@ a{color:inherit}
 .inv-pay .pn-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#7B1FA2}
 .inv-pay .pn-sub{color:var(--muted);font-size:12.5px;margin-top:5px;line-height:1.5}
 .inv-pay .pn-sub b{color:var(--ink)}
+
+/* editable slots + table row actions */
+.slot{cursor:pointer}
+.slot:hover{border-color:var(--gold);box-shadow:0 1px 6px rgba(181,137,43,.15)}
+.tact{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--navy)}
+.tact:hover{text-decoration:underline}
+.tact.del{color:var(--owed)}
+.tact.warn{color:var(--gold-2)}
+td.acts{white-space:nowrap;text-align:right}
+td.acts .tact{margin-left:12px}

@@ -32,7 +32,7 @@
   <div class="card">
     <div class="empty" id="month-empty" style="display:none"><h3>No lessons this month yet</h3></div>
     <table class="tbl" id="month-table" style="display:none">
-      <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Amount</th><th>Status</th></tr></thead>
+      <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Amount</th><th>Status</th><th></th></tr></thead>
       <tbody id="month-body"></tbody>
     </table>
   </div>
@@ -40,7 +40,7 @@
   <!-- add-lesson modal -->
   <div class="modal-backdrop" id="modal">
     <div class="modal card">
-      <h2>Add lesson</h2>
+      <h2 id="m-title">Add lesson</h2>
       <div class="field"><label for="m-student">Student</label><select id="m-student"></select></div>
       <div class="row2">
         <div class="field"><label for="m-date">Date</label><input id="m-date" type="date"></div>

@@ -1,6 +1,6 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
-  var userId = null, nameById = {}, students = [], slots = [], profile = null, outGroups = {};
+  var userId = null, nameById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null;
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -35,14 +35,42 @@
   }
   function renderMonth(rows){
     var table=$("month-table"),empty=$("month-empty"),body=$("month-body");
+    monthById={};rows.forEach(function(l){monthById[l.id]=l;});
     if(!rows.length){table.style.display="none";empty.style.display="block";$("month-hint").textContent="";return;}
     empty.style.display="none";table.style.display="table";
     rows.sort(function(a,b){return b.lesson_date.localeCompare(a.lesson_date);});
     $("month-hint").textContent=rows.length+" lessons";
     body.innerHTML=rows.map(function(l){
       var badge=l.status==="cancelled"?'<span class="kind-tag">cancelled</span>':(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
-      return "<tr><td>"+prettyDate(l.lesson_date)+'</td><td class="name">'+esc(nameById[l.student_id]||"—")+"</td><td>"+(l.subject?esc(l.subject):'<span class="muted">—</span>')+"</td><td>"+TL.sgd(l.amount)+"</td><td>"+badge+"</td></tr>";
+      var cancelBtn=l.status==="cancelled"
+        ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
+        : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
+      return "<tr><td>"+prettyDate(l.lesson_date)+'</td><td class="name">'+esc(nameById[l.student_id]||"—")+"</td><td>"+(l.subject?esc(l.subject):'<span class="muted">—</span>')+"</td><td>"+TL.sgd(l.amount)+"</td><td>"+badge+'</td>'+
+        '<td class="acts"><button class="tact" data-edit="'+l.id+'">Edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("");
+    body.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openAdd(true,monthById[b.dataset.edit]);});});
+    body.querySelectorAll("[data-cancel]").forEach(function(b){b.addEventListener("click",function(){cancelLesson(b.dataset.cancel);});});
+    body.querySelectorAll("[data-restore]").forEach(function(b){b.addEventListener("click",function(){restoreLesson(monthById[b.dataset.restore]);});});
+    body.querySelectorAll("[data-delete]").forEach(function(b){b.addEventListener("click",function(){deleteLesson(b.dataset.delete);});});
+  }
+
+  async function cancelLesson(id){
+    if(!confirm("Mark this lesson as cancelled? It won't count toward income or pending."))return;
+    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null}).eq("id",id);
+    if(res.error){alert("Couldn't cancel: "+res.error.message);return;}
+    load();
+  }
+  async function restoreLesson(l){
+    var status=l.lesson_date>todayISO()?"scheduled":"done";
+    var res=await window.sb.from("lessons").update({status:status}).eq("id",l.id);
+    if(res.error){alert("Couldn't restore: "+res.error.message);return;}
+    load();
+  }
+  async function deleteLesson(id){
+    if(!confirm("Delete this lesson permanently? (Use Cancel instead if you just want to void it.)"))return;
+    var res=await window.sb.from("lessons").delete().eq("id",id);
+    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    load();
   }
 
   // ---------- actions ----------
@@ -70,10 +98,26 @@
       recalcCost();
     }
   }
-  function openAdd(open){
+  function openAdd(open, lesson){
     $("modal").classList.toggle("on",open);
     $("m-msg").textContent="";$("m-msg").className="msg";
-    if(open){$("m-date").value=todayISO();prefillFromSlot();}
+    if(!open)return;
+    if(lesson){
+      editLessonId=lesson.id;
+      $("m-title").textContent="Edit lesson";$("m-save").textContent="Save changes";
+      $("m-student").value=lesson.student_id;
+      $("m-date").value=lesson.lesson_date;
+      $("m-subject").value=lesson.subject||"";
+      $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
+      $("m-rate").value=lesson.rate;$("m-paid").checked=!!lesson.paid;
+      recalcCost();
+    }else{
+      editLessonId=null;
+      $("m-title").textContent="Add lesson";$("m-save").textContent="Save lesson";
+      $("m-date").value=todayISO();$("m-paid").checked=false;
+      ["m-subject","m-start","m-end","m-rate","m-cost"].forEach(function(id){$(id).value="";});
+      prefillFromSlot();
+    }
   }
   async function saveLesson(){
     var msg=$("m-msg");
@@ -83,15 +127,15 @@
     if(!start||!end||end<=start){msg.textContent="Check the start/end times.";msg.className="msg err";return;}
     if(!(rate>=0)){msg.textContent="Enter a rate.";msg.className="msg err";return;}
     var paid=$("m-paid").checked;
-    $("m-save").disabled=true;
-    var res=await window.sb.from("lessons").insert({
-      tutor_id:userId,student_id:sid,lesson_date:date,start_time:start,end_time:end,
+    var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,rate:rate,amount:TL.amount(rate,start,end),
-      status:date>todayISO()?"scheduled":"done",paid:paid,paid_date:paid?date:null
-    });
+      status:date>todayISO()?"scheduled":"done",paid:paid,paid_date:paid?date:null};
+    $("m-save").disabled=true;
+    var res=editLessonId
+      ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)
+      : await window.sb.from("lessons").insert(Object.assign({tutor_id:userId},fields));
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
-    $("m-paid").checked=false;["m-subject","m-start","m-end","m-rate","m-cost"].forEach(function(id){$(id).value="";});
     openAdd(false);load();
   }
   async function generateWeek(){
@@ -186,7 +230,7 @@
     var projected=slots.reduce(function(t,s){return t+monthOccurrences(s.weekday)*TL.amount(s.rate,hm(s.start_time),hm(s.end_time));},0);
     $("k-projected").textContent=TL.sgd(projected);
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,subject,amount,paid,status");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,rate,amount,paid,status");
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
 
