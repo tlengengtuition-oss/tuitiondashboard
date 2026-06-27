@@ -178,8 +178,16 @@
   }
 
   function openInvoice(studentId){
-    if(!profile||!profile.paynow_id){
-      if(confirm("Set your PayNow details first. Go to Settings now?")) location.href="settings.html";
+    if(typeof QRCode==="undefined"||!QRCode.toDataURL){
+      alert("The QR code library didn't load — check your connection or ad-blocker, then refresh.");
+      return;
+    }
+    if(!profile){
+      alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");
+      return;
+    }
+    if(!profile.paynow_id){
+      if(confirm("No PayNow details saved yet. Open Settings to add them now?")) location.href="settings.html";
       return;
     }
     var lessons=(outGroups[studentId]||[]).slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
@@ -190,18 +198,18 @@
     var slug=student.replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase();
     var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
     var payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
-    var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
-
     var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,
       dateStr:now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}),
       student:student,lessons:lessons,total:total,payTo:payTo};
-
-    QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
-      if(err){alert("Couldn't generate QR: "+err.message);return;}
-      window._invHTML=invoiceHTML(data,url);   // stash for printing
-      $("inv-body").innerHTML=window._invHTML;
-      $("inv-backdrop").classList.add("on");
-    });
+    try{
+      var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
+      QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
+        if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
+        window._invHTML=invoiceHTML(data,url);
+        $("inv-body").innerHTML=window._invHTML;
+        $("inv-backdrop").classList.add("on");
+      });
+    }catch(e){ alert("Invoice error: "+(e.message||e)); }
   }
 
   function printInvoice(){
