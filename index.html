@@ -9,26 +9,33 @@
 <body>
 <div id="view">
   <div class="kpi-grid">
-    <div class="card kpi accent"><div class="label">Earned this month</div>
-      <div class="val" id="k-earned">—</div><div class="note">paid + done</div></div>
-    <div class="card kpi owed"><div class="label">Pending payment</div>
-      <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">awaiting collection</div></div>
-    <div class="card kpi"><div class="label">Projected month</div>
-      <div class="val" id="k-proj">—</div><div class="note">if no cancellations</div></div>
+    <div class="card kpi owed"><div class="label">Total pending</div>
+      <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">to collect</div></div>
+    <div class="card kpi paid"><div class="label">Collected this month</div>
+      <div class="val" id="k-collected">—</div><div class="note" id="k-collected-n">&nbsp;</div></div>
+    <div class="card kpi accent"><div class="label">Projected this month</div>
+      <div class="val" id="k-projected">—</div><div class="note">if no cancellations</div></div>
     <div class="card kpi"><div class="label">Lessons this week</div>
-      <div class="val" id="k-week">—</div><div class="note">from your schedule</div></div>
+      <div class="val" id="k-week">—</div><div class="note" id="k-week-n">Mon–Sun</div></div>
   </div>
-  <div class="card empty">
-    <h3>Dashboard wiring comes next</h3>
-    <p>The shell, navigation and auth are live. Once your roster and lessons exist,
-       these tiles fill in automatically and we'll add the income chart and exam countdown.</p>
+
+  <div class="grid2">
+    <div class="card panel">
+      <h2>Income by month <span class="hint" id="inc-hint"></span></h2>
+      <div class="chart-wrap"><canvas id="incomeChart"></canvas></div>
+    </div>
+    <div class="card panel">
+      <h2>Upcoming exams <span class="hint" id="exam-hint"></span></h2>
+      <div id="exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+    </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/supabase.js"></script>
 <script src="assets/js/app.js"></script>
-<script>TL.requireAuth("dashboard");</script>
+<script src="assets/js/dashboard.js"></script>
 </body>
 </html>

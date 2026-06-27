@@ -8,6 +8,14 @@
 </head>
 <body>
 <div id="view">
+  <div class="toolbar">
+    <div class="sub" id="led-sub">Lessons &amp; payments</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" id="gen-btn">Log this week from schedule</button>
+      <button class="btn btn-gold" id="add-btn">+ Add lesson</button>
+    </div>
+  </div>
+
   <div class="kpi-grid">
     <div class="card kpi owed"><div class="label">Total pending</div>
       <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">conducted, not paid</div></div>
@@ -17,18 +25,44 @@
       <div class="val" id="k-projected">—</div><div class="note">if no cancellations</div></div>
   </div>
 
-  <div class="section-title">Outstanding by student
-    <span class="hint" id="out-hint"></span></div>
+  <div class="section-title">Outstanding by student <span class="hint" id="out-hint"></span></div>
   <div id="outstanding"></div>
 
-  <div class="section-title">This month
-    <span class="hint" id="month-hint"></span></div>
+  <div class="section-title">This month <span class="hint" id="month-hint"></span></div>
   <div class="card">
     <div class="empty" id="month-empty" style="display:none"><h3>No lessons this month yet</h3></div>
     <table class="tbl" id="month-table" style="display:none">
       <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Amount</th><th>Status</th></tr></thead>
       <tbody id="month-body"></tbody>
     </table>
+  </div>
+
+  <!-- add-lesson modal -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal card">
+      <h2>Add lesson</h2>
+      <div class="field"><label for="m-student">Student</label><select id="m-student"></select></div>
+      <div class="row2">
+        <div class="field"><label for="m-date">Date</label><input id="m-date" type="date"></div>
+        <div class="field"><label for="m-subject">Subject</label><input id="m-subject" type="text" placeholder="optional"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="m-start">Start</label><input id="m-start" type="time"></div>
+        <div class="field"><label for="m-end">End</label><input id="m-end" type="time"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="m-rate">Rate <span class="muted">(/hr)</span></label><input id="m-rate" type="number" min="0" step="0.5"></div>
+        <div class="field"><label for="m-cost">Cost</label><input id="m-cost" type="text" disabled></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 12px">
+        <input type="checkbox" id="m-paid"> Already paid
+      </label>
+      <div class="msg" id="m-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="m-cancel">Cancel</button>
+        <button class="btn btn-primary" id="m-save">Save lesson</button>
+      </div>
+    </div>
   </div>
 </div>
 
