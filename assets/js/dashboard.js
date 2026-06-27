@@ -54,8 +54,6 @@
     var nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
 
     var sl=await window.sb.from("recurring_slots").select("weekday,start_time,end_time,rate").eq("active",true);
-    var projected=(sl.data||[]).reduce(function(t,s){return t+monthOccurrences(s.weekday)*TL.amount(s.rate,hm(s.start_time),hm(s.end_time));},0);
-    $("k-projected").textContent=TL.sgd(projected);
 
     var ls=await window.sb.from("lessons").select("student_id,lesson_date,amount,paid,status");
     var lessons=ls.data||[];
@@ -67,6 +65,8 @@
     $("k-pending-n").textContent=unpaid.length+" unpaid lessons";
 
     var month=lessons.filter(function(l){return l.lesson_date>=mFirst&&l.lesson_date<=mLast;});
+    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
+    $("k-projected").textContent=TL.sgd(projected);
     $("k-collected").textContent=TL.sgd(month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0));
     $("k-collected-n").textContent=now.toLocaleString("en-SG",{month:"long"});
 

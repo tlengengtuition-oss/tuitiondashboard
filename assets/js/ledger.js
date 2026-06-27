@@ -274,8 +274,6 @@
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
     slots=sl.data||[];
-    var projected=slots.reduce(function(t,s){return t+monthOccurrences(s.weekday)*TL.amount(s.rate,hm(s.start_time),hm(s.end_time));},0);
-    $("k-projected").textContent=TL.sgd(projected);
 
     var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,rate,amount,paid,status");
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
@@ -291,6 +289,9 @@
     var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
     $("k-collected").textContent=TL.sgd(collected);
     $("k-collected-n").textContent=mr.label;
+
+    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
+    $("k-projected").textContent=TL.sgd(projected);
 
     renderOutstanding(unpaid);
     allLessons=lessons;
