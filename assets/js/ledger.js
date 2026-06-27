@@ -177,11 +177,30 @@
       '</div>';
   }
 
-  function openInvoice(studentId){
-    if(typeof QRCode==="undefined"||!QRCode.toDataURL){
-      alert("The QR code library didn't load — check your connection or ad-blocker, then refresh.");
-      return;
-    }
+  // Load the QR library on demand, trying two CDNs (resilient to a blocked/missing script tag)
+  var qrLoading=null;
+  function loadQR(){
+    if(window.QRCode&&window.QRCode.toDataURL)return Promise.resolve();
+    if(qrLoading)return qrLoading;
+    var urls=["assets/js/qrlib.js",
+              "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js",
+              "https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js"];
+    qrLoading=new Promise(function(resolve,reject){
+      var i=0;
+      (function next(){
+        if(window.QRCode&&window.QRCode.toDataURL)return resolve();
+        if(i>=urls.length)return reject(new Error("blocked"));
+        var s=document.createElement("script");
+        s.src=urls[i++];
+        s.onload=function(){(window.QRCode&&window.QRCode.toDataURL)?resolve():next();};
+        s.onerror=next;
+        document.head.appendChild(s);
+      })();
+    });
+    return qrLoading;
+  }
+
+  async function openInvoice(studentId){
     if(!profile){
       alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");
       return;
@@ -192,6 +211,11 @@
     }
     var lessons=(outGroups[studentId]||[]).slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!lessons.length)return;
+    try{ await loadQR(); }
+    catch(e){
+      alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again.");
+      return;
+    }
     var total=Math.round(lessons.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var student=nameById[studentId]||"Student";
     var now=new Date();
@@ -203,7 +227,7 @@
       student:student,lessons:lessons,total:total,payTo:payTo};
     try{
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
-      QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
+      window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
         window._invHTML=invoiceHTML(data,url);
         $("inv-body").innerHTML=window._invHTML;
