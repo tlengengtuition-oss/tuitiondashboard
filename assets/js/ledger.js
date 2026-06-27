@@ -183,8 +183,8 @@
     if(window.QRCode&&window.QRCode.toDataURL)return Promise.resolve();
     if(qrLoading)return qrLoading;
     var urls=["assets/js/qrlib.js",
-              "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js",
-              "https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js"];
+              "https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js",
+              "https://unpkg.com/qrcode@1.4.4/build/qrcode.min.js"];
     qrLoading=new Promise(function(resolve,reject){
       var i=0;
       (function next(){
