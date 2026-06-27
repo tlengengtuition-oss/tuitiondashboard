@@ -43,8 +43,8 @@
       var d=new Date(e.exam_date+"T00:00:00");
       var days=Math.round((d-now)/86400000);
       var soon=days<=14;
-      var sub=[nameById[e.student_id]||"—",e.subject].filter(Boolean).join(" · ");
-      return '<div class="exam-row"><div class="ex-main"><div class="ex-name">'+esc(nameById[e.student_id]||"—")+'</div><div class="ex-sub">'+esc(e.subject||"exam")+(e.topics?" — "+esc(e.topics):"")+'</div></div>'+
+      var label=[e.assessment_type,e.subject].filter(Boolean).join(" · ")||"exam";
+      return '<div class="exam-row"><div class="ex-main"><div class="ex-name">'+esc(nameById[e.student_id]||"—")+'</div><div class="ex-sub">'+esc(label)+(e.topics?" — "+esc(e.topics):"")+'</div></div>'+
         '<div class="days'+(soon?" soon":"")+'"><b>'+days+'</b><small>'+(days===1?"day":"days")+'</small></div></div>';
     }).join("");
   }
@@ -88,7 +88,7 @@
     $("inc-hint").textContent="YTD "+TL.sgd(ytd);
     if(window.Chart)renderChart(byMonth.map(function(v){return Math.round(v*100)/100;}),y);
 
-    var ex=await window.sb.from("exams").select("student_id,exam_date,subject,topics");
+    var ex=await window.sb.from("exams").select("student_id,exam_date,assessment_type,subject,topics");
     renderExams(ex.data||[],nameById);
   }
 

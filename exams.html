@@ -37,8 +37,18 @@
       <div class="field"><label for="m-student">Student</label><select id="m-student"></select></div>
       <div class="row2">
         <div class="field"><label for="m-date">Exam date</label><input id="m-date" type="date"></div>
-        <div class="field"><label for="m-subject">Subject</label><input id="m-subject" type="text" placeholder="e.g. A-Math"></div>
+        <div class="field"><label for="m-type">Type</label>
+          <input id="m-type" list="type-list" type="text" placeholder="e.g. WA1, PSLE">
+          <datalist id="type-list">
+            <option value="WA1"><option value="WA2"><option value="WA3">
+            <option value="SA1"><option value="SA2"><option value="CA1"><option value="CA2">
+            <option value="Mid-Year"><option value="End-Year"><option value="Prelim">
+            <option value="PSLE"><option value="N-Level"><option value="O-Level"><option value="A-Level">
+            <option value="Class Test"><option value="Common Test">
+          </datalist>
+        </div>
       </div>
+      <div class="field"><label for="m-subject">Subject</label><input id="m-subject" type="text" placeholder="e.g. A-Math"></div>
       <div class="field"><label for="m-topics">Topics</label><input id="m-topics" type="text" placeholder="e.g. Quadratics, Indices"></div>
       <div class="field"><label for="m-remarks">Remarks</label><input id="m-remarks" type="text" placeholder="optional"></div>
       <div class="msg" id="m-msg"></div>

@@ -20,12 +20,12 @@
     if(ex){
       editingId=ex.id;
       $("m-title").textContent="Edit exam";$("m-save").textContent="Save changes";
-      $("m-student").value=ex.student_id;$("m-date").value=ex.exam_date||"";
+      $("m-student").value=ex.student_id;$("m-date").value=ex.exam_date||"";$("m-type").value=ex.assessment_type||"";
       $("m-subject").value=ex.subject||"";$("m-topics").value=ex.topics||"";$("m-remarks").value=ex.remarks||"";
     }else{
       editingId=null;
       $("m-title").textContent="Add exam";$("m-save").textContent="Save exam";
-      ["m-subject","m-topics","m-remarks"].forEach(function(id){$(id).value="";});
+      ["m-type","m-subject","m-topics","m-remarks"].forEach(function(id){$(id).value="";});
       $("m-date").value="";
     }
   }
@@ -36,6 +36,7 @@
     if(!sid){msg.textContent="Pick a student.";msg.className="msg err";return;}
     if(!date){msg.textContent="Set an exam date.";msg.className="msg err";return;}
     var fields={student_id:sid,exam_date:date,
+      assessment_type:$("m-type").value.trim()||null,
       subject:$("m-subject").value.trim()||null,
       topics:$("m-topics").value.trim()||null,
       remarks:$("m-remarks").value.trim()||null};
@@ -58,7 +59,7 @@
   function row(ex, upcoming){
     var acts='<button class="tact" data-edit="'+ex.id+'">Edit</button><button class="tact del" data-del="'+ex.id+'">Delete</button>';
     var base="<td>"+prettyDate(ex.exam_date)+'</td><td class="name">'+esc(nameById[ex.student_id]||"—")+"</td>"+
-      "<td>"+(ex.subject?esc(ex.subject):'<span class="muted">—</span>')+"</td>"+
+      "<td>"+( (ex.assessment_type?'<span class="kind-tag">'+esc(ex.assessment_type)+'</span> ':'') + (ex.subject?esc(ex.subject):(ex.assessment_type?'':'<span class="muted">—</span>')) )+"</td>"+
       "<td>"+(ex.topics?esc(ex.topics):'<span class="muted">—</span>')+"</td>";
     if(upcoming){
       var d=daysAway(ex.exam_date);
@@ -79,7 +80,7 @@
     students=st.data||[];nameById={};students.forEach(function(s){nameById[s.id]=s.name;});
     studentOptions();
 
-    var res=await window.sb.from("exams").select("id,student_id,exam_date,subject,topics,remarks");
+    var res=await window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,remarks");
     if(res.error){$("x-count").textContent="Couldn't load exams: "+res.error.message;return;}
     exams=res.data||[];
     var today=todayISO();
