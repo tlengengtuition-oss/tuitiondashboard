@@ -8,6 +8,7 @@ window.TL = (function () {
     { id: "planner",   label: "Planner",   href: "planner.html",  ic: "▦" },
     { id: "ledger",    label: "Ledger",    href: "ledger.html",   ic: "₪" },
     { id: "students",  label: "Students",  href: "students.html", ic: "☺" },
+    { id: "exams",     label: "Exams",     href: "exams.html",    ic: "◷" },
     { id: "settings",  label: "Settings",  href: "settings.html", ic: "⚙" }
   ];
 
@@ -59,6 +60,7 @@ window.TL = (function () {
                  planner: ["Weekly planner", "Mon–Sun schedule"],
                  ledger: ["Ledger", "Lessons, payments & projections"],
                  settings: ["Settings", "Business & PayNow details"],
+                 exams: ["Exams", "Upcoming assessments"],
                  students: ["Students", "Your roster"] }[active] || ["", ""];
 
     if (!window.TL_CONFIGURED) {

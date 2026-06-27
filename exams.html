@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exams · T-Leng Tuition</title>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+<div id="view">
+  <div class="toolbar">
+    <div class="sub" id="x-count">Loading exams…</div>
+    <button class="btn btn-gold" id="add-btn">+ Add exam</button>
+  </div>
+
+  <div class="section-title">Upcoming <span class="hint" id="up-hint"></span></div>
+  <div class="card">
+    <div class="empty" id="up-empty" style="display:none"><h3>No upcoming exams</h3></div>
+    <table class="tbl" id="up-table" style="display:none">
+      <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Topics</th><th>In</th><th></th></tr></thead>
+      <tbody id="up-body"></tbody>
+    </table>
+  </div>
+
+  <div class="section-title" id="past-title" style="display:none">Past</div>
+  <div class="card" id="past-card" style="display:none">
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Topics</th><th></th></tr></thead>
+      <tbody id="past-body"></tbody>
+    </table>
+  </div>
+
+  <!-- add / edit modal -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal card">
+      <h2 id="m-title">Add exam</h2>
+      <div class="field"><label for="m-student">Student</label><select id="m-student"></select></div>
+      <div class="row2">
+        <div class="field"><label for="m-date">Exam date</label><input id="m-date" type="date"></div>
+        <div class="field"><label for="m-subject">Subject</label><input id="m-subject" type="text" placeholder="e.g. A-Math"></div>
+      </div>
+      <div class="field"><label for="m-topics">Topics</label><input id="m-topics" type="text" placeholder="e.g. Quadratics, Indices"></div>
+      <div class="field"><label for="m-remarks">Remarks</label><input id="m-remarks" type="text" placeholder="optional"></div>
+      <div class="msg" id="m-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="m-cancel">Cancel</button>
+        <button class="btn btn-primary" id="m-save">Save exam</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/exams.js"></script>
+</body>
+</html>
