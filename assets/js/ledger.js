@@ -54,6 +54,17 @@
   var DEFAULT_REMINDER="Hi {name}! Friendly reminder from {business}: you have an outstanding balance of {amount} for {count} tuition lesson(s). PayNow to {paynow}. Thank you!";
   var DEFAULT_INVOICE="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}. Thank you!";
   function fillTemplate(tpl,vars){return String(tpl).replace(/\{(\w+)\}/g,function(_,k){return vars[k]!=null?String(vars[k]):"";});}
+  var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  function monthsLabel(rows){
+    var seen={},keys=[];
+    (rows||[]).forEach(function(l){var k=(l.lesson_date||"").slice(0,7);if(k&&!seen[k]){seen[k]=1;keys.push(k);}});
+    keys.sort();
+    var names=keys.map(function(k){return MONTHS[parseInt(k.slice(5,7),10)-1];});
+    if(!names.length)return "";
+    if(names.length===1)return names[0];
+    if(names.length===2)return names[0]+" & "+names[1];
+    return names.slice(0,-1).join(", ")+" & "+names[names.length-1];
+  }
 
   function remind(id){
     var num=waNumber(contactById[id]);
@@ -62,7 +73,8 @@
     if(!rows.length)return;
     var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
     var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:(profile&&profile.business_name)||"T-Leng Tuition",
-      amount:TL.sgd(sum),count:rows.length,invoice:"",paynow:(profile&&profile.paynow_id)||""};
+      amount:TL.sgd(sum),count:rows.length,invoice:"",paynow:(profile&&profile.paynow_id)||"",
+      month:monthsLabel(rows),date:prettyDate(iso(new Date())),year:String(new Date().getFullYear())};
     var tpl=(profile&&profile.reminder_message)||DEFAULT_REMINDER;
     window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
   }
@@ -302,7 +314,7 @@
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
         window._invHTML=invoiceHTML(data,url);
-        window._invMeta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now)};
+        window._invMeta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons)};
         $("inv-body").innerHTML=window._invHTML;
         $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
         $("inv-backdrop").classList.add("on");
@@ -343,7 +355,8 @@
   }
   function invoiceMsg(m){
     var vars={name:recipientById[m.studentId]||nameById[m.studentId]||"",student:nameById[m.studentId]||"",business:(profile&&profile.business_name)||"T-Leng Tuition",
-      amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:(profile&&profile.paynow_id)||""};
+      amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:(profile&&profile.paynow_id)||"",
+      month:m.month||"",date:prettyDate(m.issuedDate),year:(m.issuedDate||"").slice(0,4)};
     var tpl=(profile&&profile.invoice_message)||DEFAULT_INVOICE;
     return fillTemplate(tpl,vars);
   }
