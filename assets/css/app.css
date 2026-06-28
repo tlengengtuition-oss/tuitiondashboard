@@ -1,4 +1,4 @@
-/* v8 */
+/* v9 */
 /* =====================================================================
    T-Leng Tuition Dashboard — house style
    navy / gold / cream / teal · Georgia headings · sans body
@@ -294,4 +294,22 @@ tr.inactive td.name{color:var(--muted)}
   .tbl td.acts::before{display:none}
   .tbl td.acts .tact{margin:0;font-size:14.5px;padding:3px 0}
   .tbl .name{font-weight:700}
+}
+
+/* ============================================================
+   v9 — mobile width safety (authoritative; keep at end of file)
+   Lets every flex/grid child shrink so nothing forces the page
+   wider than the screen. Nav wraps to multiple rows instead of
+   relying on horizontal scroll.
+   ============================================================ */
+@media(max-width:820px){
+  html,body{max-width:100%;overflow-x:hidden}
+  .app{grid-template-columns:1fr}
+  .main,.sidebar,.nav,.card,.kpi-grid,.grid2,#view{min-width:0;max-width:100%}
+  .grid2>*{min-width:0}
+  .chart-wrap{width:100%}
+  img,canvas,svg,video,table{max-width:100%}
+  /* nav: a wrapping row of pills, never wider than the screen */
+  .nav{display:flex;flex-direction:row;flex-wrap:wrap;width:100%;overflow:visible;gap:6px;margin:0}
+  .nav a{flex:0 0 auto;white-space:nowrap}
 }
