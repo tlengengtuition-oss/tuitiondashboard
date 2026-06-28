@@ -266,6 +266,7 @@
     var total=Math.round(lessons.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var student=nameById[studentId]||"Student";
     var now=new Date();
+    window._invTitle="Invoice_"+(student.replace(/[^A-Za-z0-9]+/g,"")||"Student")+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
     var slug=student.replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase();
     var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
     var payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
@@ -277,10 +278,26 @@
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
         window._invHTML=invoiceHTML(data,url);
+        window._invMeta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now)};
         $("inv-body").innerHTML=window._invHTML;
+        $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
         $("inv-backdrop").classList.add("on");
       });
     }catch(e){ alert("Invoice error: "+(e.message||e)); }
+  }
+
+  async function saveInvoice(){
+    if(!window._invHTML||!window._invMeta)return;
+    var m=window._invMeta,b=$("inv-save");
+    b.disabled=true;b.textContent="Saving…";
+    var res=await window.sb.from("invoices").insert({
+      tutor_id:userId,student_id:m.studentId,invoice_no:m.invoiceNo,
+      issued_date:m.issuedDate,total:m.total,status:"issued",
+      data:{html:window._invHTML,title:window._invTitle||("Invoice_"+m.invoiceNo)}
+    });
+    b.disabled=false;
+    if(res.error){b.textContent="Save to app";alert("Couldn't save invoice: "+res.error.message);return;}
+    b.textContent="Saved ✓";setTimeout(function(){b.textContent="Save to app";},1600);
   }
 
   function printInvoice(){
@@ -288,7 +305,8 @@
     var css=document.querySelector('link[rel="stylesheet"]').href;
     var w=window.open("","_blank","width=720,height=900");
     if(!w){alert("Allow pop-ups to print, or use your browser's print on this page.");return;}
-    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Invoice</title>'+
+    var title=esc(window._invTitle||"Invoice");
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
       '<link rel="stylesheet" href="'+css+'"><style>body{background:#fff;padding:28px;max-width:640px;margin:auto}</style></head>'+
       '<body>'+window._invHTML+'</body></html>');
     w.document.close();
@@ -297,6 +315,7 @@
 
   // ---------- load ----------
   async function load(){
+    await TL.promotePastLessons();
     var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix").eq("id",userId).single();
     profile=pr.error?null:pr.data;
 
@@ -344,6 +363,7 @@
     $("inv-close").addEventListener("click",function(){$("inv-backdrop").classList.remove("on");});
     $("inv-backdrop").addEventListener("click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
     $("inv-print").addEventListener("click",printInvoice);
+    $("inv-save").addEventListener("click",saveInvoice);
     $("prev-m").addEventListener("click",function(){shiftMonth(-1);});
     $("next-m").addEventListener("click",function(){shiftMonth(1);});
     $("all-time").addEventListener("click",toggleAll);

@@ -9,6 +9,7 @@ window.TL = (function () {
     { id: "ledger",    label: "Ledger",    href: "ledger.html",   ic: "₪" },
     { id: "students",  label: "Students",  href: "students.html", ic: "☺" },
     { id: "exams",     label: "Exams",     href: "exams.html",    ic: "◷" },
+    { id: "invoices",  label: "Invoices",  href: "invoices.html", ic: "❑" },
     { id: "settings",  label: "Settings",  href: "settings.html", ic: "⚙" }
   ];
 
@@ -61,6 +62,7 @@ window.TL = (function () {
                  ledger: ["Ledger", "Lessons, payments & projections"],
                  settings: ["Settings", "Business & PayNow details"],
                  exams: ["Exams", "Upcoming assessments"],
+                 invoices: ["Invoices", "Saved invoices"],
                  students: ["Students", "Your roster"] }[active] || ["", ""];
 
     if (!window.TL_CONFIGURED) {
@@ -91,6 +93,24 @@ window.TL = (function () {
   }
   function amount(rate, start, end) { return Math.round(rate * hoursBetween(start, end) * 100) / 100; }
 
+  // Flip any "scheduled" lesson whose time has passed to "done" (unpaid),
+  // so completed lessons show up as owed without needing a background server.
+  async function promotePastLessons() {
+    if (!window.sb) return;
+    var n = new Date(), p = function (x) { return (x < 10 ? "0" : "") + x; };
+    var today = n.getFullYear() + "-" + p(n.getMonth() + 1) + "-" + p(n.getDate());
+    var nowT = p(n.getHours()) + ":" + p(n.getMinutes()) + ":" + p(n.getSeconds());
+    try {
+      // past dates: always promote
+      await window.sb.from("lessons").update({ status: "done" })
+        .eq("status", "scheduled").lt("lesson_date", today);
+      // today: promote only those whose end time has already passed
+      await window.sb.from("lessons").update({ status: "done" })
+        .eq("status", "scheduled").eq("lesson_date", today).lte("end_time", nowT);
+    } catch (e) { /* non-fatal */ }
+  }
+
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell,
-           sgd: sgd, hoursBetween: hoursBetween, amount: amount };
+           sgd: sgd, hoursBetween: hoursBetween, amount: amount,
+           promotePastLessons: promotePastLessons };
 })();

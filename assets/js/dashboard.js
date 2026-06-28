@@ -50,6 +50,7 @@
   }
 
   async function load(){
+    await TL.promotePastLessons();
     var st=await window.sb.from("students").select("id,name");
     var nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
 

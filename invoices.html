@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Invoices · T-Leng Tuition</title>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+<div id="view">
+  <div class="toolbar">
+    <div class="sub" id="i-count">Loading invoices…</div>
+  </div>
+
+  <div class="card">
+    <div class="empty" id="i-empty" style="display:none">
+      <h3>No saved invoices yet</h3>
+      <p>Generate an invoice from the Ledger and tap <b>Save to app</b> to keep a copy here.</p>
+    </div>
+    <table class="tbl" id="i-table" style="display:none">
+      <thead><tr><th>Issued</th><th>Student</th><th>Invoice no.</th><th>Total</th><th>Status</th><th></th></tr></thead>
+      <tbody id="i-body"></tbody>
+    </table>
+  </div>
+
+  <!-- view modal -->
+  <div class="modal-backdrop" id="inv-backdrop">
+    <div class="modal card wide">
+      <div id="inv-body"></div>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn" id="inv-close">Close</button>
+        <button class="btn btn-primary" id="inv-print">Print / Save PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/invoices.js"></script>
+</body>
+</html>
