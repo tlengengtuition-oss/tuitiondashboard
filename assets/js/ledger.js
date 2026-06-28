@@ -19,6 +19,7 @@
       ? mon.getDate()+"–"+sun.getDate()+" "+mo[sun.getMonth()]
       : mon.getDate()+" "+mo[mon.getMonth()]+" – "+sun.getDate()+" "+mo[sun.getMonth()];
     var b=$("gen-btn");if(b)b.textContent="Log this week ("+range+")";
+    var mb=$("gen-month-btn");if(mb)mb.textContent="Log this month ("+mo[new Date().getMonth()]+")";
   }
 
   // ---------- rendering ----------
@@ -65,7 +66,7 @@
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
-      return "<tr><td>"+prettyDate(l.lesson_date)+'</td><td class="name">'+esc(nameById[l.student_id]||"—")+"</td><td>"+(l.subject?esc(l.subject):'<span class="muted">—</span>')+"</td><td>"+TL.sgd(l.amount)+"</td><td>"+badge+'</td>'+
+      return '<tr><td data-label="Date">'+prettyDate(l.lesson_date)+'</td><td class="name" data-label="Student">'+esc(nameById[l.student_id]||"—")+'</td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
         '<td class="acts"><button class="tact" data-edit="'+l.id+'">Postpone / edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("");
     body.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openAdd(true,monthById[b.dataset.edit]);});});
@@ -160,6 +161,29 @@
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     openAdd(false);load();
+  }
+  async function generateMonth(){
+    if(!slots.length){alert("No recurring slots to generate from. Add them on the Planner first.");return;}
+    var now=new Date(),y=now.getFullYear(),m=now.getMonth();
+    var last=new Date(y,m+1,0).getDate();
+    var mStart=iso(new Date(y,m,1)),mEnd=iso(new Date(y,m,last));
+    var mo=["January","February","March","April","May","June","July","August","September","October","November","December"][m];
+    var ex=await window.sb.from("lessons").select("student_id,lesson_date,start_time").gte("lesson_date",mStart).lte("lesson_date",mEnd);
+    var seen={};(ex.data||[]).forEach(function(l){seen[l.student_id+"|"+l.lesson_date+"|"+hm(l.start_time)]=1;});
+    var rows=[];
+    for(var day=1;day<=last;day++){
+      var d=new Date(y,m,day),wd=(d.getDay()+6)%7,di=iso(d);
+      slots.forEach(function(s){
+        if(s.weekday!==wd)return;
+        if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
+        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,rate:s.rate,amount:TL.amount(s.rate,hm(s.start_time),hm(s.end_time)),status:di>todayISO()?"scheduled":"done",paid:false});
+      });
+    }
+    if(!rows.length){alert(mo+" is already fully logged — nothing new to add.");return;}
+    if(!confirm("Add "+rows.length+" lessons to fill every recurring slot across "+mo+"? Already-logged lessons are skipped."))return;
+    var res=await window.sb.from("lessons").insert(rows);
+    if(res.error){alert("Couldn't generate: "+res.error.message);return;}
+    load();
   }
   async function generateWeek(){
     if(!slots.length){alert("No recurring slots to generate from. Add them on the Planner first.");return;}
@@ -310,6 +334,7 @@
     userId=user.id;
     $("add-btn").addEventListener("click",function(){openAdd(true);});
     $("gen-btn").addEventListener("click",generateWeek);
+    $("gen-month-btn").addEventListener("click",generateMonth);
     setGenLabel();
     $("m-cancel").addEventListener("click",function(){openAdd(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openAdd(false);});
