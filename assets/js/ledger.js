@@ -51,16 +51,20 @@
     if(d.length===8)return "65"+d;   // Singapore local mobile/landline
     return d;                         // assume it already carries a country code
   }
+  var DEFAULT_REMINDER="Hi {name}! Friendly reminder from {business}: you have an outstanding balance of {amount} for {count} tuition lesson(s). PayNow to {paynow}. Thank you!";
+  var DEFAULT_INVOICE="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}. Thank you!";
+  function fillTemplate(tpl,vars){return String(tpl).replace(/\{(\w+)\}/g,function(_,k){return vars[k]!=null?String(vars[k]):"";});}
+
   function remind(id){
     var num=waNumber(contactById[id]);
     if(!num){alert("No contact number saved for "+(nameById[id]||"this student")+".\n\nAdd one on the Students page (Edit → Contact), then try again.");return;}
     var rows=outGroups[id]||[];
     if(!rows.length)return;
     var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
-    var biz=(profile&&profile.business_name)||"T-Leng Tuition";
-    var pay=(profile&&profile.paynow_id)?(" You can pay via PayNow to "+profile.paynow_id+"."):"";
-    var msg="Hi! Friendly reminder from "+biz+": there's an outstanding balance of "+TL.sgd(sum)+" for "+rows.length+" tuition lesson"+(rows.length===1?"":"s")+"."+pay+" Thank you!";
-    window.open("https://wa.me/"+num+"?text="+encodeURIComponent(msg),"_blank");
+    var vars={name:nameById[id]||"",business:(profile&&profile.business_name)||"T-Leng Tuition",
+      amount:TL.sgd(sum),count:rows.length,invoice:"",paynow:(profile&&profile.paynow_id)||""};
+    var tpl=(profile&&profile.reminder_message)||DEFAULT_REMINDER;
+    window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
   }
   function periodLabel(){return period.mode==="all"?"All time":new Date(period.y,period.m,1).toLocaleString("en-SG",{month:"long",year:"numeric"});}
   function renderRecords(){
@@ -338,9 +342,10 @@
     });
   }
   function invoiceMsg(m){
-    var biz=(profile&&profile.business_name)||"T-Leng Tuition";
-    var pay=(profile&&profile.paynow_id)?(" PayNow to "+profile.paynow_id+"."):"";
-    return "Hi! Here's your invoice "+m.invoiceNo+" from "+biz+" — total "+TL.sgd(m.total)+"."+pay+" Thank you!";
+    var vars={name:nameById[m.studentId]||"",business:(profile&&profile.business_name)||"T-Leng Tuition",
+      amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:(profile&&profile.paynow_id)||""};
+    var tpl=(profile&&profile.invoice_message)||DEFAULT_INVOICE;
+    return fillTemplate(tpl,vars);
   }
   async function shareInvoice(){
     if(!window._invHTML||!window._invMeta)return;
@@ -389,7 +394,7 @@
   // ---------- load ----------
   async function load(){
     await TL.promotePastLessons();
-    var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix").eq("id",userId).single();
+    var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message").eq("id",userId).single();
     profile=pr.error?null:pr.data;
 
     var st=await window.sb.from("students").select("id,name,active,contact").order("name");

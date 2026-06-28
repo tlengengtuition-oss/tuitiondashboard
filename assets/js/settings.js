@@ -11,13 +11,15 @@
 
   async function load() {
     var res = await window.sb.from("profiles")
-      .select("business_name,paynow_type,paynow_id,invoice_prefix").eq("id", userId).single();
+      .select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message").eq("id", userId).single();
     if (res.error) { $("s-msg").textContent = "Couldn't load: " + res.error.message; $("s-msg").className = "msg err"; return; }
     var p = res.data || {};
     $("biz").value = p.business_name || "";
     $("ptype").value = p.paynow_type || "mobile";
     $("pid").value = p.paynow_id || "";
     $("prefix").value = p.invoice_prefix || "INV";
+    $("rmsg").value = p.reminder_message || "";
+    $("imsg").value = p.invoice_message || "";
     preview();
   }
 
@@ -31,7 +33,9 @@
       business_name: biz,
       paynow_type: $("ptype").value,
       paynow_id: pid,
-      invoice_prefix: $("prefix").value.trim() || "INV"
+      invoice_prefix: $("prefix").value.trim() || "INV",
+      reminder_message: $("rmsg").value.trim() || null,
+      invoice_message: $("imsg").value.trim() || null
     }).eq("id", userId);
     $("save").disabled = false;
     if (res.error) { msg.textContent = res.error.message; msg.className = "msg err"; return; }
