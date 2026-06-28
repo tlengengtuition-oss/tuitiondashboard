@@ -13,11 +13,11 @@
       editingId=st.id;
       $("m-title").textContent="Edit student";$("m-save").textContent="Save changes";
       $("m-name").value=st.name||"";$("m-kind").value=st.kind||"individual";
-      $("m-level").value=st.level||"";$("m-contact").value=st.contact||"";$("m-notes").value=st.notes||"";
+      $("m-level").value=st.level||"";$("m-contact").value=st.contact||"";$("m-recipient").value=st.recipient_name||"";$("m-notes").value=st.notes||"";
     }else{
       editingId=null;
       $("m-title").textContent="Add student";$("m-save").textContent="Save student";
-      ["m-name","m-level","m-contact","m-notes"].forEach(function(id){$(id).value="";});
+      ["m-name","m-level","m-contact","m-recipient","m-notes"].forEach(function(id){$(id).value="";});
       $("m-kind").value="individual";
     }
     $("m-name").focus();
@@ -27,6 +27,7 @@
     if(!name){msg.textContent="Give the student a name.";msg.className="msg err";return;}
     var fields={name:name,kind:$("m-kind").value,
       level:$("m-level").value.trim()||null,contact:$("m-contact").value.trim()||null,
+      recipient_name:$("m-recipient").value.trim()||null,
       notes:$("m-notes").value.trim()||null};
     $("m-save").disabled=true;
     var res=editingId
@@ -107,7 +108,7 @@
     scope.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){remove(b.dataset.del,find(b.dataset.del).name);});});
   }
   async function load(){
-    var res=await window.sb.from("students").select("id,name,kind,level,contact,notes,active").order("name");
+    var res=await window.sb.from("students").select("id,name,kind,level,contact,notes,active,recipient_name").order("name");
     if(res.error){$("s-count").textContent="Couldn't load students: "+res.error.message;return;}
     students=res.data||[];
     var act=students.filter(function(s){return s.active!==false;});

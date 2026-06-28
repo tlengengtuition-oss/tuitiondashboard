@@ -1,6 +1,6 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
-  var userId = null, nameById = {}, contactById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null;
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null;
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -61,7 +61,7 @@
     var rows=outGroups[id]||[];
     if(!rows.length)return;
     var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
-    var vars={name:nameById[id]||"",business:(profile&&profile.business_name)||"T-Leng Tuition",
+    var vars={name:recipientById[id]||nameById[id]||"",student:nameById[id]||"",business:(profile&&profile.business_name)||"T-Leng Tuition",
       amount:TL.sgd(sum),count:rows.length,invoice:"",paynow:(profile&&profile.paynow_id)||""};
     var tpl=(profile&&profile.reminder_message)||DEFAULT_REMINDER;
     window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
@@ -342,7 +342,7 @@
     });
   }
   function invoiceMsg(m){
-    var vars={name:nameById[m.studentId]||"",business:(profile&&profile.business_name)||"T-Leng Tuition",
+    var vars={name:recipientById[m.studentId]||nameById[m.studentId]||"",student:nameById[m.studentId]||"",business:(profile&&profile.business_name)||"T-Leng Tuition",
       amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:(profile&&profile.paynow_id)||""};
     var tpl=(profile&&profile.invoice_message)||DEFAULT_INVOICE;
     return fillTemplate(tpl,vars);
@@ -397,8 +397,8 @@
     var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message").eq("id",userId).single();
     profile=pr.error?null:pr.data;
 
-    var st=await window.sb.from("students").select("id,name,active,contact").order("name");
-    students=st.data||[];nameById={};contactById={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;});
+    var st=await window.sb.from("students").select("id,name,active,contact,recipient_name").order("name");
+    students=st.data||[];nameById={};contactById={};recipientById={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;});
     studentOptions();
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
