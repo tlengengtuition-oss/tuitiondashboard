@@ -1,6 +1,6 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
-  var userId = null, nameById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null;
+  var userId = null, nameById = {}, contactById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null;
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -36,11 +36,31 @@
       var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
       var lessonIds=rows.map(function(l){return l.id;});
       var inner=rows.map(function(l){return '<div class="lrow"><span class="lwhen">'+prettyDate(l.lesson_date)+"</span><span>"+(l.subject?esc(l.subject):'<span class="muted">lesson</span>')+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
-      return '<div class="card group"><div class="group-head"><span class="gname">'+esc(nameById[id]||"—")+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-inv="'+id+'">Invoice</button><button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+      return '<div class="card group"><div class="group-head"><span class="gname">'+esc(nameById[id]||"—")+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button><button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }).join("");
     $("outstanding").querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){markPaid([b.dataset.pay]);});});
     $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",function(){if(confirm("Mark all these lessons as paid?"))markPaid(b.dataset.payall.split(","));});});
     $("outstanding").querySelectorAll("[data-inv]").forEach(function(b){b.addEventListener("click",function(){openInvoice(b.dataset.inv);});});
+    $("outstanding").querySelectorAll("[data-remind]").forEach(function(b){b.addEventListener("click",function(){remind(b.dataset.remind);});});
+  }
+
+  function waNumber(raw){
+    var d=String(raw||"").replace(/\D/g,"");
+    if(!d)return "";
+    d=d.replace(/^0+/,"");
+    if(d.length===8)return "65"+d;   // Singapore local mobile/landline
+    return d;                         // assume it already carries a country code
+  }
+  function remind(id){
+    var num=waNumber(contactById[id]);
+    if(!num){alert("No contact number saved for "+(nameById[id]||"this student")+".\n\nAdd one on the Students page (Edit → Contact), then try again.");return;}
+    var rows=outGroups[id]||[];
+    if(!rows.length)return;
+    var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
+    var biz=(profile&&profile.business_name)||"T-Leng Tuition";
+    var pay=(profile&&profile.paynow_id)?(" You can pay via PayNow to "+profile.paynow_id+"."):"";
+    var msg="Hi! Friendly reminder from "+biz+": there's an outstanding balance of "+TL.sgd(sum)+" for "+rows.length+" tuition lesson"+(rows.length===1?"":"s")+"."+pay+" Thank you!";
+    window.open("https://wa.me/"+num+"?text="+encodeURIComponent(msg),"_blank");
   }
   function periodLabel(){return period.mode==="all"?"All time":new Date(period.y,period.m,1).toLocaleString("en-SG",{month:"long",year:"numeric"});}
   function renderRecords(){
@@ -300,6 +320,59 @@
     b.textContent="Saved ✓";setTimeout(function(){b.textContent="Save to app";},1600);
   }
 
+  // Lazily load html2canvas (self-hosted copy first, then CDNs) for rendering the invoice to an image.
+  function loadH2C(){
+    if(window.html2canvas)return Promise.resolve();
+    var urls=["assets/js/html2canvas.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+      "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
+      "https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"];
+    return new Promise(function(resolve,reject){
+      (function tryNext(i){
+        if(i>=urls.length){reject(new Error("could not load the image library"));return;}
+        var s=document.createElement("script");s.src=urls[i];
+        s.onload=function(){window.html2canvas?resolve():tryNext(i+1);};
+        s.onerror=function(){tryNext(i+1);};
+        document.head.appendChild(s);
+      })(0);
+    });
+  }
+  function invoiceMsg(m){
+    var biz=(profile&&profile.business_name)||"T-Leng Tuition";
+    var pay=(profile&&profile.paynow_id)?(" PayNow to "+profile.paynow_id+"."):"";
+    return "Hi! Here's your invoice "+m.invoiceNo+" from "+biz+" — total "+TL.sgd(m.total)+"."+pay+" Thank you!";
+  }
+  async function shareInvoice(){
+    if(!window._invHTML||!window._invMeta)return;
+    var m=window._invMeta,b=$("inv-wa"),msg=invoiceMsg(m);
+    b.disabled=true;b.textContent="Preparing…";
+    try{
+      await loadH2C();
+      var node=$("inv-body").firstElementChild||$("inv-body");
+      var canvas=await window.html2canvas(node,{backgroundColor:"#ffffff",scale:2,useCORS:true});
+      canvas.toBlob(async function(blob){
+        b.disabled=false;b.textContent="Send on WhatsApp";
+        if(!blob){alert("Couldn't render the invoice image.");return;}
+        var file=new File([blob],(window._invTitle||("Invoice_"+m.invoiceNo))+".png",{type:"image/png"});
+        // Best path: native share sheet with the image attached (mobile)
+        if(navigator.canShare&&navigator.canShare({files:[file]})){
+          try{ await navigator.share({files:[file],text:msg}); return; }
+          catch(e){ if(e&&e.name==="AbortError")return; /* otherwise fall through */ }
+        }
+        // Fallback (desktop / unsupported): download image, open WhatsApp with text to attach manually
+        var url=URL.createObjectURL(blob),a=document.createElement("a");
+        a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+        setTimeout(function(){URL.revokeObjectURL(url);},5000);
+        var num=waNumber(contactById[m.studentId]);
+        window.open("https://wa.me/"+num+"?text="+encodeURIComponent(msg),"_blank");
+        alert("Your device can't attach files to WhatsApp automatically.\n\nThe invoice image was just downloaded — attach it in the WhatsApp chat that opened.");
+      },"image/png");
+    }catch(e){
+      b.disabled=false;b.textContent="Send on WhatsApp";
+      alert("Couldn't prepare the invoice image: "+(e.message||e)+"\n\nIf this keeps happening, the image library may be blocked — tell me and I'll set up a self-hosted copy.");
+    }
+  }
+
   function printInvoice(){
     if(!window._invHTML)return;
     var css=document.querySelector('link[rel="stylesheet"]').href;
@@ -319,8 +392,8 @@
     var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix").eq("id",userId).single();
     profile=pr.error?null:pr.data;
 
-    var st=await window.sb.from("students").select("id,name,active").order("name");
-    students=st.data||[];nameById={};students.forEach(function(s){nameById[s.id]=s.name;});
+    var st=await window.sb.from("students").select("id,name,active,contact").order("name");
+    students=st.data||[];nameById={};contactById={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;});
     studentOptions();
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
@@ -351,22 +424,24 @@
 
   function init(user){
     userId=user.id;
-    $("add-btn").addEventListener("click",function(){openAdd(true);});
-    $("gen-btn").addEventListener("click",generateWeek);
-    $("gen-month-btn").addEventListener("click",generateMonth);
+    var on=function(id,evt,fn){var el=$(id);if(el)el.addEventListener(evt,fn);};
+    on("add-btn","click",function(){openAdd(true);});
+    on("gen-btn","click",generateWeek);
+    on("gen-month-btn","click",generateMonth);
     setGenLabel();
-    $("m-cancel").addEventListener("click",function(){openAdd(false);});
-    $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openAdd(false);});
-    $("m-save").addEventListener("click",saveLesson);
-    $("m-student").addEventListener("change",prefillFromSlot);
-    ["m-rate","m-start","m-end"].forEach(function(id){$(id).addEventListener("input",recalcCost);});
-    $("inv-close").addEventListener("click",function(){$("inv-backdrop").classList.remove("on");});
-    $("inv-backdrop").addEventListener("click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
-    $("inv-print").addEventListener("click",printInvoice);
-    $("inv-save").addEventListener("click",saveInvoice);
-    $("prev-m").addEventListener("click",function(){shiftMonth(-1);});
-    $("next-m").addEventListener("click",function(){shiftMonth(1);});
-    $("all-time").addEventListener("click",toggleAll);
+    on("m-cancel","click",function(){openAdd(false);});
+    on("modal","click",function(e){if(e.target===$("modal"))openAdd(false);});
+    on("m-save","click",saveLesson);
+    on("m-student","change",prefillFromSlot);
+    ["m-rate","m-start","m-end"].forEach(function(id){on(id,"input",recalcCost);});
+    on("inv-close","click",function(){$("inv-backdrop").classList.remove("on");});
+    on("inv-backdrop","click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
+    on("inv-print","click",printInvoice);
+    on("inv-wa","click",shareInvoice);
+    on("inv-save","click",saveInvoice);
+    on("prev-m","click",function(){shiftMonth(-1);});
+    on("next-m","click",function(){shiftMonth(1);});
+    on("all-time","click",toggleAll);
     load();
   }
   TL.requireAuth("ledger",init);
