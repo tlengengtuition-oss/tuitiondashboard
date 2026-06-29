@@ -63,6 +63,7 @@ window.TL = (function () {
                  settings: ["Settings", "Business & PayNow details"],
                  exams: ["Exams", "Upcoming assessments"],
                  invoices: ["Invoices", "Saved invoices"],
+                 student: ["Student", "Profile"],
                  students: ["Students", "Your roster"] }[active] || ["", ""];
 
     if (!window.TL_CONFIGURED) {

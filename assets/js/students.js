@@ -85,11 +85,13 @@
   // ---------- list ----------
   function rowHtml(r,active){
     var acts=active
-      ? '<button class="tact" data-edit="'+r.id+'">Edit</button>'+
+      ? '<button class="tact" data-view="'+r.id+'">Profile</button>'+
+        '<button class="tact" data-edit="'+r.id+'">Edit</button>'+
         '<button class="tact warn" data-merge="'+r.id+'">Merge</button>'+
         '<button class="tact" data-off="'+r.id+'">Discontinue</button>'+
         '<button class="tact del" data-del="'+r.id+'">Remove</button>'
-      : '<button class="tact" data-edit="'+r.id+'">Edit</button>'+
+      : '<button class="tact" data-view="'+r.id+'">Profile</button>'+
+        '<button class="tact" data-edit="'+r.id+'">Edit</button>'+
         '<button class="tact" data-on="'+r.id+'">Reactivate</button>'+
         '<button class="tact del" data-del="'+r.id+'">Remove</button>';
     return '<tr class="'+(active?"":"inactive")+'" data-id="'+r.id+'">'+
@@ -102,6 +104,7 @@
   function wire(scope){
     function find(id){return students.filter(function(s){return s.id===id;})[0];}
     scope.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openModal(true,find(b.dataset.edit));});});
+    scope.querySelectorAll("[data-view]").forEach(function(b){b.addEventListener("click",function(){location.href="student.html?id="+encodeURIComponent(b.dataset.view);});});
     scope.querySelectorAll("[data-merge]").forEach(function(b){b.addEventListener("click",function(){openMerge(true,find(b.dataset.merge));});});
     scope.querySelectorAll("[data-off]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.off,false);});});
     scope.querySelectorAll("[data-on]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.on,true);});});

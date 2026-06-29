@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student · T-Leng Tuition</title>
+<link rel="stylesheet" href="assets/css/app.css?v=9">
+</head>
+<body>
+<div id="view">
+  <div class="toolbar">
+    <a class="btn" href="students.html">‹ Back to students</a>
+    <span id="p-actions"></span>
+  </div>
+
+  <div id="p-head"></div>
+
+  <div class="kpi-grid" id="p-kpis"></div>
+
+  <div class="grid2">
+    <div>
+      <div class="section-title">Lesson history <span class="hint" id="p-lhint"></span></div>
+      <div class="card">
+        <div class="empty" id="p-lempty" style="display:none"><h3>No lessons logged yet</h3></div>
+        <table class="tbl" id="p-ltable" style="display:none">
+          <thead><tr><th>Date</th><th>Subject</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody id="p-lbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="section-title">Weekly slots</div>
+      <div class="card" id="p-slots"></div>
+
+      <div class="section-title">Exams</div>
+      <div class="card" id="p-exams"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/student.js"></script>
+</body>
+</html>
