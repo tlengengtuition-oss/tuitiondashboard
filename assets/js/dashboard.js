@@ -8,7 +8,20 @@
   function hm(t){return t?t.slice(0,5):"";}
   function monthOccurrences(weekday){var now=new Date(),y=now.getFullYear(),m=now.getMonth(),c=0,d=new Date(y,m,1);while(d.getMonth()===m){if(((d.getDay()+6)%7)===weekday)c++;d.setDate(d.getDate()+1);}return c;}
 
-  var chartObj=null;
+  var chartObj=null, allLessons=[], selY=null, selM=null, dmWired=false;
+  function renderMonthKpis(){
+    var mFirst=selY+"-"+pad(selM+1)+"-01",mLast=selY+"-"+pad(selM+1)+"-"+pad(new Date(selY,selM+1,0).getDate());
+    var month=allLessons.filter(function(l){return l.lesson_date>=mFirst&&l.lesson_date<=mLast;});
+    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
+    var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
+    $("k-projected").textContent=TL.sgd(projected);
+    $("k-collected").textContent=TL.sgd(collected);
+    var d1=new Date(selY,selM,1);
+    $("k-collected-n").textContent=d1.toLocaleString("en-SG",{month:"long"});
+    if($("dm-label"))$("dm-label").textContent=d1.toLocaleString("en-SG",{month:"long",year:"numeric"});
+  }
+  function stepDMonth(d){var dt=new Date(selY,selM+d,1);selY=dt.getFullYear();selM=dt.getMonth();renderMonthKpis();}
+
   function renderChart(collected, pending, upcoming, year){
     var labels=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     var r2=function(v){return Math.round(v*100)/100;};
@@ -17,9 +30,9 @@
     chartObj=new Chart(ctx,{
       type:"bar",
       data:{labels:labels,datasets:[
-        {label:"Collected",data:collected.map(r2),backgroundColor:"#B5892B",maxBarThickness:34,stack:"s",borderRadius:3},
+        {label:"Collected",data:collected.map(r2),backgroundColor:"#0E7C7B",maxBarThickness:34,stack:"s",borderRadius:3},
         {label:"Pending payment",data:pending.map(r2),backgroundColor:"#B3402F",maxBarThickness:34,stack:"s",borderRadius:3},
-        {label:"Projected (upcoming)",data:upcoming.map(r2),backgroundColor:"#0E7C7B",maxBarThickness:34,stack:"s",borderRadius:3}
+        {label:"Projected (upcoming)",data:upcoming.map(r2),backgroundColor:"#BCB3A0",maxBarThickness:34,stack:"s",borderRadius:3}
       ]},
       options:{
         responsive:true,maintainAspectRatio:false,
@@ -63,18 +76,22 @@
     var lessons=ls.data||[];
 
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
+    allLessons=lessons;
     var now=new Date(),y=now.getFullYear(),m=now.getMonth();
-    var mFirst=y+"-"+pad(m+1)+"-01",mLast=y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate());
+    if(selY===null){selY=y;selM=m;}
 
     var unpaid=lessons.filter(function(l){return l.status==="done"&&!l.paid;});
     $("k-pending").textContent=TL.sgd(unpaid.reduce(function(t,l){return t+Number(l.amount);},0));
     $("k-pending-n").textContent=unpaid.length+" unpaid lessons";
 
-    var month=lessons.filter(function(l){return l.lesson_date>=mFirst&&l.lesson_date<=mLast;});
-    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
-    $("k-projected").textContent=TL.sgd(projected);
-    $("k-collected").textContent=TL.sgd(month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0));
-    $("k-collected-n").textContent=now.toLocaleString("en-SG",{month:"long"});
+    renderMonthKpis();
+    if(!dmWired){
+      dmWired=true;
+      var on=function(id,fn){var el=$(id);if(el)el.addEventListener("click",fn);};
+      on("dm-prev",function(){stepDMonth(-1);});
+      on("dm-next",function(){stepDMonth(1);});
+      on("dm-today",function(){var n=new Date();selY=n.getFullYear();selM=n.getMonth();renderMonthKpis();});
+    }
 
     // lessons this week (Mon–Sun, excluding cancelled)
     var mon=new Date();mon.setHours(0,0,0,0);mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
