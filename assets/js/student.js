@@ -37,18 +37,15 @@
   }
 
   function renderHead(){
-    var tags='<span class="kind-tag">'+esc(student.kind)+"</span>";
-    if(!student.active)tags+=' <span class="kind-tag">discontinued</span>';
-    function row(k,v){return '<div class="pinfo-row"><span class="pinfo-k">'+k+'</span><span class="pinfo-v">'+v+'</span></div>';}
-    var rows=[];
-    if(student.level)rows.push(row("Level",esc(student.level)));
-    if(student.contact)rows.push(row("Contact",esc(student.contact)));
-    if(student.recipient_name)rows.push(row("Messages to",esc(student.recipient_name)));
-    if(student.notes)rows.push(row("Notes",esc(student.notes)));
-    $("p-head").innerHTML='<div class="card">'+
-      '<div class="group-head" style="margin-bottom:'+(rows.length?"14px":"0")+'">'+
-        '<span class="gname" style="font-size:21px">'+esc(student.name)+'</span><span class="right">'+tags+'</span></div>'+
-      (rows.length?'<div class="pinfo">'+rows.join("")+'</div>':"")+'</div>';
+    var items=[];
+    items.push({k:"Type",v:'<span class="kind-tag">'+esc(student.kind)+'</span>'+(student.active?"":' <span class="kind-tag">discontinued</span>')});
+    if(student.level)items.push({k:"Level",v:esc(student.level)});
+    if(student.contact)items.push({k:"Contact",v:esc(student.contact)});
+    if(student.recipient_name)items.push({k:"Messages to",v:esc(student.recipient_name)});
+    if(student.notes)items.push({k:"Notes",v:esc(student.notes)});
+    $("p-head").innerHTML='<div class="phead">'+items.map(function(i){
+      return '<div class="pi"><span class="k">'+i.k+'</span><span class="v">'+i.v+'</span></div>';
+    }).join("")+'</div>';
     $("p-actions").innerHTML='<a class="btn btn-gold" href="ledger.html">Open ledger</a>';
   }
 
@@ -81,24 +78,21 @@
     }).join("");
   }
 
-  function noteCell(v){return v?'<span class="ncell">'+esc(v)+'</span>':'<span class="muted">—</span>';}
   function renderNotes(rows){
     var live=rows.filter(function(l){return l.status!=="cancelled";});
     live.sort(function(a,b){return (b.lesson_date+(b.start_time||"")).localeCompare(a.lesson_date+(a.start_time||""));});
-    var table=$("p-ntable"),empty=$("p-nempty");
-    if(!live.length){table.style.display="none";empty.style.display="block";$("p-nhint").textContent="";return;}
-    empty.style.display="none";table.style.display="table";
-    var annotated=live.filter(function(l){return l.topics||l.homework||l.remarks;}).length;
-    $("p-nhint").textContent=annotated+" of "+live.length+" annotated";
-    $("p-nbody").innerHTML=live.map(function(l){
-      return '<tr><td data-label="Date">'+prettyDate(l.lesson_date)+'</td>'+
-        '<td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td>'+
-        '<td data-label="Topics covered">'+noteCell(l.topics)+'</td>'+
-        '<td data-label="Homework">'+noteCell(l.homework)+'</td>'+
-        '<td data-label="Remarks / next lesson">'+noteCell(l.remarks)+'</td>'+
-        '<td class="acts"><button class="tact" data-note="'+l.id+'">'+(l.topics||l.homework||l.remarks?"Edit":"Add notes")+'</button></td></tr>';
-    }).join("");
-    $("p-nbody").querySelectorAll("[data-note]").forEach(function(b){b.addEventListener("click",function(){openNotes(b.dataset.note);});});
+    if(!live.length){$("p-notes").innerHTML='<p class="muted" style="font-size:13.5px">No lessons to annotate yet.</p>';$("p-nhint").textContent="";return;}
+    $("p-nhint").textContent=live.filter(function(l){return l.topics||l.homework||l.remarks;}).length+" of "+live.length;
+    $("p-notes").innerHTML='<div class="nlist">'+live.map(function(l){
+      var has=l.topics||l.homework||l.remarks,bits="";
+      if(l.topics)bits+='<div class="nbits"><span class="nk">Topics</span>'+esc(l.topics)+'</div>';
+      if(l.homework)bits+='<div class="nbits"><span class="nk">Homework</span>'+esc(l.homework)+'</div>';
+      if(l.remarks)bits+='<div class="nbits"><span class="nk">Next</span>'+esc(l.remarks)+'</div>';
+      if(!has)bits='<div class="nempty">No notes yet</div>';
+      return '<div class="nrow"><div class="nhead"><span class="nd">'+prettyDate(l.lesson_date)+(l.subject?' · '+esc(l.subject):"")+'</span>'+
+        '<button class="tact" data-note="'+l.id+'">'+(has?"Edit":"Add notes")+'</button></div>'+bits+'</div>';
+    }).join("")+'</div>';
+    $("p-notes").querySelectorAll("[data-note]").forEach(function(b){b.addEventListener("click",function(){openNotes(b.dataset.note);});});
   }
   function openNotes(id){
     var l=lessons.filter(function(x){return x.id===id;})[0];if(!l)return;
