@@ -182,14 +182,16 @@
   }
 
   function renderSlots(slots){
-    var link='<div style="margin-top:10px;text-align:right"><a class="slink" href="planner.html">Manage on planner ›</a></div>';
-    if(!slots.length){$("p-slots").innerHTML='<p class="muted" style="font-size:13.5px">No recurring slots yet.</p>'+link;return;}
+    var link='<a class="slink plink" href="planner.html">Manage on planner ›</a>';
+    if(!slots.length){$("p-slots").innerHTML='<div class="slotwrap"><p class="muted" style="font-size:13.5px;margin:0 0 12px">No recurring slots yet.</p>'+link+'</div>';return;}
     slots.sort(function(a,b){return a.weekday-b.weekday||(a.start_time||"").localeCompare(b.start_time||"");});
-    $("p-slots").innerHTML=slots.map(function(s){
-      return '<div class="lrow"><span class="lwhen">'+DOW[s.weekday]+" "+hhmm(s.start_time)+"–"+hhmm(s.end_time)+'</span>'+
-        '<span>'+(s.subject?esc(s.subject):"")+'</span>'+
-        '<span class="right">'+TL.sgd(TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time)))+'</span></div>';
-    }).join("")+link;
+    var rows=slots.map(function(s){
+      return '<div class="slotline">'+
+        '<span class="slt">'+DOW[s.weekday]+" "+hhmm(s.start_time)+"–"+hhmm(s.end_time)+'</span>'+
+        '<span class="slsub">'+(s.subject?esc(s.subject):"")+'</span>'+
+        '<span class="slc">'+TL.sgd(TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time)))+'</span></div>';
+    }).join("");
+    $("p-slots").innerHTML='<div class="slotwrap">'+rows+link+'</div>';
   }
 
   function renderExams(rows){
