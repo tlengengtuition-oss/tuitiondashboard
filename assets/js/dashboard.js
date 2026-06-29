@@ -8,25 +8,28 @@
   function hm(t){return t?t.slice(0,5):"";}
   function monthOccurrences(weekday){var now=new Date(),y=now.getFullYear(),m=now.getMonth(),c=0,d=new Date(y,m,1);while(d.getMonth()===m){if(((d.getDay()+6)%7)===weekday)c++;d.setDate(d.getDate()+1);}return c;}
 
-  function renderChart(byMonth, year){
+  var chartObj=null;
+  function renderChart(collected, pending, upcoming, year){
     var labels=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    var r2=function(v){return Math.round(v*100)/100;};
     var ctx=$("incomeChart").getContext("2d");
-    new Chart(ctx,{
+    if(chartObj)chartObj.destroy();
+    chartObj=new Chart(ctx,{
       type:"bar",
-      data:{labels:labels,datasets:[{
-        label:"Collected ("+year+")",
-        data:byMonth,
-        backgroundColor:"#B5892B",
-        borderRadius:5,
-        maxBarThickness:34
-      }]},
+      data:{labels:labels,datasets:[
+        {label:"Collected",data:collected.map(r2),backgroundColor:"#B5892B",maxBarThickness:34,stack:"s",borderRadius:3},
+        {label:"Pending payment",data:pending.map(r2),backgroundColor:"#B3402F",maxBarThickness:34,stack:"s",borderRadius:3},
+        {label:"Projected (upcoming)",data:upcoming.map(r2),backgroundColor:"#0E7C7B",maxBarThickness:34,stack:"s",borderRadius:3}
+      ]},
       options:{
         responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},
-          tooltip:{callbacks:{label:function(c){return TL.sgd(c.parsed.y);}}}},
+        plugins:{
+          legend:{display:true,position:"bottom",labels:{boxWidth:12,boxHeight:12,font:{size:11},padding:14}},
+          tooltip:{callbacks:{label:function(c){return c.dataset.label+": "+TL.sgd(c.parsed.y);}}}
+        },
         scales:{
-          y:{beginAtZero:true,ticks:{callback:function(v){return "$"+v;}},grid:{color:"#eee7d6"}},
-          x:{grid:{display:false}}
+          x:{stacked:true,grid:{display:false}},
+          y:{stacked:true,beginAtZero:true,ticks:{callback:function(v){return "$"+v;}},grid:{color:"#eee7d6"}}
         }
       }
     });
@@ -80,16 +83,18 @@
     var week=lessons.filter(function(l){return l.lesson_date>=ws&&l.lesson_date<=we&&l.status!=="cancelled";});
     $("k-week").textContent=week.length;
 
-    // income by month (collected = paid) for current year
-    var byMonth=new Array(12).fill(0);
+    // income by month for current year: collected (paid) + pending (done, unpaid) + upcoming (scheduled)
+    var collected=new Array(12).fill(0),pending=new Array(12).fill(0),upcoming=new Array(12).fill(0);
     lessons.forEach(function(l){
-      if(l.paid&&l.lesson_date&&l.lesson_date.slice(0,4)==String(y)){
-        byMonth[parseInt(l.lesson_date.slice(5,7),10)-1]+=Number(l.amount);
-      }
+      if(!l.lesson_date||l.lesson_date.slice(0,4)!=String(y)||l.status==="cancelled")return;
+      var mi=parseInt(l.lesson_date.slice(5,7),10)-1,amt=Number(l.amount);
+      if(l.paid)collected[mi]+=amt;
+      else if(l.status==="done")pending[mi]+=amt;
+      else upcoming[mi]+=amt;
     });
-    var ytd=byMonth.reduce(function(a,b){return a+b;},0);
-    $("inc-hint").textContent="YTD "+TL.sgd(ytd);
-    if(window.Chart)renderChart(byMonth.map(function(v){return Math.round(v*100)/100;}),y);
+    var ytd=collected.reduce(function(a,b){return a+b;},0);
+    $("inc-hint").textContent="Collected YTD "+TL.sgd(ytd);
+    if(window.Chart)renderChart(collected,pending,upcoming,y);
 
     var ex=await window.sb.from("exams").select("student_id,exam_date,assessment_type,subject,topics");
     renderExams(ex.data||[],nameById);
