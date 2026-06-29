@@ -61,6 +61,32 @@
     </div>
   </div>
 
+  <!-- edit student modal -->
+  <div class="modal-backdrop" id="e-modal">
+    <div class="modal card">
+      <h2>Edit student</h2>
+      <div class="field"><label for="e-name">Name</label><input id="e-name" type="text"></div>
+      <div class="row2">
+        <div class="field"><label for="e-kind">Type</label>
+          <select id="e-kind">
+            <option value="individual">Individual</option>
+            <option value="pair">Pair / siblings</option>
+            <option value="org">Centre / org</option>
+          </select>
+        </div>
+        <div class="field"><label for="e-level">Level</label><input id="e-level" type="text" placeholder="e.g. Sec 3 G3"></div>
+      </div>
+      <div class="field"><label for="e-contact">Contact <span class="muted">(for reminders)</span></label><input id="e-contact" type="text" placeholder="e.g. +65 8123 4567"></div>
+      <div class="field"><label for="e-recipient">Message recipient <span class="muted">(e.g. parent's name)</span></label><input id="e-recipient" type="text" placeholder="leave blank to address the student"></div>
+      <div class="field"><label for="e-notes">Notes</label><input id="e-notes" type="text" placeholder="optional"></div>
+      <div class="msg" id="e-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="e-cancel">Cancel</button>
+        <button class="btn btn-primary" id="e-save">Save changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- notes edit modal -->
   <div class="modal-backdrop" id="n-modal">
     <div class="modal card">
