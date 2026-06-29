@@ -113,6 +113,27 @@
   function shiftMonth(d){period.mode="month";var dt=new Date(period.y,period.m+d,1);period.y=dt.getFullYear();period.m=dt.getMonth();renderRecords();}
   function toggleAll(){period.mode=period.mode==="all"?"month":"all";if(period.mode==="month"){period.y=new Date().getFullYear();period.m=new Date().getMonth();}renderRecords();}
 
+  function csvCell(v){v=String(v==null?"":v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+  function exportCSV(){
+    var rows=allLessons.filter(function(l){
+      if(period.mode==="all")return true;
+      return l.lesson_date.slice(0,7)===period.y+"-"+pad(period.m+1);
+    });
+    rows.sort(function(a,b){return (a.lesson_date+(a.start_time||"")).localeCompare(b.lesson_date+(b.start_time||""));});
+    var head=["Date","Start","End","Student","Subject","Amount (S$)","Status","Paid","Paid date"];
+    var lines=[head.join(",")];
+    rows.forEach(function(l){
+      lines.push([l.lesson_date,hm(l.start_time),hm(l.end_time),nameById[l.student_id]||"",l.subject||"",
+        Number(l.amount).toFixed(2),l.status,l.paid?"Yes":"No",l.paid_date||""].map(csvCell).join(","));
+    });
+    var csv="\ufeff"+lines.join("\r\n");
+    var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+    var url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="Ledger_"+periodLabel().replace(/\s+/g,"-")+".csv";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},4000);
+  }
+
   async function cancelLesson(id){
     if(!confirm("Mark this lesson as cancelled? It won't count toward income or pending."))return;
     var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null}).eq("id",id);
@@ -417,7 +438,7 @@
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
     slots=sl.data||[];
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,rate,amount,paid,status");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,rate,amount,paid,paid_date,status");
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
 
@@ -460,6 +481,7 @@
     on("prev-m","click",function(){shiftMonth(-1);});
     on("next-m","click",function(){shiftMonth(1);});
     on("all-time","click",toggleAll);
+    on("csv-btn","click",exportCSV);
     load();
   }
   TL.requireAuth("ledger",init);
