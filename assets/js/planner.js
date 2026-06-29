@@ -43,7 +43,8 @@
         var cost=TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time));dayTotal+=cost;
         return '<div class="slot" data-edit="'+s.id+'">'+
           '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
-          '<div class="t">'+hhmm(s.start_time)+"–"+hhmm(s.end_time)+(s.subject?" · "+esc(s.subject):"")+'</div>'+
+          '<div class="t">'+hhmm(s.start_time)+"–"+hhmm(s.end_time)+'</div>'+
+          (s.subject?'<div class="subj">'+esc(s.subject)+'</div>':"")+
           '<div class="s">'+esc(nameOf(s.student_id))+'</div>'+
           '<div class="c">'+TL.sgd(cost)+'</div></div>';
       }).join(""):'<div class="none">—</div>';
