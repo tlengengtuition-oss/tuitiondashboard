@@ -95,7 +95,7 @@
         '<button class="tact" data-on="'+r.id+'">Reactivate</button>'+
         '<button class="tact del" data-del="'+r.id+'">Remove</button>';
     return '<tr class="'+(active?"":"inactive")+'" data-id="'+r.id+'">'+
-      '<td class="name" data-label="Name">'+esc(r.name)+"</td>"+
+      '<td class="name" data-label="Name"><a class="slink" href="student.html?id='+r.id+'">'+esc(r.name)+"</a></td>"+
       '<td data-label="Type"><span class="kind-tag">'+esc(r.kind)+"</span></td>"+
       '<td data-label="Level">'+(r.level?esc(r.level):'<span class="muted">—</span>')+"</td>"+
       '<td data-label="Contact">'+(r.contact?esc(r.contact):'<span class="muted">—</span>')+"</td>"+
