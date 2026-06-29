@@ -58,6 +58,8 @@
 
     var ls=await window.sb.from("lessons").select("student_id,lesson_date,amount,paid,status");
     var lessons=ls.data||[];
+
+    renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
     var now=new Date(),y=now.getFullYear(),m=now.getMonth();
     var mFirst=y+"-"+pad(m+1)+"-01",mLast=y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate());
 
@@ -91,6 +93,29 @@
 
     var ex=await window.sb.from("exams").select("student_id,exam_date,assessment_type,subject,topics");
     renderExams(ex.data||[],nameById);
+  }
+
+  function renderOnboarding(students, slots, lessons){
+    var box=$("onboard");if(!box)return;
+    var steps=[
+      {done:students>0, t:"Add your students", d:"Create a profile for each student you teach.", href:"students.html", cta:"Add students"},
+      {done:slots>0,    t:"Set up the weekly schedule", d:"In the planner, add each student's recurring lesson slots.", href:"planner.html", cta:"Open planner"},
+      {done:lessons>0,  t:"Fill the ledger from your schedule", d:"On the ledger, tap \u201CLog this week\u201D or \u201CLog this month\u201D to create lessons from your slots.", href:"ledger.html", cta:"Open ledger"}
+    ];
+    if(steps.every(function(s){return s.done;})){box.style.display="none";box.innerHTML="";return;}
+    var nextShown=false;
+    var rows=steps.map(function(s,i){
+      var isNext=!s.done&&!nextShown; if(isNext)nextShown=true;
+      var num=s.done?"\u2713":(i+1);
+      var btn=s.done?"":'<a class="btn '+(isNext?"btn-gold":"")+'" href="'+s.href+'">'+s.cta+'</a>';
+      return '<div class="ob-step'+(s.done?" done":"")+'">'+
+        '<span class="ob-num">'+num+'</span>'+
+        '<span class="ob-body"><span class="ob-t">'+s.t+'</span><span class="ob-d">'+s.d+'</span></span>'+
+        btn+'</div>';
+    }).join("");
+    box.innerHTML='<div class="ob-card"><h3 class="ob-h">Let\u2019s get you set up</h3>'+
+      '<p class="ob-sub">Three steps to a working dashboard. It\u2019ll disappear once you\u2019re done.</p>'+rows+'</div>';
+    box.style.display="block";
   }
 
   TL.requireAuth("dashboard",function(){load();});

@@ -5,9 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard · T-Leng Tuition</title>
 <link rel="stylesheet" href="assets/css/app.css?v=9">
+<style>
+  #onboard{display:none;margin-bottom:20px}
+  .ob-card{background:linear-gradient(180deg,#fffdf7,#fbf4e4);border:1px solid var(--gold);
+    border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
+  .ob-h{font-family:var(--serif,Georgia);font-size:18px;color:var(--navy);margin:0 0 3px}
+  .ob-sub{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+  .ob-step{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-top:1px solid rgba(181,137,43,.25)}
+  .ob-num{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:14px;background:var(--navy);color:#fff}
+  .ob-step.done .ob-num{background:var(--teal)}
+  .ob-step.done .ob-t{color:var(--muted);text-decoration:line-through}
+  .ob-body{flex:1;min-width:0}
+  .ob-t{font-weight:700;font-size:14.5px;color:var(--ink)}
+  .ob-d{color:var(--muted);font-size:13px;margin-top:2px}
+  .ob-step .btn{flex:0 0 auto;align-self:center;padding:7px 14px;font-size:13px}
+  @media(max-width:520px){ .ob-step{flex-wrap:wrap} .ob-step .btn{margin-left:42px} }
+</style>
 </head>
 <body>
 <div id="view">
+  <div id="onboard"></div>
   <div class="kpi-grid">
     <div class="card kpi owed"><div class="label">Total pending</div>
       <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">to collect</div></div>
