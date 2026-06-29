@@ -21,6 +21,8 @@
   .nbits{margin-top:6px;font-size:13px;color:var(--ink);white-space:pre-wrap;line-height:1.45}
   .nk{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-right:6px}
   .nempty{margin-top:3px;color:var(--muted);font-size:12px;font-style:italic}
+  a.slink{color:var(--navy);font-weight:700;text-decoration:none;font-size:13px}
+  a.slink:hover{text-decoration:underline}
   /* notes modal textareas */
   .field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
     font:inherit;background:#fffdf8;color:var(--ink);resize:vertical;line-height:1.45}
@@ -44,7 +46,7 @@
       <div class="card">
         <div class="empty" id="p-lempty" style="display:none"><h3>No lessons logged yet</h3></div>
         <table class="tbl" id="p-ltable" style="display:none">
-          <thead><tr><th>Date</th><th>Subject</th><th>Amount</th><th>Status</th></tr></thead>
+          <thead><tr><th>Date</th><th>Subject</th><th>Amount</th><th>Status</th><th></th></tr></thead>
           <tbody id="p-lbody"></tbody>
         </table>
       </div>
@@ -53,7 +55,7 @@
       <div class="section-title">Weekly slots</div>
       <div class="card" id="p-slots"></div>
 
-      <div class="section-title">Exams</div>
+      <div class="section-title">Exams <button class="btn" id="p-addexam" style="margin-left:auto;padding:5px 11px;font-size:13px">+ Add</button></div>
       <div class="card" id="p-exams"></div>
 
       <div class="section-title">Lesson notes <span class="hint" id="p-nhint"></span></div>
@@ -83,6 +85,60 @@
       <div class="modal-actions">
         <button class="btn" id="e-cancel">Cancel</button>
         <button class="btn btn-primary" id="e-save">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- lesson edit modal -->
+  <div class="modal-backdrop" id="l-modal">
+    <div class="modal card">
+      <h2 id="l-title">Edit lesson</h2>
+      <div class="row2">
+        <div class="field"><label for="l-date">Date</label><input id="l-date" type="date"></div>
+        <div class="field"><label for="l-subject">Subject</label><input id="l-subject" type="text" placeholder="e.g. Math"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="l-amount">Amount (S$)</label><input id="l-amount" type="number" step="0.01" min="0"></div>
+        <div class="field"><label>Payment</label>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px 0;font-weight:normal"><input id="l-paid" type="checkbox"> Paid</label></div>
+      </div>
+      <div class="msg" id="l-msg"></div>
+      <div class="modal-actions" style="justify-content:space-between">
+        <button class="btn" id="l-del" style="color:var(--owed)">Delete</button>
+        <span style="display:inline-flex;gap:8px">
+          <button class="btn" id="l-toggle">Cancel lesson</button>
+          <button class="btn btn-primary" id="l-save">Save</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- exam edit modal -->
+  <div class="modal-backdrop" id="x-modal">
+    <div class="modal card">
+      <h2 id="x-title">Add exam</h2>
+      <div class="row2">
+        <div class="field"><label for="x-date">Exam date</label><input id="x-date" type="date"></div>
+        <div class="field"><label for="x-type">Type</label>
+          <input id="x-type" list="x-typelist" type="text" placeholder="e.g. WA1, PSLE">
+          <datalist id="x-typelist">
+            <option value="WA1"><option value="WA2"><option value="WA3"><option value="SA1"><option value="SA2">
+            <option value="CA1"><option value="CA2"><option value="Mid-Year"><option value="End-Year">
+            <option value="Prelim"><option value="PSLE"><option value="N-Level"><option value="O-Level"><option value="A-Level">
+            <option value="Class Test"><option value="Common Test">
+          </datalist>
+        </div>
+      </div>
+      <div class="field"><label for="x-subject">Subject</label><input id="x-subject" type="text" placeholder="e.g. A-Math"></div>
+      <div class="field"><label for="x-topics">Topics</label><input id="x-topics" type="text" placeholder="e.g. Quadratics"></div>
+      <div class="field"><label for="x-remarks">Remarks</label><input id="x-remarks" type="text" placeholder="optional"></div>
+      <div class="msg" id="x-msg"></div>
+      <div class="modal-actions" style="justify-content:space-between">
+        <button class="btn" id="x-del" style="color:var(--owed)">Delete</button>
+        <span style="display:inline-flex;gap:8px">
+          <button class="btn" id="x-close">Cancel</button>
+          <button class="btn btn-primary" id="x-save">Save exam</button>
+        </span>
       </div>
     </div>
   </div>

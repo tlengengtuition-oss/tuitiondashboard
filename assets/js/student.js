@@ -1,6 +1,6 @@
 // Per-student profile: header, totals, lesson history, slots, exams.
 (function () {
-  var userId=null, sid=null, student=null, lessons=[], noteId=null;
+  var userId=null, sid=null, student=null, lessons=[], exams=[], noteId=null, lessonId=null, examId=null;
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function qid(){var m=location.search.match(/[?&]id=([^&]+)/);return m?decodeURIComponent(m[1]):null;}
@@ -23,8 +23,8 @@
 
     var lres=await window.sb.from("lessons").select("id,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks").eq("student_id",sid);
     lessons=lres.data||[];
-    var xres=await window.sb.from("exams").select("id,exam_date,assessment_type,subject,topics").eq("student_id",sid);
-    var exams=xres.data||[];
+    var xres=await window.sb.from("exams").select("id,exam_date,assessment_type,subject,topics,remarks").eq("student_id",sid);
+    exams=xres.data||[];
     var slres=await window.sb.from("recurring_slots").select("id,weekday,start_time,end_time,subject,rate").eq("student_id",sid);
     var slots=slres.data||[];
 
@@ -97,8 +97,50 @@
       return '<tr><td data-label="Date">'+prettyDate(l.lesson_date)+'</td>'+
         '<td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td>'+
         '<td data-label="Amount">'+TL.sgd(l.amount)+'</td>'+
-        '<td data-label="Status">'+badge+'</td></tr>';
+        '<td data-label="Status">'+badge+'</td>'+
+        '<td class="acts"><button class="tact" data-led="'+l.id+'">Edit</button></td></tr>';
     }).join("");
+    $("p-lbody").querySelectorAll("[data-led]").forEach(function(b){b.addEventListener("click",function(){openLesson(b.dataset.led);});});
+  }
+
+  // ---- lesson edit ----
+  function openLesson(id){
+    var l=lessons.filter(function(x){return x.id===id;})[0];if(!l)return;
+    lessonId=id;
+    $("l-title").textContent="Edit lesson · "+prettyDate(l.lesson_date);
+    $("l-date").value=l.lesson_date||"";$("l-subject").value=l.subject||"";
+    $("l-amount").value=(l.amount!=null?l.amount:"");$("l-paid").checked=!!l.paid;
+    $("l-toggle").textContent=l.status==="cancelled"?"Restore lesson":"Cancel lesson";
+    $("l-msg").textContent="";$("l-msg").className="msg";
+    $("l-modal").classList.add("on");
+  }
+  function closeLesson(){$("l-modal").classList.remove("on");lessonId=null;}
+  async function saveLesson(){
+    var l=lessons.filter(function(x){return x.id===lessonId;})[0];if(!l)return;
+    var date=$("l-date").value,paid=$("l-paid").checked,msg=$("l-msg");
+    if(!date){msg.textContent="Set a date.";msg.className="msg err";return;}
+    var fields={lesson_date:date,subject:$("l-subject").value.trim()||null,
+      amount:Number($("l-amount").value)||0,paid:paid,paid_date:paid?date:null};
+    var b=$("l-save");b.disabled=true;
+    var res=await window.sb.from("lessons").update(fields).eq("id",lessonId);
+    b.disabled=false;
+    if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    closeLesson();load();
+  }
+  async function toggleLesson(){
+    var l=lessons.filter(function(x){return x.id===lessonId;})[0];if(!l)return;
+    var next;
+    if(l.status==="cancelled"){next=(l.lesson_date>todayISO())?"scheduled":"done";}
+    else{next="cancelled";}
+    var res=await window.sb.from("lessons").update({status:next}).eq("id",lessonId);
+    if(res.error){$("l-msg").textContent=res.error.message;$("l-msg").className="msg err";return;}
+    closeLesson();load();
+  }
+  async function deleteLesson(){
+    if(!confirm("Delete this lesson permanently?"))return;
+    var res=await window.sb.from("lessons").delete().eq("id",lessonId);
+    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    closeLesson();load();
   }
 
   function renderNotes(rows){
@@ -140,25 +182,64 @@
   }
 
   function renderSlots(slots){
-    if(!slots.length){$("p-slots").innerHTML='<p class="muted" style="font-size:13.5px">No recurring slots. Add them on the Planner.</p>';return;}
+    var link='<div style="margin-top:10px;text-align:right"><a class="slink" href="planner.html">Manage on planner ›</a></div>';
+    if(!slots.length){$("p-slots").innerHTML='<p class="muted" style="font-size:13.5px">No recurring slots yet.</p>'+link;return;}
     slots.sort(function(a,b){return a.weekday-b.weekday||(a.start_time||"").localeCompare(b.start_time||"");});
     $("p-slots").innerHTML=slots.map(function(s){
       return '<div class="lrow"><span class="lwhen">'+DOW[s.weekday]+" "+hhmm(s.start_time)+"–"+hhmm(s.end_time)+'</span>'+
         '<span>'+(s.subject?esc(s.subject):"")+'</span>'+
         '<span class="right">'+TL.sgd(TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time)))+'</span></div>';
-    }).join("");
+    }).join("")+link;
   }
 
-  function renderExams(exams){
-    if(!exams.length){$("p-exams").innerHTML='<p class="muted" style="font-size:13.5px">No exams. Add them on the Exams page.</p>';return;}
+  function renderExams(rows){
+    if(!rows.length){$("p-exams").innerHTML='<p class="muted" style="font-size:13.5px">No exams yet.</p>';return;}
     var today=todayISO();
-    exams.sort(function(a,b){return (a.exam_date||"").localeCompare(b.exam_date||"");});
-    $("p-exams").innerHTML=exams.map(function(e){
+    rows.sort(function(a,b){return (a.exam_date||"").localeCompare(b.exam_date||"");});
+    $("p-exams").innerHTML=rows.map(function(e){
       var past=e.exam_date&&e.exam_date<today;
       var typ=e.assessment_type?'<span class="kind-tag">'+esc(e.assessment_type)+'</span> ':"";
       return '<div class="lrow"'+(past?' style="opacity:.6"':"")+'><span class="lwhen">'+prettyDate(e.exam_date)+'</span>'+
-        '<span>'+typ+(e.subject?esc(e.subject):"")+'</span></div>';
+        '<span>'+typ+(e.subject?esc(e.subject):"")+'</span>'+
+        '<span class="right"><button class="tact" data-xed="'+e.id+'">Edit</button></span></div>';
     }).join("");
+    $("p-exams").querySelectorAll("[data-xed]").forEach(function(b){b.addEventListener("click",function(){openExam(b.dataset.xed);});});
+  }
+
+  // ---- exam edit ----
+  function openExam(id){
+    var e=id?exams.filter(function(x){return x.id===id;})[0]:null;
+    examId=e?e.id:null;
+    $("x-title").textContent=e?"Edit exam":"Add exam";
+    $("x-del").style.display=e?"":"none";
+    $("x-date").value=e?(e.exam_date||""):"";
+    $("x-type").value=e?(e.assessment_type||""):"";
+    $("x-subject").value=e?(e.subject||""):"";
+    $("x-topics").value=e?(e.topics||""):"";
+    $("x-remarks").value=e?(e.remarks||""):"";
+    $("x-msg").textContent="";$("x-msg").className="msg";
+    $("x-modal").classList.add("on");
+  }
+  function closeExam(){$("x-modal").classList.remove("on");examId=null;}
+  async function saveExam(){
+    var date=$("x-date").value,msg=$("x-msg");
+    if(!date){msg.textContent="Set an exam date.";msg.className="msg err";return;}
+    var fields={exam_date:date,assessment_type:$("x-type").value.trim()||null,
+      subject:$("x-subject").value.trim()||null,topics:$("x-topics").value.trim()||null,
+      remarks:$("x-remarks").value.trim()||null};
+    var b=$("x-save");b.disabled=true;
+    var res=examId
+      ? await window.sb.from("exams").update(fields).eq("id",examId)
+      : await window.sb.from("exams").insert(Object.assign({tutor_id:userId,student_id:sid},fields));
+    b.disabled=false;
+    if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    closeExam();load();
+  }
+  async function deleteExam(){
+    if(!examId||!confirm("Delete this exam?"))return;
+    var res=await window.sb.from("exams").delete().eq("id",examId);
+    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    closeExam();load();
   }
 
   function init(user){
@@ -169,6 +250,15 @@
     $("e-cancel").addEventListener("click",closeEdit);
     $("e-modal").addEventListener("click",function(e){if(e.target===$("e-modal"))closeEdit();});
     $("e-save").addEventListener("click",saveEdit);
+    $("l-save").addEventListener("click",saveLesson);
+    $("l-toggle").addEventListener("click",toggleLesson);
+    $("l-del").addEventListener("click",deleteLesson);
+    $("l-modal").addEventListener("click",function(e){if(e.target===$("l-modal"))closeLesson();});
+    $("p-addexam").addEventListener("click",function(){openExam(null);});
+    $("x-save").addEventListener("click",saveExam);
+    $("x-close").addEventListener("click",closeExam);
+    $("x-del").addEventListener("click",deleteExam);
+    $("x-modal").addEventListener("click",function(e){if(e.target===$("x-modal"))closeExam();});
     load();
   }
   TL.requireAuth("student",init);
