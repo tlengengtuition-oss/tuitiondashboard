@@ -5,14 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
 <link rel="stylesheet" href="assets/css/app.css?v=9">
+<style>
+  .genwrap{display:inline-flex;align-items:stretch}
+  .genwrap .btn{border-radius:0}
+  .genwrap .btn:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
+  .genwrap .btn:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
+  .genwrap .gennav{padding:9px 11px;font-weight:700;border-left:none}
+  .genwrap #gen-btn,.genwrap #gen-month-btn{border-left:none;border-right:none}
+</style>
 </head>
 <body>
 <div id="view">
   <div class="toolbar">
     <div class="sub" id="led-sub">Lessons &amp; payments</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn" id="gen-btn">Log this week from schedule</button>
-      <button class="btn" id="gen-month-btn">Log this month from schedule</button>
+      <span class="genwrap"><button class="btn gennav" id="wk-prev" title="Earlier week">‹</button><button class="btn" id="gen-btn">Log this week</button><button class="btn gennav" id="wk-next" title="Later week">›</button></span>
+      <span class="genwrap"><button class="btn gennav" id="mo-prev" title="Earlier month">‹</button><button class="btn" id="gen-month-btn">Log this month</button><button class="btn gennav" id="mo-next" title="Later month">›</button></span>
+      <button class="btn" id="gen-custom-btn">Log custom range…</button>
       <button class="btn btn-gold" id="add-btn">+ Add lesson</button>
     </div>
   </div>
@@ -70,6 +79,23 @@
       <div class="modal-actions">
         <button class="btn" id="m-cancel">Cancel</button>
         <button class="btn btn-primary" id="m-save">Save lesson</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- custom range modal -->
+  <div class="modal-backdrop" id="cr-modal">
+    <div class="modal card">
+      <h2>Log a custom range</h2>
+      <p class="muted" style="font-size:13.5px;margin-bottom:14px">Fills the ledger from your weekly schedule for every date in the range. Already-logged lessons are skipped.</p>
+      <div class="row2">
+        <div class="field"><label for="cr-from">From</label><input id="cr-from" type="date"></div>
+        <div class="field"><label for="cr-to">To</label><input id="cr-to" type="date"></div>
+      </div>
+      <div class="msg" id="cr-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="cr-cancel">Cancel</button>
+        <button class="btn btn-primary" id="cr-save">Log lessons</button>
       </div>
     </div>
   </div>

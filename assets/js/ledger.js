@@ -1,6 +1,6 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null;
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0;
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -13,13 +13,58 @@
   function monthRange(){var now=new Date(),y=now.getFullYear(),m=now.getMonth();return{first:y+"-"+pad(m+1)+"-01",last:y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate()),label:now.toLocaleString("en-SG",{month:"long"})};}
   function mondayOf(date){var d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d;}
   function setGenLabel(){
-    var mon=mondayOf(new Date()),sun=new Date(mon);sun.setDate(mon.getDate()+6);
     var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    var moFull=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    var mon=mondayOf(new Date());mon.setDate(mon.getDate()+genWeekOff*7);
+    var sun=new Date(mon);sun.setDate(mon.getDate()+6);
     var range=mon.getMonth()===sun.getMonth()
       ? mon.getDate()+"–"+sun.getDate()+" "+mo[sun.getMonth()]
       : mon.getDate()+" "+mo[mon.getMonth()]+" – "+sun.getDate()+" "+mo[sun.getMonth()];
-    var b=$("gen-btn");if(b)b.textContent="Log this week ("+range+")";
-    var mb=$("gen-month-btn");if(mb)mb.textContent="Log this month ("+mo[new Date().getMonth()]+")";
+    var wpre=genWeekOff===0?"this week":(genWeekOff===1?"next week":"week");
+    var b=$("gen-btn");if(b)b.textContent="Log "+wpre+" ("+range+")";
+    var now=new Date(),mb=new Date(now.getFullYear(),now.getMonth()+genMonthOff,1);
+    var mpre=genMonthOff===0?"this month":(genMonthOff===1?"next month":"month");
+    var mlbl=moFull[mb.getMonth()]+(mb.getFullYear()!==now.getFullYear()?" "+mb.getFullYear():"");
+    var mbtn=$("gen-month-btn");if(mbtn)mbtn.textContent="Log "+mpre+" ("+mlbl+")";
+  }
+  function stepWeek(d){genWeekOff=Math.max(0,genWeekOff+d);setGenLabel();}
+  function stepMonth(d){genMonthOff=Math.max(0,genMonthOff+d);setGenLabel();}
+
+  function openCustom(){
+    var t=new Date(),plus=new Date();plus.setDate(plus.getDate()+13);
+    $("cr-from").value=iso(t);$("cr-to").value=iso(plus);
+    $("cr-msg").textContent="";$("cr-msg").className="msg";
+    $("cr-modal").classList.add("on");
+  }
+  function closeCustom(){$("cr-modal").classList.remove("on");}
+  async function generateRange(){
+    var msg=$("cr-msg");
+    if(!slots.length){msg.textContent="No recurring slots to generate from. Add them on the Planner first.";msg.className="msg err";return;}
+    var fromISO=$("cr-from").value,toISO=$("cr-to").value;
+    if(!fromISO||!toISO){msg.textContent="Pick both a start and end date.";msg.className="msg err";return;}
+    if(toISO<fromISO){msg.textContent="\u201CTo\u201D must be on or after \u201CFrom\u201D.";msg.className="msg err";return;}
+    var start=new Date(fromISO+"T00:00:00"),end=new Date(toISO+"T00:00:00");
+    if(Math.round((end-start)/86400000)+1>366){msg.textContent="Range too large \u2014 keep it within a year.";msg.className="msg err";return;}
+    var b=$("cr-save");b.disabled=true;
+    var ex=await window.sb.from("lessons").select("student_id,lesson_date,start_time").gte("lesson_date",fromISO).lte("lesson_date",toISO);
+    var seen={};(ex.data||[]).forEach(function(l){seen[l.student_id+"|"+l.lesson_date+"|"+hm(l.start_time)]=1;});
+    var rows=[];
+    for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+      var wd=(d.getDay()+6)%7,di=iso(d);
+      slots.forEach(function(s){
+        if(s.weekday!==wd)return;
+        if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
+        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,rate:s.rate,amount:TL.amount(s.rate,hm(s.start_time),hm(s.end_time)),status:di>todayISO()?"scheduled":"done",paid:false});
+      });
+    }
+    b.disabled=false;
+    if(!rows.length){msg.textContent="That range is already logged \u2014 nothing new to add.";msg.className="msg";return;}
+    if(!confirm("Add "+rows.length+" lessons from "+fromISO+" to "+toISO+"? Already-logged lessons are skipped."))return;
+    b.disabled=true;
+    var res=await window.sb.from("lessons").insert(rows);
+    b.disabled=false;
+    if(res.error){msg.textContent="Couldn't generate: "+res.error.message;msg.className="msg err";return;}
+    closeCustom();load();
   }
 
   // ---------- rendering ----------
@@ -221,7 +266,7 @@
   }
   async function generateMonth(){
     if(!slots.length){alert("No recurring slots to generate from. Add them on the Planner first.");return;}
-    var now=new Date(),y=now.getFullYear(),m=now.getMonth();
+    var now=new Date(),base=new Date(now.getFullYear(),now.getMonth()+genMonthOff,1),y=base.getFullYear(),m=base.getMonth();
     var last=new Date(y,m+1,0).getDate();
     var mStart=iso(new Date(y,m,1)),mEnd=iso(new Date(y,m,last));
     var mo=["January","February","March","April","May","June","July","August","September","October","November","December"][m];
@@ -244,7 +289,7 @@
   }
   async function generateWeek(){
     if(!slots.length){alert("No recurring slots to generate from. Add them on the Planner first.");return;}
-    var mon=mondayOf(new Date());
+    var mon=mondayOf(new Date());mon.setDate(mon.getDate()+genWeekOff*7);
     var weekStart=iso(mon),end=new Date(mon);end.setDate(mon.getDate()+6);var weekEnd=iso(end);
     var ex=await window.sb.from("lessons").select("student_id,lesson_date,start_time").gte("lesson_date",weekStart).lte("lesson_date",weekEnd);
     var seen={};(ex.data||[]).forEach(function(l){seen[l.student_id+"|"+l.lesson_date+"|"+hm(l.start_time)]=1;});
@@ -467,6 +512,14 @@
     on("add-btn","click",function(){openAdd(true);});
     on("gen-btn","click",generateWeek);
     on("gen-month-btn","click",generateMonth);
+    on("wk-prev","click",function(){stepWeek(-1);});
+    on("wk-next","click",function(){stepWeek(1);});
+    on("mo-prev","click",function(){stepMonth(-1);});
+    on("mo-next","click",function(){stepMonth(1);});
+    on("gen-custom-btn","click",openCustom);
+    on("cr-cancel","click",closeCustom);
+    on("cr-modal","click",function(e){if(e.target===$("cr-modal"))closeCustom();});
+    on("cr-save","click",generateRange);
     setGenLabel();
     on("m-cancel","click",function(){openAdd(false);});
     on("modal","click",function(e){if(e.target===$("modal"))openAdd(false);});
