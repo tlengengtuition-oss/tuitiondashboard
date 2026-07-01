@@ -24,11 +24,33 @@
   .dmonth{display:flex;align-items:center;gap:8px;margin-bottom:14px}
   .dmonth .gennav{padding:7px 12px;font-weight:700}
   .dm-lbl{min-width:150px;text-align:center;font-weight:700;font-size:14.5px;color:var(--navy)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:16px}
+  .seg button{all:unset;cursor:pointer;padding:9px 20px;font-weight:700;font-size:14px;color:var(--muted);background:#fff;transition:background .12s}
+  .seg button.on{background:var(--navy);color:#fff}
+  .teach-sec{margin-bottom:16px}
+  .teach-sec h2{margin-bottom:2px}
+  .teach-sub{color:var(--muted);font-size:13px;margin-bottom:6px}
+  .teach-row{display:flex;gap:14px;padding:13px 0;border-top:1px solid var(--line)}
+  .teach-row:first-child{border-top:none}
+  .tr-time{flex:0 0 56px;font-weight:800;color:var(--navy);font-size:14px}
+  .tr-body{flex:1;min-width:0}
+  .tr-name{font-weight:700;font-size:14.5px}
+  .tr-subj{color:var(--gold);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;margin-left:7px}
+  .tr-when{color:var(--muted);font-size:12px;margin:5px 0 2px}
+  .tr-note{font-size:13px;line-height:1.5;margin-top:1px}
+  .tr-note b{color:var(--navy)}
+  .tr-empty{color:var(--muted);font-size:12.5px;font-style:italic;margin-top:4px}
 </style>
 </head>
 <body>
 <div id="view">
   <div id="onboard"></div>
+  <div class="seg" id="dash-seg">
+    <button id="seg-fin" class="on">Finance</button>
+    <button id="seg-teach">Teaching</button>
+  </div>
+
+  <div id="fin-view">
   <div class="dmonth">
     <button class="btn gennav" id="dm-prev" title="Previous month">‹</button>
     <span class="dm-lbl" id="dm-label">—</span>
@@ -54,6 +76,24 @@
     <div class="card panel">
       <h2>Upcoming exams <span class="hint" id="exam-hint"></span></h2>
       <div id="exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+    </div>
+  </div>
+  </div>
+
+  <div id="teach-view" style="display:none">
+    <div class="card panel teach-sec">
+      <h2 id="today-h">Today</h2>
+      <div class="teach-sub" id="today-sub"></div>
+      <div id="today-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+    </div>
+    <div class="card panel teach-sec">
+      <h2 id="tmr-h">Tomorrow</h2>
+      <div class="teach-sub" id="tmr-sub"></div>
+      <div id="tmr-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+    </div>
+    <div class="card panel teach-sec">
+      <h2>Upcoming exams</h2>
+      <div id="teach-exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
     </div>
   </div>
 </div>

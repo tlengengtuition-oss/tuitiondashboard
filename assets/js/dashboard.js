@@ -48,14 +48,14 @@
     });
   }
 
-  function renderExams(exams, nameById){
+  function renderExams(exams, nameById, listId, hintId){
     var today=todayISO();
     var up=exams.filter(function(e){return e.exam_date&&e.exam_date>=today;})
                 .sort(function(a,b){return a.exam_date.localeCompare(b.exam_date);}).slice(0,7);
-    $("exam-hint").textContent=up.length?up.length+" ahead:"+"":"";
-    if(!up.length){$("exam-list").innerHTML='<div class="muted" style="font-size:13.5px">No upcoming exams.</div>';return;}
+    if(hintId&&$(hintId))$(hintId).textContent=up.length?up.length+" ahead":"";
+    if(!up.length){$(listId).innerHTML='<div class="muted" style="font-size:13.5px">No upcoming exams.</div>';return;}
     var now=new Date(); now.setHours(0,0,0,0);
-    $("exam-list").innerHTML=up.map(function(e){
+    $(listId).innerHTML=up.map(function(e){
       var d=new Date(e.exam_date+"T00:00:00");
       var days=Math.round((d-now)/86400000);
       var soon=days<=14;
@@ -65,14 +65,59 @@
     }).join("");
   }
 
+  function shortDate(d){return new Date(d+"T00:00:00").toLocaleDateString("en-SG",{day:"numeric",month:"short"});}
+  function summarizeLast(l){
+    if(!l) return '<div class="tr-empty">No previous lessons recorded.</div>';
+    var when='<div class="tr-when">Last lesson · '+shortDate(l.lesson_date)+'</div>';
+    var parts=[];
+    if(l.topics)   parts.push('<div class="tr-note"><b>Topics:</b> '+esc(l.topics)+'</div>');
+    if(l.homework) parts.push('<div class="tr-note"><b>Homework:</b> '+esc(l.homework)+'</div>');
+    if(l.remarks)  parts.push('<div class="tr-note"><b>Remarks:</b> '+esc(l.remarks)+'</div>');
+    return when+(parts.length?parts.join(""):'<div class="tr-empty">No notes recorded for that lesson.</div>');
+  }
+  function renderTeaching(slots, lessons, nameById){
+    var doneByStu={};
+    lessons.forEach(function(l){ if(l.status!=="done")return; (doneByStu[l.student_id]=doneByStu[l.student_id]||[]).push(l); });
+    Object.keys(doneByStu).forEach(function(k){doneByStu[k].sort(function(a,b){return b.lesson_date.localeCompare(a.lesson_date);});});
+    function lastBefore(stu, beforeISO){var a=doneByStu[stu]||[];for(var i=0;i<a.length;i++){if(a[i].lesson_date<beforeISO)return a[i];}return null;}
+    var today=new Date(); today.setHours(0,0,0,0);
+    var tmr=new Date(today); tmr.setDate(today.getDate()+1);
+    function renderDay(listId, subId, headId, dateObj, label){
+      var wday=(dateObj.getDay()+6)%7, dISO=iso(dateObj);
+      var day=slots.filter(function(s){return s.weekday===wday;})
+        .sort(function(a,b){return (a.start_time||"").localeCompare(b.start_time||"");});
+      if($(headId))$(headId).textContent=label;
+      if($(subId))$(subId).textContent=dateObj.toLocaleDateString("en-SG",{weekday:"long",day:"numeric",month:"long"});
+      if(!day.length){$(listId).innerHTML='<div class="tr-empty">No lessons scheduled.</div>';return;}
+      $(listId).innerHTML=day.map(function(s){
+        return '<div class="teach-row"><div class="tr-time">'+hm(s.start_time)+'</div>'+
+          '<div class="tr-body"><div class="tr-name">'+esc(nameById[s.student_id]||"—")+
+          (s.subject?'<span class="tr-subj">'+esc(s.subject)+'</span>':'')+'</div>'+
+          summarizeLast(lastBefore(s.student_id,dISO))+'</div></div>';
+      }).join("");
+    }
+    renderDay("today-list","today-sub","today-h", today, "Today");
+    renderDay("tmr-list","tmr-sub","tmr-h", tmr, "Tomorrow");
+  }
+
+  var segWired=false;
+  function setDashMode(mode){
+    var teach=mode==="teach";
+    if($("fin-view"))$("fin-view").style.display=teach?"none":"block";
+    if($("teach-view"))$("teach-view").style.display=teach?"block":"none";
+    if($("seg-fin"))$("seg-fin").classList.toggle("on",!teach);
+    if($("seg-teach"))$("seg-teach").classList.toggle("on",teach);
+    try{localStorage.setItem("tl_dash_mode",mode);}catch(e){}
+  }
+
   async function load(){
     await TL.promotePastLessons();
     var st=await window.sb.from("students").select("id,name");
     var nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
 
-    var sl=await window.sb.from("recurring_slots").select("weekday,start_time,end_time,rate").eq("active",true);
+    var sl=await window.sb.from("recurring_slots").select("student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
 
-    var ls=await window.sb.from("lessons").select("student_id,lesson_date,amount,paid,status");
+    var ls=await window.sb.from("lessons").select("student_id,lesson_date,amount,paid,status,topics,homework,remarks");
     var lessons=ls.data||[];
 
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
@@ -114,7 +159,18 @@
     if(window.Chart)renderChart(collected,pending,upcoming,y);
 
     var ex=await window.sb.from("exams").select("student_id,exam_date,assessment_type,subject,topics");
-    renderExams(ex.data||[],nameById);
+    var exams=ex.data||[];
+    renderExams(exams,nameById,"exam-list","exam-hint");
+    renderExams(exams,nameById,"teach-exam-list",null);
+    renderTeaching(sl.data||[],lessons,nameById);
+
+    if(!segWired){
+      segWired=true;
+      if($("seg-fin"))$("seg-fin").addEventListener("click",function(){setDashMode("fin");});
+      if($("seg-teach"))$("seg-teach").addEventListener("click",function(){setDashMode("teach");});
+      var saved="fin"; try{saved=localStorage.getItem("tl_dash_mode")||"fin";}catch(e){}
+      setDashMode(saved);   // applied after the chart rendered while visible, so sizing is correct
+    }
   }
 
   function renderOnboarding(students, slots, lessons){
