@@ -74,6 +74,14 @@ window.TL = (function () {
     var res = await window.sb.auth.getSession();
     var session = res.data && res.data.session;
     if (!session) { location.replace("login.html"); return; }
+    // If two-factor is enabled but not yet satisfied this session (e.g. after a
+    // Google sign-in), send the user to complete the challenge first.
+    try {
+      var aal = await window.sb.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal.data && aal.data.currentLevel === "aal1" && aal.data.nextLevel === "aal2") {
+        location.replace("login.html?mfa=1"); return;
+      }
+    } catch (e) { /* MFA unavailable — proceed as normal */ }
     mountShell(active, session.user.email, meta[0], meta[1]);
     if (typeof init === "function") init(session.user);
   }

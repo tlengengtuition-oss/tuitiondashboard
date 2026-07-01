@@ -42,11 +42,77 @@
     msg.textContent = "Saved ✓"; msg.className = "msg ok";
   }
 
+  // ---- Two-factor (TOTP) ----
+  var enrollId = null;
+  function mfaShow(which) {
+    ["mfa-loading","mfa-off","mfa-enroll","mfa-on"].forEach(function(id){
+      var el=$(id); if(el) el.style.display = (id===which?"block":"none");
+    });
+  }
+  async function refreshMfa() {
+    mfaShow("mfa-loading");
+    try {
+      var r = await window.sb.auth.mfa.listFactors();
+      if (r.error) throw r.error;
+      var verified = (r.data && r.data.totp || []).filter(function(f){return f.status==="verified";});
+      mfaShow(verified.length ? "mfa-on" : "mfa-off");
+    } catch (e) { mfaShow("mfa-off"); }
+  }
+  async function mfaEnable() {
+    $("mfa-enable").disabled = true;
+    try {
+      var r = await window.sb.auth.mfa.enroll({ factorType: "totp", friendlyName: "Authenticator ("+Date.now()+")" });
+      if (r.error) throw r.error;
+      enrollId = r.data.id;
+      $("mfa-qr").src = r.data.totp.qr_code;
+      $("mfa-secret").textContent = r.data.totp.secret;
+      $("mfa-code").value = "";
+      $("mfa-emsg").textContent = ""; $("mfa-emsg").className = "msg";
+      mfaShow("mfa-enroll");
+    } catch (e) {
+      var m=$("s-msg"); m.textContent = "Couldn't start setup: "+(e.message||e); m.className="msg err";
+    } finally { $("mfa-enable").disabled = false; }
+  }
+  async function mfaVerify() {
+    var code = ($("mfa-code").value||"").trim(), em = $("mfa-emsg");
+    if (!/^\d{6}$/.test(code)) { em.textContent="Enter the 6-digit code from your app."; em.className="msg err"; return; }
+    $("mfa-verify").disabled = true;
+    try {
+      var r = await window.sb.auth.mfa.challengeAndVerify({ factorId: enrollId, code: code });
+      if (r.error) throw r.error;
+      enrollId = null;
+      refreshMfa();
+    } catch (e) {
+      em.textContent = e.message || "That code didn't match. Try the current one."; em.className="msg err";
+    } finally { $("mfa-verify").disabled = false; }
+  }
+  async function mfaCancel() {
+    if (enrollId) { try { await window.sb.auth.mfa.unenroll({ factorId: enrollId }); } catch(e){} enrollId=null; }
+    refreshMfa();
+  }
+  async function mfaDisable() {
+    if (!confirm("Turn off two-factor authentication? You'll sign in with just your password.")) return;
+    $("mfa-disable").disabled = true;
+    try {
+      var r = await window.sb.auth.mfa.listFactors();
+      var factors = (r.data && r.data.all) || [];
+      for (var i=0;i<factors.length;i++){ await window.sb.auth.mfa.unenroll({ factorId: factors[i].id }); }
+      refreshMfa();
+    } catch (e) {
+      var m=$("s-msg"); m.textContent = "Couldn't turn it off: "+(e.message||e); m.className="msg err";
+    } finally { $("mfa-disable").disabled = false; }
+  }
+
   function init(user) {
     userId = user.id;
     $("save").addEventListener("click", save);
     ["ptype", "pid"].forEach(function (id) { $(id).addEventListener("input", preview); });
+    $("mfa-enable").addEventListener("click", mfaEnable);
+    $("mfa-verify").addEventListener("click", mfaVerify);
+    $("mfa-cancel").addEventListener("click", mfaCancel);
+    $("mfa-disable").addEventListener("click", mfaDisable);
     load();
+    refreshMfa();
   }
   TL.requireAuth("settings", init);
 })();
