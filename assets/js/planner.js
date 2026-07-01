@@ -12,7 +12,7 @@
     $("m-student").innerHTML=students.length?students.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+"</option>";}).join(""):'<option value="">— no students yet —</option>';
   }
   function clearForm(){
-    $("m-subject").value="";$("m-start").value="";$("m-end").value="";$("m-rate").value="";
+    $("m-subject").value="";$("m-level").value="";$("m-start").value="";$("m-end").value="";$("m-rate").value="";
     $("m-day").value="0";if(students.length)$("m-student").value=students[0].id;
   }
   function openModal(open, slot){
@@ -23,7 +23,7 @@
       editingId=slot.id;
       $("m-title").textContent="Edit slot";$("m-save").textContent="Save changes";
       $("m-student").value=slot.student_id;$("m-day").value=slot.weekday;
-      $("m-subject").value=slot.subject||"";$("m-start").value=hhmm(slot.start_time);
+      $("m-subject").value=slot.subject||"";$("m-level").value=slot.level||"";$("m-start").value=hhmm(slot.start_time);
       $("m-end").value=hhmm(slot.end_time);$("m-rate").value=slot.rate;
     }else{
       editingId=null;clearForm();
@@ -44,7 +44,7 @@
         return '<div class="slot" data-edit="'+s.id+'">'+
           '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
           '<div class="t">'+hhmm(s.start_time)+"–"+hhmm(s.end_time)+'</div>'+
-          (s.subject?'<div class="subj">'+esc(s.subject)+'</div>':"")+
+          (s.subject||s.level?'<div class="subj">'+esc([s.subject,s.level].filter(Boolean).join(" · "))+'</div>':"")+
           '<div class="s">'+esc(nameOf(s.student_id))+'</div>'+
           '<div class="c">'+TL.sgd(cost)+'</div></div>';
       }).join(""):'<div class="none">—</div>';
@@ -62,7 +62,7 @@
   async function load(){
     var st=await window.sb.from("students").select("id,name,active").order("name");
     if(!st.error){allStudents=st.data||[];students=allStudents.filter(function(s){return s.active!==false;});studentOptions();}
-    var res=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,rate");
+    var res=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate");
     if(res.error){$("p-total").textContent="Couldn't load schedule: "+res.error.message;return;}
     allSlots=res.data||[];render();
   }
@@ -82,7 +82,7 @@
     if(end<=start){msg.textContent="End time must be after start.";msg.className="msg err";return;}
     if(!(rate>=0)){msg.textContent="Enter an hourly rate.";msg.className="msg err";return;}
     var payload={tutor_id:userId,student_id:sid,weekday:parseInt($("m-day").value,10),
-      start_time:start,end_time:end,subject:$("m-subject").value.trim()||null,rate:rate};
+      start_time:start,end_time:end,subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate};
     $("m-save").disabled=true;
     var res=editingId
       ? await window.sb.from("recurring_slots").update(payload).eq("id",editingId)

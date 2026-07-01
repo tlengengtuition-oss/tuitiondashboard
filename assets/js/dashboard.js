@@ -141,7 +141,7 @@
       var t=iso(new Date());
       res=await window.sb.from("lessons").insert(Object.assign({
         tutor_id:userId, student_id:noteStu, slot_id:noteSlot.id||null, lesson_date:t,
-        start_time:noteSlot.start_time, end_time:noteSlot.end_time, subject:noteSlot.subject,
+        start_time:noteSlot.start_time, end_time:noteSlot.end_time, subject:noteSlot.subject, level:noteSlot.level,
         rate:noteSlot.rate, amount:TL.amount(noteSlot.rate,hm(noteSlot.start_time),hm(noteSlot.end_time)),
         status:"done", paid:false
       },fields));
@@ -193,7 +193,7 @@
       if(l.status==="done"){doneCount++; doneBilled+=amt;}
       var s=perStudent[l.student_id]||(perStudent[l.student_id]={c:0,owe:0,n:0});
       s.n++; if(l.paid)s.c+=amt; else if(l.status==="done")s.owe+=amt;
-      var subj=l.subject||"Unspecified", ps=perSubject[subj]||(perSubject[subj]={c:0,n:0});
+      var subj=[l.subject,l.level].filter(Boolean).join(" · ")||"Unspecified", ps=perSubject[subj]||(perSubject[subj]={c:0,n:0});
       ps.n++; if(l.paid)ps.c+=amt;
     });
     var billed=collected+owed+upc, due=collected+owed;
@@ -270,9 +270,9 @@
     var pr=await window.sb.from("profiles").select("fy_start_month").eq("id",userId).single();
     fyStart=(pr.data&&pr.data.fy_start_month)||1;
 
-    var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
+    var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate").eq("active",true);
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,amount,paid,status,subject,topics,homework,remarks");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,amount,paid,status,subject,level,topics,homework,remarks");
     var lessons=ls.data||[];
 
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);

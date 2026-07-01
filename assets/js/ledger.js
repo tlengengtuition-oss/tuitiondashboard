@@ -54,7 +54,7 @@
       slots.forEach(function(s){
         if(s.weekday!==wd)return;
         if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
-        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,rate:s.rate,amount:TL.amount(s.rate,hm(s.start_time),hm(s.end_time)),status:di>todayISO()?"scheduled":"done",paid:false});
+        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,amount:TL.amount(s.rate,hm(s.start_time),hm(s.end_time)),status:di>todayISO()?"scheduled":"done",paid:false});
       });
     }
     b.disabled=false;
@@ -147,7 +147,7 @@
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
-      return '<tr><td data-label="Date">'+prettyDate(l.lesson_date)+'</td><td class="name" data-label="Student">'+esc(nameById[l.student_id]||"—")+'</td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
+      return '<tr><td data-label="Date">'+prettyDate(l.lesson_date)+'</td><td class="name" data-label="Student">'+esc(nameById[l.student_id]||"—")+'</td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
         '<td class="acts"><button class="tact" data-edit="'+l.id+'">Postpone / edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("");
     body.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openAdd(true,monthById[b.dataset.edit]);});});
@@ -165,10 +165,10 @@
       return l.lesson_date.slice(0,7)===period.y+"-"+pad(period.m+1);
     });
     rows.sort(function(a,b){return (a.lesson_date+(a.start_time||"")).localeCompare(b.lesson_date+(b.start_time||""));});
-    var head=["Date","Start","End","Student","Subject","Amount (S$)","Status","Paid","Paid date"];
+    var head=["Date","Start","End","Student","Subject","Level","Amount (S$)","Status","Paid","Paid date"];
     var lines=[head.join(",")];
     rows.forEach(function(l){
-      lines.push([l.lesson_date,hm(l.start_time),hm(l.end_time),nameById[l.student_id]||"",l.subject||"",
+      lines.push([l.lesson_date,hm(l.start_time),hm(l.end_time),nameById[l.student_id]||"",l.subject||"",l.level||"",
         Number(l.amount).toFixed(2),l.status,l.paid?"Yes":"No",l.paid_date||""].map(csvCell).join(","));
     });
     var csv="\ufeff"+lines.join("\r\n");
@@ -220,7 +220,7 @@
       if(!$("m-rate").value)$("m-rate").value=slot.rate;
       if(!$("m-start").value)$("m-start").value=hm(slot.start_time);
       if(!$("m-end").value)$("m-end").value=hm(slot.end_time);
-      if(!$("m-subject").value&&slot.subject)$("m-subject").value=slot.subject;
+      if(!$("m-subject").value&&slot.subject)$("m-subject").value=slot.subject;if(!$("m-level").value&&slot.level)$("m-level").value=slot.level;
       recalcCost();
     }
   }
@@ -233,7 +233,7 @@
       $("m-title").textContent="Postpone / edit lesson";$("m-save").textContent="Save changes";
       $("m-student").value=lesson.student_id;
       $("m-date").value=lesson.lesson_date;
-      $("m-subject").value=lesson.subject||"";
+      $("m-subject").value=lesson.subject||"";$("m-level").value=lesson.level||"";
       $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
       $("m-rate").value=lesson.rate;$("m-paid").checked=!!lesson.paid;
       recalcCost();
@@ -241,7 +241,7 @@
       editLessonId=null;
       $("m-title").textContent="Add lesson";$("m-save").textContent="Save lesson";
       $("m-date").value=todayISO();$("m-paid").checked=false;
-      ["m-subject","m-start","m-end","m-rate","m-cost"].forEach(function(id){$(id).value="";});
+      ["m-subject","m-level","m-start","m-end","m-rate","m-cost"].forEach(function(id){$(id).value="";});
       prefillFromSlot();
     }
   }
@@ -254,7 +254,7 @@
     if(!(rate>=0)){msg.textContent="Enter a rate.";msg.className="msg err";return;}
     var paid=$("m-paid").checked;
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
-      subject:$("m-subject").value.trim()||null,rate:rate,amount:TL.amount(rate,start,end),
+      subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,amount:TL.amount(rate,start,end),
       status:date>todayISO()?"scheduled":"done",paid:paid,paid_date:paid?date:null};
     $("m-save").disabled=true;
     var res=editLessonId
@@ -278,7 +278,7 @@
       slots.forEach(function(s){
         if(s.weekday!==wd)return;
         if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
-        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,rate:s.rate,amount:TL.amount(s.rate,hm(s.start_time),hm(s.end_time)),status:di>todayISO()?"scheduled":"done",paid:false});
+        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,amount:TL.amount(s.rate,hm(s.start_time),hm(s.end_time)),status:di>todayISO()?"scheduled":"done",paid:false});
       });
     }
     if(!rows.length){alert(mo+" is already fully logged — nothing new to add.");return;}
@@ -297,7 +297,7 @@
     slots.forEach(function(s){
       var d=new Date(mon);d.setDate(mon.getDate()+s.weekday);var di=iso(d);
       if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
-      rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,rate:s.rate,amount:TL.amount(s.rate,hm(s.start_time),hm(s.end_time)),status:di>todayISO()?"scheduled":"done",paid:false});
+      rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,amount:TL.amount(s.rate,hm(s.start_time),hm(s.end_time)),status:di>todayISO()?"scheduled":"done",paid:false});
     });
     if(!rows.length){alert("This week is already logged — nothing new to add.");return;}
     if(!confirm("Add "+rows.length+" lessons for "+weekStart+" to "+weekEnd+"?"))return;
@@ -480,10 +480,10 @@
     students=st.data||[];nameById={};contactById={};recipientById={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;});
     studentOptions();
 
-    var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
+    var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate").eq("active",true);
     slots=sl.data||[];
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,rate,amount,paid,paid_date,status");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,rate,amount,paid,paid_date,status");
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
 
