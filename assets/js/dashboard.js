@@ -8,26 +8,15 @@
   function hm(t){return t?t.slice(0,5):"";}
   function monthOccurrences(weekday){var now=new Date(),y=now.getFullYear(),m=now.getMonth(),c=0,d=new Date(y,m,1);while(d.getMonth()===m){if(((d.getDay()+6)%7)===weekday)c++;d.setDate(d.getDate()+1);}return c;}
 
-  var chartObj=null, allLessons=[], selY=null, selM=null, dmWired=false;
-  function renderMonthKpis(){
-    var mFirst=selY+"-"+pad(selM+1)+"-01",mLast=selY+"-"+pad(selM+1)+"-"+pad(new Date(selY,selM+1,0).getDate());
-    var month=allLessons.filter(function(l){return l.lesson_date>=mFirst&&l.lesson_date<=mLast;});
-    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
-    var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
-    $("k-projected").textContent=TL.sgd(projected);
-    $("k-collected").textContent=TL.sgd(collected);
-    var d1=new Date(selY,selM,1);
-    $("k-collected-n").textContent=d1.toLocaleString("en-SG",{month:"long"});
-    if($("dm-label"))$("dm-label").textContent=d1.toLocaleString("en-SG",{month:"long",year:"numeric"});
-  }
-  function stepDMonth(d){var dt=new Date(selY,selM+d,1);selY=dt.getFullYear();selM=dt.getMonth();renderMonthKpis();}
+  var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var chartObj=null, yearChartObj=null, allLessons=[], nameByIdM={}, selY=null, selM=null, dmWired=false;
+  var fyStart=1, fyAnchor=null, finSub="month", finSubWired=false;
 
-  function renderChart(collected, pending, upcoming, year){
-    var labels=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function drawStacked(canvasId, labels, collected, pending, upcoming, prev){
     var r2=function(v){return Math.round(v*100)/100;};
-    var ctx=$("incomeChart").getContext("2d");
-    if(chartObj)chartObj.destroy();
-    chartObj=new Chart(ctx,{
+    var ctx=$(canvasId).getContext("2d");
+    if(prev)prev.destroy();
+    return new Chart(ctx,{
       type:"bar",
       data:{labels:labels,datasets:[
         {label:"Collected",data:collected.map(r2),backgroundColor:"#0E7C7B",maxBarThickness:34,stack:"s",borderRadius:3},
@@ -47,6 +36,18 @@
       }
     });
   }
+  function renderMonthKpis(){
+    var mFirst=selY+"-"+pad(selM+1)+"-01",mLast=selY+"-"+pad(selM+1)+"-"+pad(new Date(selY,selM+1,0).getDate());
+    var month=allLessons.filter(function(l){return l.lesson_date>=mFirst&&l.lesson_date<=mLast;});
+    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
+    var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
+    $("k-projected").textContent=TL.sgd(projected);
+    $("k-collected").textContent=TL.sgd(collected);
+    var d1=new Date(selY,selM,1);
+    $("k-collected-n").textContent=d1.toLocaleString("en-SG",{month:"long"});
+    if($("dm-label"))$("dm-label").textContent=d1.toLocaleString("en-SG",{month:"long",year:"numeric"});
+  }
+  function stepDMonth(d){var dt=new Date(selY,selM+d,1);selY=dt.getFullYear();selM=dt.getMonth();renderMonthKpis();}
 
   function renderExams(exams, nameById, listId, hintId){
     var today=todayISO();
@@ -110,14 +111,114 @@
     try{localStorage.setItem("tl_dash_mode",mode);}catch(e){}
   }
 
+  // ---- Financial year ----
+  function fyMonthsOf(anchor){var arr=[],base=fyStart-1;for(var i=0;i<12;i++){var mm=base+i;arr.push({y:anchor+Math.floor(mm/12),m:((mm%12)+12)%12});}return arr;}
+  function fyLabelOf(anchor){return fyStart===1?String(anchor):("FY "+anchor+"/"+String(anchor+1).slice(2));}
+  function currentFyAnchor(){var n=new Date();return (n.getMonth()>=(fyStart-1))?n.getFullYear():n.getFullYear()-1;}
+  function mkey(o){return o.y+"-"+pad(o.m+1);}
+
+  function collectedInFy(anchor){
+    var keys={};fyMonthsOf(anchor).forEach(function(o){keys[mkey(o)]=1;});
+    return allLessons.reduce(function(t,l){
+      return (l.paid && l.lesson_date && keys[l.lesson_date.slice(0,7)] && l.status!=="cancelled") ? t+Number(l.amount) : t;
+    },0);
+  }
+
+  function renderYear(){
+    if($("fy-label"))$("fy-label").textContent=fyLabelOf(fyAnchor);
+    var months=fyMonthsOf(fyAnchor), keys={}; months.forEach(function(o){keys[mkey(o)]=1;});
+    var rows=allLessons.filter(function(l){return l.lesson_date&&keys[l.lesson_date.slice(0,7)]&&l.status!=="cancelled";});
+
+    var collected=0,owed=0,upc=0,doneCount=0,doneBilled=0;
+    var perMonth={}, perStudent={}, perSubject={};
+    months.forEach(function(o){perMonth[mkey(o)]={c:0,p:0,u:0};});
+    rows.forEach(function(l){
+      var amt=Number(l.amount)||0, k=l.lesson_date.slice(0,7), pm=perMonth[k];
+      if(l.paid){collected+=amt; if(pm)pm.c+=amt;}
+      else if(l.status==="done"){owed+=amt; if(pm)pm.p+=amt;}
+      else {upc+=amt; if(pm)pm.u+=amt;}
+      if(l.status==="done"){doneCount++; doneBilled+=amt;}
+      var s=perStudent[l.student_id]||(perStudent[l.student_id]={c:0,owe:0,n:0});
+      s.n++; if(l.paid)s.c+=amt; else if(l.status==="done")s.owe+=amt;
+      var subj=l.subject||"Unspecified", ps=perSubject[subj]||(perSubject[subj]={c:0,n:0});
+      ps.n++; if(l.paid)ps.c+=amt;
+    });
+    var billed=collected+owed+upc, due=collected+owed;
+    var rate=due>0?Math.round(collected/due*100):0;
+    var activeMonths=months.filter(function(o){return perMonth[mkey(o)].c>0;}).length;
+    var avgMonth=activeMonths?collected/activeMonths:0;
+    var avgLesson=doneCount?doneBilled/doneCount:0;
+    var prevCollected=collectedInFy(fyAnchor-1);
+    var yoy=prevCollected>0?Math.round((collected-prevCollected)/prevCollected*100):null;
+
+    // best / quietest month by collected
+    var mv=months.map(function(o){return {k:mkey(o),y:o.y,m:o.m,v:perMonth[mkey(o)].c};}).filter(function(x){return x.v>0;});
+    function mname(x){return new Date(x.y,x.m,1).toLocaleDateString("en-SG",{month:"short"});}
+    var best=mv.length?mv.reduce(function(a,b){return b.v>a.v?b:a;}):null;
+    var quiet=mv.length?mv.reduce(function(a,b){return b.v<a.v?b:a;}):null;
+    if($("fy-chart-hint"))$("fy-chart-hint").textContent=best?("Best "+mname(best)+" "+TL.sgd(best.v)+" · Quietest "+mname(quiet)+" "+TL.sgd(quiet.v)):"";
+
+    var yoyNote = yoy===null ? "vs last year: n/a" : (yoy>=0?"▲ "+yoy+"% vs last year":"▼ "+Math.abs(yoy)+"% vs last year");
+    var tiles=[
+      {cls:"paid",  label:"Total collected", val:TL.sgd(collected), note:yoyNote},
+      {cls:"",      label:"Total billed",    val:TL.sgd(billed),    note:"incl. upcoming "+TL.sgd(upc)},
+      {cls:"owed",  label:"Outstanding (owed)", val:TL.sgd(owed),  note:"delivered but unpaid"},
+      {cls:"accent",label:"Collection rate", val:rate+"%",          note:"of "+TL.sgd(due)+" due"},
+      {cls:"",      label:"Avg / active month", val:TL.sgd(avgMonth), note:activeMonths+" active month(s)"},
+      {cls:"",      label:"Lessons taught",  val:String(doneCount), note:"avg "+TL.sgd(avgLesson)+"/lesson"}
+    ];
+    $("fy-tiles").innerHTML=tiles.map(function(t){
+      return '<div class="card kpi '+t.cls+'"><div class="label">'+t.label+'</div>'+
+        '<div class="val">'+t.val+'</div><div class="note">'+t.note+'</div></div>';
+    }).join("");
+
+    // per-student breakdown (by collected desc)
+    var sList=Object.keys(perStudent).map(function(id){var s=perStudent[id];return {name:nameByIdM[id]||"—",c:s.c,owe:s.owe,n:s.n};})
+      .sort(function(a,b){return b.c-a.c||b.owe-a.owe;});
+    $("fy-students").innerHTML=sList.length?sList.map(function(s){
+      return '<div class="brk"><span class="bn">'+esc(s.name)+'<div class="bmeta">'+s.n+' lesson'+(s.n===1?"":"s")+'</div></span>'+
+        '<span class="bv">'+TL.sgd(s.c)+(s.owe>0?'<small>owed '+TL.sgd(s.owe)+'</small>':'')+'</span></div>';
+    }).join(""):'<div class="muted" style="font-size:13.5px">No income recorded for this year.</div>';
+
+    // per-subject breakdown
+    var subjList=Object.keys(perSubject).map(function(k){return {name:k,c:perSubject[k].c,n:perSubject[k].n};})
+      .sort(function(a,b){return b.c-a.c;});
+    $("fy-subjects").innerHTML=subjList.length?subjList.map(function(s){
+      return '<div class="brk"><span class="bn">'+esc(s.name)+'<div class="bmeta">'+s.n+' lesson'+(s.n===1?"":"s")+'</div></span>'+
+        '<span class="bv">'+TL.sgd(s.c)+'</span></div>';
+    }).join(""):'<div class="muted" style="font-size:13.5px">—</div>';
+
+    // FY-ordered chart
+    var labels=months.map(function(o){return new Date(o.y,o.m,1).toLocaleDateString("en-SG",{month:"short"});});
+    var yc=months.map(function(o){return perMonth[mkey(o)].c;}),
+        yp=months.map(function(o){return perMonth[mkey(o)].p;}),
+        yu=months.map(function(o){return perMonth[mkey(o)].u;});
+    if(window.Chart)yearChartObj=drawStacked("yearChart",labels,yc,yp,yu,yearChartObj);
+  }
+  function stepFy(d){fyAnchor+=d;renderYear();}
+  function setFinSub(mode){
+    var year=mode==="year";
+    if($("fin-month"))$("fin-month").style.display=year?"none":"block";
+    if($("fin-year"))$("fin-year").style.display=year?"block":"none";
+    if($("fseg-month"))$("fseg-month").classList.toggle("on",!year);
+    if($("fseg-year"))$("fseg-year").classList.toggle("on",year);
+    finSub=mode;
+    try{localStorage.setItem("tl_fin_sub",mode);}catch(e){}
+    if(year)renderYear();   // render while visible so the chart sizes correctly
+  }
+
   async function load(){
     await TL.promotePastLessons();
     var st=await window.sb.from("students").select("id,name");
     var nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
+    nameByIdM=nameById;
+
+    var pr=await window.sb.from("profiles").select("fy_start_month").eq("id",(await window.sb.auth.getUser()).data.user.id).single();
+    fyStart=(pr.data&&pr.data.fy_start_month)||1;
 
     var sl=await window.sb.from("recurring_slots").select("student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
 
-    var ls=await window.sb.from("lessons").select("student_id,lesson_date,amount,paid,status,topics,homework,remarks");
+    var ls=await window.sb.from("lessons").select("student_id,lesson_date,amount,paid,status,subject,topics,homework,remarks");
     var lessons=ls.data||[];
 
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
@@ -156,11 +257,10 @@
     });
     var ytd=collected.reduce(function(a,b){return a+b;},0);
     $("inc-hint").textContent="Collected YTD "+TL.sgd(ytd);
-    if(window.Chart)renderChart(collected,pending,upcoming,y);
+    if(window.Chart)chartObj=drawStacked("incomeChart",MONTHS,collected,pending,upcoming,chartObj);
 
     var ex=await window.sb.from("exams").select("student_id,exam_date,assessment_type,subject,topics");
     var exams=ex.data||[];
-    renderExams(exams,nameById,"exam-list","exam-hint");
     renderExams(exams,nameById,"teach-exam-list",null);
     renderTeaching(sl.data||[],lessons,nameById);
 
@@ -170,6 +270,18 @@
       if($("seg-teach"))$("seg-teach").addEventListener("click",function(){setDashMode("teach");});
       var saved="fin"; try{saved=localStorage.getItem("tl_dash_mode")||"fin";}catch(e){}
       setDashMode(saved);   // applied after the chart rendered while visible, so sizing is correct
+    }
+
+    if(fyAnchor===null)fyAnchor=currentFyAnchor();
+    if(!finSubWired){
+      finSubWired=true;
+      if($("fseg-month"))$("fseg-month").addEventListener("click",function(){setFinSub("month");});
+      if($("fseg-year"))$("fseg-year").addEventListener("click",function(){setFinSub("year");});
+      if($("fy-prev"))$("fy-prev").addEventListener("click",function(){stepFy(-1);});
+      if($("fy-next"))$("fy-next").addEventListener("click",function(){stepFy(1);});
+      if($("fy-today"))$("fy-today").addEventListener("click",function(){fyAnchor=currentFyAnchor();renderYear();});
+      var fsub="month"; try{fsub=localStorage.getItem("tl_fin_sub")||"month";}catch(e){}
+      setFinSub(fsub);
     }
   }
 

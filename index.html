@@ -40,6 +40,13 @@
   .tr-note{font-size:13px;line-height:1.5;margin-top:1px}
   .tr-note b{color:var(--navy)}
   .tr-empty{color:var(--muted);font-size:12.5px;font-style:italic;margin-top:4px}
+  .brk{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+  .brk:first-child{border-top:none}
+  .brk .bn{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brk .bmeta{color:var(--muted);font-size:11.5px;font-weight:400;margin-top:1px}
+  .brk .bv{font-weight:700;white-space:nowrap;text-align:right}
+  .brk .bv small{display:block;color:var(--owed);font-weight:600;font-size:11px}
+  #fy-tiles .note{font-size:11px}
 </style>
 </head>
 <body>
@@ -51,6 +58,12 @@
   </div>
 
   <div id="fin-view">
+  <div class="seg" id="fin-seg" style="margin-bottom:14px">
+    <button id="fseg-month" class="on">Month</button>
+    <button id="fseg-year">Year</button>
+  </div>
+
+  <div id="fin-month">
   <div class="dmonth">
     <button class="btn gennav" id="dm-prev" title="Previous month">‹</button>
     <span class="dm-lbl" id="dm-label">—</span>
@@ -68,14 +81,33 @@
       <div class="val" id="k-week">—</div><div class="note" id="k-week-n">Mon–Sun</div></div>
   </div>
 
-  <div class="grid2">
-    <div class="card panel">
-      <h2>Income by month <span class="hint" id="inc-hint"></span></h2>
-      <div class="chart-wrap"><canvas id="incomeChart"></canvas></div>
+  <div class="card panel">
+    <h2>Income by month <span class="hint" id="inc-hint"></span></h2>
+    <div class="chart-wrap"><canvas id="incomeChart"></canvas></div>
+  </div>
+  </div>
+
+  <div id="fin-year" style="display:none">
+    <div class="dmonth">
+      <button class="btn gennav" id="fy-prev" title="Previous year">‹</button>
+      <span class="dm-lbl" id="fy-label" style="min-width:170px">—</span>
+      <button class="btn gennav" id="fy-next" title="Next year">›</button>
+      <button class="btn" id="fy-today">This year</button>
     </div>
+    <div class="kpi-grid" id="fy-tiles"></div>
     <div class="card panel">
-      <h2>Upcoming exams <span class="hint" id="exam-hint"></span></h2>
-      <div id="exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+      <h2 id="fy-chart-h">Income across the year <span class="hint" id="fy-chart-hint"></span></h2>
+      <div class="chart-wrap"><canvas id="yearChart"></canvas></div>
+    </div>
+    <div class="grid2">
+      <div class="card panel">
+        <h2>Income by student</h2>
+        <div id="fy-students"><div class="muted" style="font-size:13.5px">—</div></div>
+      </div>
+      <div class="card panel">
+        <h2>Income by subject</h2>
+        <div id="fy-subjects"><div class="muted" style="font-size:13.5px">—</div></div>
+      </div>
     </div>
   </div>
   </div>
