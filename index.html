@@ -35,6 +35,10 @@
   .tr-time{flex:0 0 56px;font-weight:800;color:var(--navy);font-size:14px}
   .tr-body{flex:1;min-width:0}
   .tr-name{font-weight:700;font-size:14.5px}
+  .tr-name-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .tnote{all:unset;cursor:pointer;flex:0 0 auto;font-size:12px;font-weight:700;color:var(--gold);border:1px solid var(--gold);border-radius:8px;padding:4px 11px;background:#fff}
+  .tnote:hover{background:var(--cream)}
+  .tnote.has{color:var(--teal);border-color:var(--teal)}
   .tr-subj{color:var(--gold);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;margin-left:7px}
   .tr-when{color:var(--muted);font-size:12px;margin:5px 0 2px}
   .tr-note{font-size:13px;line-height:1.5;margin-top:1px}
@@ -126,6 +130,22 @@
     <div class="card panel teach-sec">
       <h2>Upcoming exams</h2>
       <div id="teach-exam-list"><div class="muted" style="font-size:13.5px">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- quick lesson-note modal -->
+  <div class="modal-backdrop" id="tn-modal">
+    <div class="modal card">
+      <h2 id="tn-title">Lesson note</h2>
+      <p class="muted" id="tn-sub" style="font-size:13px;margin-bottom:14px"></p>
+      <div class="field"><label for="tn-topics">Topics covered</label><input id="tn-topics" type="text" placeholder="e.g. Quadratic equations"></div>
+      <div class="field"><label for="tn-homework">Homework</label><input id="tn-homework" type="text" placeholder="e.g. Worksheet 3, Q1–10"></div>
+      <div class="field"><label for="tn-remarks">Remarks</label><input id="tn-remarks" type="text" placeholder="optional"></div>
+      <div class="msg" id="tn-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="tn-cancel">Cancel</button>
+        <button class="btn btn-primary" id="tn-save">Save note</button>
+      </div>
     </div>
   </div>
 </div>

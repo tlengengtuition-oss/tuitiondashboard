@@ -11,6 +11,7 @@
   var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   var chartObj=null, yearChartObj=null, allLessons=[], nameByIdM={}, selY=null, selM=null, dmWired=false;
   var fyStart=1, fyAnchor=null, finSub="month", finSubWired=false;
+  var userId=null, tnWired=false, todaySlotBy={}, todayLesBy={}, noteStu=null, noteLes=null, noteSlot=null;
 
   function drawStacked(canvasId, labels, collected, pending, upcoming, prev){
     var r2=function(v){return Math.round(v*100)/100;};
@@ -83,7 +84,11 @@
     function lastBefore(stu, beforeISO){var a=doneByStu[stu]||[];for(var i=0;i<a.length;i++){if(a[i].lesson_date<beforeISO)return a[i];}return null;}
     var today=new Date(); today.setHours(0,0,0,0);
     var tmr=new Date(today); tmr.setDate(today.getDate()+1);
-    function renderDay(listId, subId, headId, dateObj, label){
+    var todayISOv=iso(today);
+    // today's lessons + slots, keyed by student, for the quick-note button
+    todayLesBy={}; lessons.forEach(function(l){ if(l.lesson_date===todayISOv&&l.status!=="cancelled")todayLesBy[l.student_id]=l; });
+    todaySlotBy={};
+    function renderDay(listId, subId, headId, dateObj, label, withNote){
       var wday=(dateObj.getDay()+6)%7, dISO=iso(dateObj);
       var day=slots.filter(function(s){return s.weekday===wday;})
         .sort(function(a,b){return (a.start_time||"").localeCompare(b.start_time||"");});
@@ -91,14 +96,62 @@
       if($(subId))$(subId).textContent=dateObj.toLocaleDateString("en-SG",{weekday:"long",day:"numeric",month:"long"});
       if(!day.length){$(listId).innerHTML='<div class="tr-empty">No lessons scheduled.</div>';return;}
       $(listId).innerHTML=day.map(function(s){
+        var btn="";
+        if(withNote){
+          todaySlotBy[s.student_id]=s;
+          var les=todayLesBy[s.student_id];
+          var has=les&&(les.topics||les.homework||les.remarks);
+          btn='<button class="tnote'+(has?" has":"")+'" data-note-stu="'+s.student_id+'">'+(has?"Edit note":"Add note")+'</button>';
+        }
         return '<div class="teach-row"><div class="tr-time">'+hm(s.start_time)+'</div>'+
-          '<div class="tr-body"><div class="tr-name">'+esc(nameById[s.student_id]||"—")+
-          (s.subject?'<span class="tr-subj">'+esc(s.subject)+'</span>':'')+'</div>'+
+          '<div class="tr-body"><div class="tr-name-row"><div class="tr-name">'+esc(nameById[s.student_id]||"—")+
+          (s.subject?'<span class="tr-subj">'+esc(s.subject)+'</span>':'')+'</div>'+btn+'</div>'+
           summarizeLast(lastBefore(s.student_id,dISO))+'</div></div>';
       }).join("");
+      if(withNote)$(listId).querySelectorAll("[data-note-stu]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteStu);});});
     }
-    renderDay("today-list","today-sub","today-h", today, "Today");
-    renderDay("tmr-list","tmr-sub","tmr-h", tmr, "Tomorrow");
+    renderDay("today-list","today-sub","today-h", today, "Today", true);
+    renderDay("tmr-list","tmr-sub","tmr-h", tmr, "Tomorrow", false);
+  }
+
+  // ---- quick lesson note (today) ----
+  function openNote(stu){
+    noteStu=stu; noteSlot=todaySlotBy[stu]||null;
+    var les=todayLesBy[stu]||null; noteLes=les;
+    var name=nameByIdM[stu]||"student";
+    var when=new Date().toLocaleDateString("en-SG",{weekday:"long",day:"numeric",month:"long"});
+    var subj=(noteSlot&&noteSlot.subject)?noteSlot.subject:(les&&les.subject?les.subject:"");
+    $("tn-title").textContent="Today's note · "+name;
+    $("tn-sub").textContent=when+(subj?" · "+subj:"");
+    $("tn-topics").value=les?(les.topics||""):"";
+    $("tn-homework").value=les?(les.homework||""):"";
+    $("tn-remarks").value=les?(les.remarks||""):"";
+    $("tn-msg").textContent=""; $("tn-msg").className="msg";
+    $("tn-modal").classList.add("on");
+  }
+  function closeNote(){$("tn-modal").classList.remove("on");}
+  async function saveNote(){
+    var msg=$("tn-msg");
+    var fields={topics:$("tn-topics").value.trim()||null,homework:$("tn-homework").value.trim()||null,remarks:$("tn-remarks").value.trim()||null};
+    $("tn-save").disabled=true;
+    var res;
+    if(noteLes){
+      res=await window.sb.from("lessons").update(fields).eq("id",noteLes.id);
+    } else if(noteSlot){
+      var t=iso(new Date());
+      res=await window.sb.from("lessons").insert(Object.assign({
+        tutor_id:userId, student_id:noteStu, slot_id:noteSlot.id||null, lesson_date:t,
+        start_time:noteSlot.start_time, end_time:noteSlot.end_time, subject:noteSlot.subject,
+        rate:noteSlot.rate, amount:TL.amount(noteSlot.rate,hm(noteSlot.start_time),hm(noteSlot.end_time)),
+        status:"done", paid:false
+      },fields));
+    } else {
+      msg.textContent="Couldn't find today's lesson for this student."; msg.className="msg err"; $("tn-save").disabled=false; return;
+    }
+    $("tn-save").disabled=false;
+    if(res.error){msg.textContent=res.error.message; msg.className="msg err"; return;}
+    closeNote();
+    load();
   }
 
   var segWired=false;
@@ -213,12 +266,13 @@
     var nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
     nameByIdM=nameById;
 
-    var pr=await window.sb.from("profiles").select("fy_start_month").eq("id",(await window.sb.auth.getUser()).data.user.id).single();
+    userId=(await window.sb.auth.getUser()).data.user.id;
+    var pr=await window.sb.from("profiles").select("fy_start_month").eq("id",userId).single();
     fyStart=(pr.data&&pr.data.fy_start_month)||1;
 
-    var sl=await window.sb.from("recurring_slots").select("student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
+    var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,rate").eq("active",true);
 
-    var ls=await window.sb.from("lessons").select("student_id,lesson_date,amount,paid,status,subject,topics,homework,remarks");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,amount,paid,status,subject,topics,homework,remarks");
     var lessons=ls.data||[];
 
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
@@ -282,6 +336,13 @@
       if($("fy-today"))$("fy-today").addEventListener("click",function(){fyAnchor=currentFyAnchor();renderYear();});
       var fsub="month"; try{fsub=localStorage.getItem("tl_fin_sub")||"month";}catch(e){}
       setFinSub(fsub);
+    }
+
+    if(!tnWired){
+      tnWired=true;
+      if($("tn-cancel"))$("tn-cancel").addEventListener("click",closeNote);
+      if($("tn-save"))$("tn-save").addEventListener("click",saveNote);
+      if($("tn-modal"))$("tn-modal").addEventListener("click",function(e){if(e.target===$("tn-modal"))closeNote();});
     }
   }
 
