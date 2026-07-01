@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reset password · T-Leng Tuition</title>
+<link rel="stylesheet" href="assets/css/app.css?v=10">
+<style>
+  .rs-wrap{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .rs-card{max-width:420px;width:100%;background:#fff;border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:30px 28px}
+  .rs-brand{display:inline-flex;align-items:center;gap:10px;margin-bottom:20px}
+  .rs-brand .mono{background:var(--navy);color:#fff;font-weight:800;border-radius:9px;padding:8px 11px;
+    font-family:var(--serif,Georgia);letter-spacing:1px}
+  .rs-brand b{color:var(--navy);font-size:16px}
+  .rs-h{font-family:var(--serif,Georgia);color:var(--navy);font-size:21px;margin:0 0 6px}
+  .rs-p{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 18px}
+  .rs-card .field{margin-bottom:14px}
+  .rs-btn{width:100%;background:var(--navy);color:#fff;border:none;font-weight:700;
+    padding:12px;border-radius:11px;font-size:14.5px;cursor:pointer}
+  .rs-btn:hover{opacity:.93}
+  .rs-btn:disabled{opacity:.5;cursor:default}
+  .rs-link{display:inline-block;margin-top:16px;color:var(--teal);font-weight:700;text-decoration:none;font-size:13.5px}
+  .rs-link:hover{text-decoration:underline}
+  .ok-check{width:60px;height:60px;border-radius:50%;background:rgba(14,124,123,.12);color:var(--teal);
+    display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 16px}
+</style>
+</head>
+<body>
+<div class="rs-wrap">
+  <div class="rs-card">
+    <div class="rs-brand"><span class="mono">TL</span><b>T-Leng Tuition</b></div>
+
+    <!-- set-new-password form -->
+    <div id="rs-form">
+      <h1 class="rs-h">Set a new password</h1>
+      <p class="rs-p">Choose a new password for your account.</p>
+      <div class="field">
+        <label for="pw1">New password</label>
+        <input id="pw1" type="password" autocomplete="new-password" placeholder="••••••••">
+      </div>
+      <div class="field">
+        <label for="pw2">Confirm password</label>
+        <input id="pw2" type="password" autocomplete="new-password" placeholder="••••••••">
+      </div>
+      <button class="rs-btn" id="rs-save">Update password</button>
+      <div class="msg" id="rs-msg" style="margin-top:12px"></div>
+    </div>
+
+    <!-- success -->
+    <div id="rs-done" style="display:none;text-align:center">
+      <div class="ok-check">✓</div>
+      <h1 class="rs-h">Password updated</h1>
+      <p class="rs-p">You can now sign in with your new password.</p>
+      <a class="rs-link" href="login.html">Go to sign in</a>
+    </div>
+
+    <!-- invalid / expired link -->
+    <div id="rs-bad" style="display:none;text-align:center">
+      <h1 class="rs-h">Link expired</h1>
+      <p class="rs-p">This reset link is invalid or has already been used. Request a fresh one from the sign-in page.</p>
+      <a class="rs-link" href="login.html">Back to sign in</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var msg = $("rs-msg");
+  function show(t, ok) { msg.textContent = t; msg.className = "msg " + (ok ? "ok" : "err"); }
+
+  // The recovery link establishes a temporary session. If there isn't one,
+  // the link is invalid/expired — show that state instead of the form.
+  async function guard() {
+    try {
+      var r = await window.sb.auth.getSession();
+      if (!r.data || !r.data.session) {
+        $("rs-form").style.display = "none";
+        $("rs-bad").style.display = "block";
+      }
+    } catch (e) { /* keep form; save will surface any error */ }
+  }
+  setTimeout(guard, 500);
+
+  $("rs-save").onclick = async function () {
+    var a = $("pw1").value, b = $("pw2").value;
+    if (!a || a.length < 6) { show("Password must be at least 6 characters.", false); return; }
+    if (a !== b) { show("The passwords don't match.", false); return; }
+    $("rs-save").disabled = true;
+    try {
+      var r = await window.sb.auth.updateUser({ password: a });
+      if (r.error) throw r.error;
+      $("rs-form").style.display = "none";
+      $("rs-done").style.display = "block";
+      // end the recovery session so the next visit is a clean sign-in
+      window.sb.auth.signOut();
+    } catch (e) {
+      show(e.message || "Couldn't update the password.", false);
+      $("rs-save").disabled = false;
+    }
+  };
+
+  $("pw2").addEventListener("keydown", function (e) { if (e.key === "Enter") $("rs-save").click(); });
+})();
+</script>
+</body>
+</html>
