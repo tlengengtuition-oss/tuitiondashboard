@@ -99,7 +99,8 @@
       if (mode === "up") {
         var name = $("name").value.trim();
         var up = await window.sb.auth.signUp(
-          { email: email, password: pw, options: { data: { full_name: name } } });
+          { email: email, password: pw, options: { data: { full_name: name },
+            emailRedirectTo: new URL("confirmed.html", location.href).href } });
         if (up.error) throw up.error;
         if (up.data.session) { location.replace("index.html"); return; }  // confirm off → logged in
         showCreated(email, true);                                         // confirm on → success screen

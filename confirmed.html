@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Email confirmed · T-Leng Tuition</title>
+<link rel="stylesheet" href="assets/css/app.css?v=10">
+<style>
+  .cf-wrap{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .cf-card{max-width:440px;width:100%;background:#fff;border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:34px 30px;text-align:center}
+  .cf-brand{display:inline-flex;align-items:center;gap:10px;margin-bottom:22px}
+  .cf-brand .mono{background:var(--navy);color:#fff;font-weight:800;border-radius:9px;padding:8px 11px;
+    font-family:var(--serif,Georgia);letter-spacing:1px}
+  .cf-brand b{color:var(--navy);font-size:16px}
+  .cf-tick{width:66px;height:66px;border-radius:50%;background:rgba(14,124,123,.12);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+  .cf-tick svg{width:34px;height:34px}
+  .cf-h{font-family:var(--serif,Georgia);color:var(--navy);font-size:22px;margin:0 0 8px}
+  .cf-p{color:var(--muted);font-size:14.5px;line-height:1.5;margin:0 0 22px}
+  .cf-btn{display:inline-block;background:var(--navy);color:#fff;text-decoration:none;font-weight:700;
+    padding:12px 22px;border-radius:11px;font-size:14.5px}
+  .cf-btn:hover{opacity:.93}
+  .cf-sub{margin-top:16px;font-size:13px}
+  .cf-sub a{color:var(--teal);font-weight:700;text-decoration:none}
+  .cf-sub a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="cf-wrap">
+  <div class="cf-card">
+    <div class="cf-brand"><span class="mono">TL</span><b>T-Leng Tuition</b></div>
+    <div class="cf-tick">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0E7C7B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h1 class="cf-h" id="cf-h">Email confirmed</h1>
+    <p class="cf-p" id="cf-p">Your email address has been verified. You're all set.</p>
+    <a class="cf-btn" id="cf-btn" href="login.html">Sign in</a>
+    <div class="cf-sub" id="cf-sub"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  // supabase-js auto-parses the verification tokens from the URL. Give it a moment,
+  // then check whether the confirmation left the user signed in.
+  async function check() {
+    try {
+      var res = await window.sb.auth.getSession();
+      if (res && res.data && res.data.session) {
+        $("cf-h").textContent = "Email confirmed";
+        $("cf-p").textContent = "Your email is verified and you're signed in.";
+        $("cf-btn").textContent = "Go to dashboard";
+        $("cf-btn").setAttribute("href", "index.html");
+        $("cf-sub").innerHTML = '<a href="login.html">Use a different account</a>';
+      } else {
+        $("cf-sub").innerHTML = 'Signed up on another device? <a href="login.html">Sign in here</a>';
+      }
+    } catch (e) { /* leave the default confirmed message */ }
+  }
+  // small delay lets detectSessionInUrl finish processing the hash/query params
+  setTimeout(check, 400);
+})();
+</script>
+</body>
+</html>
