@@ -28,6 +28,18 @@
     }
   }
 
+  function planPrefill(){
+    if(editingId)return;                 // don't overwrite when editing an existing slot
+    var sid=$("m-student").value;
+    var slot=allSlots.find(function(x){return x.student_id===sid;});
+    if(!slot)return;                     // no existing slot to copy from
+    $("m-rate").value=slot.rate!=null?slot.rate:"";
+    $("m-split").value=slot.split||1;
+    if(!$("m-subject").value)$("m-subject").value=slot.subject||"";
+    if(!$("m-level").value)$("m-level").value=slot.level||"";
+    splitHint();
+  }
+
   function openModal(open, slot){
     $("modal").classList.toggle("on",open);
     $("m-msg").textContent="";$("m-msg").className="msg";
@@ -126,6 +138,7 @@
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});
     $("m-save").addEventListener("click",save);
+    $("m-student").addEventListener("change",planPrefill);
     ["m-rate","m-split","m-start","m-end"].forEach(function(id){var el=$(id);if(el)el.addEventListener("input",splitHint);});
     load();
   }

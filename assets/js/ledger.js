@@ -264,7 +264,10 @@
   function prefillFromSlot(){
     var sid=$("m-student").value;
     var slot=slots.find(function(x){return x.student_id===sid;});
-    if(!slot)return;
+    if(!slot){ // no recurring slot for this student — clear slot-derived fields
+      ["m-start","m-end","m-rate","m-subject","m-level"].forEach(function(id){$(id).value="";});
+      $("m-split").value="1"; recalcCost(); return;
+    }
     $("m-rate").value=slot.rate!=null?slot.rate:"";
     $("m-split").value=slot.split||1;
     $("m-start").value=hm(slot.start_time);
