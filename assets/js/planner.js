@@ -12,9 +12,22 @@
     $("m-student").innerHTML=students.length?students.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+"</option>";}).join(""):'<option value="">— no students yet —</option>';
   }
   function clearForm(){
-    $("m-subject").value="";$("m-level").value="";$("m-start").value="";$("m-end").value="";$("m-rate").value="";
+    $("m-subject").value="";$("m-level").value="";$("m-start").value="";$("m-end").value="";$("m-rate").value="";$("m-split").value="1";splitHint();
     $("m-day").value="0";if(students.length)$("m-student").value=students[0].id;
   }
+  function splitHint(){
+    var el=$("m-splithint");if(!el)return;
+    var rate=parseFloat($("m-rate").value),sp=Math.max(1,parseInt($("m-split").value,10)||1),
+        s=$("m-start").value,e=$("m-end").value;
+    if(!(rate>=0)||sp<2){el.textContent="";return;}
+    if(s&&e&&e>s){
+      var each=Math.round(TL.amount(rate,s,e)/sp*100)/100;
+      el.textContent="Each student pays "+TL.sgd(each)+" per lesson (rate ÷ "+sp+").";
+    } else {
+      el.textContent="Each student pays "+TL.sgd(Math.round(rate/sp*100)/100)+"/hr (rate ÷ "+sp+").";
+    }
+  }
+
   function openModal(open, slot){
     $("modal").classList.toggle("on",open);
     $("m-msg").textContent="";$("m-msg").className="msg";
@@ -24,7 +37,7 @@
       $("m-title").textContent="Edit slot";$("m-save").textContent="Save changes";
       $("m-student").value=slot.student_id;$("m-day").value=slot.weekday;
       $("m-subject").value=slot.subject||"";$("m-level").value=slot.level||"";$("m-start").value=hhmm(slot.start_time);
-      $("m-end").value=hhmm(slot.end_time);$("m-rate").value=slot.rate;
+      $("m-end").value=hhmm(slot.end_time);$("m-rate").value=slot.rate;$("m-split").value=slot.split||1;splitHint();
     }else{
       editingId=null;clearForm();
       $("m-title").textContent="Add weekly slot";$("m-save").textContent="Save slot";
@@ -40,13 +53,14 @@
     $("week").innerHTML=byDay.map(function(arr,d){
       var dayTotal=0;
       function slotHTML(s){
-        var cost=TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time));dayTotal+=cost;
+        var sp=s.split||1;
+        var cost=Math.round(TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time))/sp*100)/100;dayTotal+=cost;
         return '<div class="slot" data-edit="'+s.id+'">'+
           '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
           '<div class="t">'+hhmm(s.start_time)+"–"+hhmm(s.end_time)+'</div>'+
           (s.subject||s.level?'<div class="subj">'+esc([s.subject,s.level].filter(Boolean).join(" · "))+'</div>':"")+
           '<div class="s">'+esc(nameOf(s.student_id))+'</div>'+
-          '<div class="c">'+TL.sgd(cost)+'</div></div>';
+          '<div class="c">'+TL.sgd(cost)+(sp>1?' <span class="muted" style="font-weight:400">(÷'+sp+')</span>':'')+'</div></div>';
       }
       var inner;
       if(!arr.length){ inner='<div class="none">—</div>'; }
@@ -76,7 +90,7 @@
   async function load(){
     var st=await window.sb.from("students").select("id,name,active").order("name");
     if(!st.error){allStudents=st.data||[];students=allStudents.filter(function(s){return s.active!==false;});studentOptions();}
-    var res=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate");
+    var res=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split");
     if(res.error){$("p-total").textContent="Couldn't load schedule: "+res.error.message;return;}
     allSlots=res.data||[];render();
   }
@@ -96,7 +110,7 @@
     if(end<=start){msg.textContent="End time must be after start.";msg.className="msg err";return;}
     if(!(rate>=0)){msg.textContent="Enter an hourly rate.";msg.className="msg err";return;}
     var payload={tutor_id:userId,student_id:sid,weekday:parseInt($("m-day").value,10),
-      start_time:start,end_time:end,subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate};
+      start_time:start,end_time:end,subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:Math.max(1,parseInt($("m-split").value,10)||1)};
     $("m-save").disabled=true;
     var res=editingId
       ? await window.sb.from("recurring_slots").update(payload).eq("id",editingId)
@@ -112,6 +126,7 @@
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});
     $("m-save").addEventListener("click",save);
+    ["m-rate","m-split","m-start","m-end"].forEach(function(id){var el=$(id);if(el)el.addEventListener("input",splitHint);});
     load();
   }
   TL.requireAuth("planner",init);
