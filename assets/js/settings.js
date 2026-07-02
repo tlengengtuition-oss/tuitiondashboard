@@ -105,6 +105,51 @@
     } finally { $("mfa-disable").disabled = false; }
   }
 
+  // ---- Your data: export + delete ----
+  async function exportData(){
+    var m=$("data-msg"); m.textContent="Gathering your data…"; m.className="msg";
+    $("export-btn").disabled=true;
+    try{
+      var tables=["profiles","students","recurring_slots","lessons","exams","invoices"];
+      var bundle={ exported_at:new Date().toISOString(), account:userId };
+      for(var i=0;i<tables.length;i++){
+        var r=await window.sb.from(tables[i]).select("*");
+        bundle[tables[i]]=r.error?("(error: "+r.error.message+")"):(r.data||[]);
+      }
+      var blob=new Blob([JSON.stringify(bundle,null,2)],{type:"application/json"});
+      var url=URL.createObjectURL(blob),a=document.createElement("a");
+      var d=new Date();
+      a.href=url;a.download="tleng-data-"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+".json";
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(url);},4000);
+      m.textContent="Downloaded."; m.className="msg ok";
+    }catch(e){ m.textContent="Export failed: "+(e.message||e); m.className="msg err"; }
+    finally{ $("export-btn").disabled=false; }
+  }
+
+  async function deleteAccount(){
+    var m=$("data-msg");
+    if(!confirm("This permanently deletes ALL your students, lessons, invoices and settings. This cannot be undone. Continue?"))return;
+    var typed=prompt("To confirm, type DELETE below:");
+    if(typed!=="DELETE"){ m.textContent="Deletion cancelled."; m.className="msg"; return; }
+    $("delete-btn").disabled=true; m.textContent="Deleting…"; m.className="msg";
+    try{
+      // remove any materials files this account owns, then their rows
+      var mats=await window.sb.from("materials").select("file_path").eq("owner_id",userId);
+      if(mats.data&&mats.data.length){ await window.sb.storage.from("materials").remove(mats.data.map(function(x){return x.file_path;})); }
+      await window.sb.from("materials").delete().eq("owner_id",userId);
+      await window.sb.from("invoices").delete().eq("tutor_id",userId);
+      await window.sb.from("students").delete().eq("tutor_id",userId);  // cascades lessons, slots, exams
+      await window.sb.from("profiles").delete().eq("id",userId);
+      await window.sb.auth.signOut();
+      alert("Your data has been deleted. You'll be signed out now.");
+      location.replace("login.html");
+    }catch(e){
+      m.textContent="Couldn't complete deletion: "+(e.message||e); m.className="msg err";
+      $("delete-btn").disabled=false;
+    }
+  }
+
   function init(user) {
     userId = user.id;
     $("save").addEventListener("click", save);
@@ -113,6 +158,8 @@
     $("mfa-verify").addEventListener("click", mfaVerify);
     $("mfa-cancel").addEventListener("click", mfaCancel);
     $("mfa-disable").addEventListener("click", mfaDisable);
+    $("export-btn").addEventListener("click", exportData);
+    $("delete-btn").addEventListener("click", deleteAccount);
     load();
     refreshMfa();
   }

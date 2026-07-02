@@ -118,6 +118,17 @@
       <div><button class="btn" id="mfa-disable" style="color:var(--owed)">Turn off two-factor</button></div>
     </div>
   </div>
+
+  <div class="card panel" style="max-width:560px;margin-top:18px">
+    <h2>Your data</h2>
+    <p class="muted" style="font-size:13.5px;margin-bottom:14px">
+      Download a copy of everything in your account, or permanently delete it.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <button class="btn" id="export-btn">Download my data (JSON)</button>
+      <button class="btn" id="delete-btn" style="color:var(--owed);border-color:var(--owed)">Delete my account &amp; data</button>
+    </div>
+    <div class="msg" id="data-msg" style="margin-top:10px"></div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
