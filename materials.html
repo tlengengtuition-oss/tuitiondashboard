@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teaching materials · T-Leng Tuition</title>
+<link rel="stylesheet" href="assets/css/app.css?v=10">
+<style>
+  .mat-filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+  .mat-filters .field{margin:0}
+  .mat-filters select{min-width:120px}
+  .topic-group{margin-bottom:18px}
+  .topic-head{font-weight:800;color:var(--navy);font-size:15px;margin:0 0 8px;padding-bottom:5px;border-bottom:2px solid var(--gold)}
+  .mat-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .mat-row:last-child{border-bottom:none}
+  .mat-ic{flex:0 0 34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+  .mat-ic.slides{background:#B5892B}
+  .mat-ic.worksheet{background:#0E7C7B}
+  .mat-ic.other{background:#8a8577}
+  .mat-body{flex:1;min-width:0}
+  .mat-title{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mat-meta{color:var(--muted);font-size:12px;margin-top:1px}
+  .mat-act{flex:0 0 auto;display:flex;gap:8px}
+  .mat-act button{all:unset;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:8px;padding:6px 12px;border:1px solid var(--line)}
+  .mat-act .dl{color:var(--navy)}
+  .mat-act .rm{color:var(--owed);border-color:transparent}
+  .mat-empty{color:var(--muted);font-size:14px;padding:20px 2px}
+  .noaccess{max-width:440px;margin:40px auto;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="view">
+  <div id="mat-app">
+    <div class="toolbar">
+      <div class="sub" id="mat-count">Loading materials…</div>
+      <button class="btn btn-gold" id="add-btn">+ Upload material</button>
+    </div>
+
+    <div class="mat-filters">
+      <div class="field"><label for="f-subject">Subject</label>
+        <select id="f-subject"><option value="">All subjects</option></select></div>
+      <div class="field"><label for="f-level">Level</label>
+        <select id="f-level"><option value="">All levels</option></select></div>
+      <div class="field"><label for="f-stream">Stream</label>
+        <select id="f-stream"><option value="">All streams</option></select></div>
+    </div>
+
+    <div id="mat-list"><div class="mat-empty">Loading…</div></div>
+  </div>
+
+  <div class="noaccess" id="mat-noaccess" style="display:none">
+    <h2>Not available</h2>
+    <p>The materials library isn't available on this account.</p>
+    <a class="btn" href="index.html">Back to dashboard</a>
+  </div>
+
+  <!-- upload modal -->
+  <div class="modal-backdrop" id="u-modal">
+    <div class="modal card">
+      <h2 id="u-title">Upload material</h2>
+      <div class="field">
+        <label for="u-file">File <span class="muted">(pptx, docx, pdf…)</span></label>
+        <input id="u-file" type="file" accept=".pptx,.ppt,.docx,.doc,.pdf,.xlsx,.zip">
+      </div>
+      <div class="field"><label for="u-title-in">Title</label><input id="u-title-in" type="text" placeholder="e.g. Quadratic Equations — Lesson Slides"></div>
+      <div class="row2">
+        <div class="field"><label for="u-subject">Subject</label>
+          <input id="u-subject" list="dl-subject" type="text" placeholder="Math">
+          <datalist id="dl-subject"><option value="Math"><option value="Science"><option value="English"><option value="Computing"></datalist></div>
+        <div class="field"><label for="u-level">Level</label>
+          <input id="u-level" list="dl-level" type="text" placeholder="Sec 3">
+          <datalist id="dl-level"><option value="P5"><option value="P6"><option value="Sec 1"><option value="Sec 2"><option value="Sec 3"><option value="Sec 4"><option value="JC1"><option value="JC2"></datalist></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="u-stream">Stream</label>
+          <select id="u-stream"><option value="">— none —</option><option value="G1">G1</option><option value="G2">G2</option><option value="G3">G3</option></select></div>
+        <div class="field"><label for="u-kind">Type</label>
+          <select id="u-kind"><option value="slides">Slides</option><option value="worksheet">Worksheet</option><option value="other">Other</option></select></div>
+      </div>
+      <div class="field"><label for="u-topic">Topic</label><input id="u-topic" type="text" placeholder="e.g. Quadratic Equations"></div>
+      <div class="msg" id="u-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="u-cancel">Cancel</button>
+        <button class="btn btn-primary" id="u-save">Upload</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/materials.js"></script>
+</body>
+</html>
