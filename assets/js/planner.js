@@ -39,7 +39,7 @@
     var weekTotal=0;
     $("week").innerHTML=byDay.map(function(arr,d){
       var dayTotal=0;
-      var inner=arr.length?arr.map(function(s){
+      function slotHTML(s){
         var cost=TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time));dayTotal+=cost;
         return '<div class="slot" data-edit="'+s.id+'">'+
           '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
@@ -47,7 +47,21 @@
           (s.subject||s.level?'<div class="subj">'+esc([s.subject,s.level].filter(Boolean).join(" · "))+'</div>':"")+
           '<div class="s">'+esc(nameOf(s.student_id))+'</div>'+
           '<div class="c">'+TL.sgd(cost)+'</div></div>';
-      }).join(""):'<div class="none">—</div>';
+      }
+      var inner;
+      if(!arr.length){ inner='<div class="none">—</div>'; }
+      else {
+        // group consecutive slots that start at the same time so they sit side by side
+        var groups=[],cur=null;
+        arr.forEach(function(s){
+          if(cur&&cur.key===s.start_time){cur.items.push(s);}
+          else {cur={key:s.start_time,items:[s]};groups.push(cur);}
+        });
+        inner=groups.map(function(g){
+          var cells=g.items.map(slotHTML).join("");
+          return g.items.length>1?'<div class="slot-row">'+cells+'</div>':cells;
+        }).join("");
+      }
       weekTotal+=dayTotal;
       return '<div class="day"><h3 class="'+(arr.length?"has":"")+'"><span>'+SHORT[d]+'</span>'+
         '<span class="dtot">'+(dayTotal?TL.sgd(dayTotal):"")+'</span></h3><div class="slots">'+inner+'</div></div>';

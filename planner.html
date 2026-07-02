@@ -8,6 +8,9 @@
 <style>
   /* make the lesson time the visual anchor of each slot */
   .slot{padding-top:9px}
+  .slot-row{display:flex;gap:6px;align-items:stretch}
+  .slot-row .slot{flex:1;min-width:0}
+  .slot-row .slot .s,.slot-row .slot .subj{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .slot .t{color:var(--navy);font-weight:800;font-size:15px;letter-spacing:.01em;line-height:1.15}
   .slot .subj{color:var(--gold);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
   .slot .s{font-weight:600;font-size:13px;margin:3px 0 0;color:var(--ink)}
