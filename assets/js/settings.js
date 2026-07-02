@@ -129,24 +129,36 @@
 
   async function deleteAccount(){
     var m=$("data-msg");
-    if(!confirm("This permanently deletes ALL your students, lessons, invoices and settings. This cannot be undone. Continue?"))return;
+    if(!confirm("This permanently deletes your account and ALL your data (students, lessons, invoices, settings). This cannot be undone. Continue?"))return;
     var typed=prompt("To confirm, type DELETE below:");
     if(typed!=="DELETE"){ m.textContent="Deletion cancelled."; m.className="msg"; return; }
     $("delete-btn").disabled=true; m.textContent="Deleting…"; m.className="msg";
     try{
-      // remove any materials files this account owns, then their rows
+      // remove any materials files this account owns (DB cascade won't touch storage)
       var mats=await window.sb.from("materials").select("file_path").eq("owner_id",userId);
       if(mats.data&&mats.data.length){ await window.sb.storage.from("materials").remove(mats.data.map(function(x){return x.file_path;})); }
-      await window.sb.from("materials").delete().eq("owner_id",userId);
-      await window.sb.from("invoices").delete().eq("tutor_id",userId);
-      await window.sb.from("students").delete().eq("tutor_id",userId);  // cascades lessons, slots, exams
-      await window.sb.from("profiles").delete().eq("id",userId);
-      await window.sb.auth.signOut();
-      alert("Your data has been deleted. You'll be signed out now.");
+
+      // full server-side deletion: removes the login record + cascades all data
+      var res=await window.sb.functions.invoke("delete-account");
+      if(res.error) throw res.error;
+
+      try{ await window.sb.auth.signOut(); }catch(e){}
+      alert("Your account and all data have been permanently deleted.");
       location.replace("login.html");
     }catch(e){
-      m.textContent="Couldn't complete deletion: "+(e.message||e); m.className="msg err";
-      $("delete-btn").disabled=false;
+      // Fallback if the Edge Function isn't deployed: wipe the data rows directly.
+      try{
+        await window.sb.from("materials").delete().eq("owner_id",userId);
+        await window.sb.from("invoices").delete().eq("tutor_id",userId);
+        await window.sb.from("students").delete().eq("tutor_id",userId);  // cascades lessons, slots, exams
+        await window.sb.from("profiles").delete().eq("id",userId);
+        await window.sb.auth.signOut();
+        alert("Your data has been deleted and you've been signed out.\n\n(Note: the account login record couldn't be removed automatically — deploy the delete-account function for full removal.)");
+        location.replace("login.html");
+      }catch(e2){
+        m.textContent="Couldn't complete deletion: "+(e2.message||e2); m.className="msg err";
+        $("delete-btn").disabled=false;
+      }
     }
   }
 
