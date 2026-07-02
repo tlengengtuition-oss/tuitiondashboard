@@ -264,14 +264,14 @@
   function prefillFromSlot(){
     var sid=$("m-student").value;
     var slot=slots.find(function(x){return x.student_id===sid;});
-    if(slot){
-      if(!$("m-rate").value)$("m-rate").value=slot.rate;
-      $("m-split").value=slot.split||1;
-      if(!$("m-start").value)$("m-start").value=hm(slot.start_time);
-      if(!$("m-end").value)$("m-end").value=hm(slot.end_time);
-      if(!$("m-subject").value&&slot.subject)$("m-subject").value=slot.subject;if(!$("m-level").value&&slot.level)$("m-level").value=slot.level;
-      recalcCost();
-    }
+    if(!slot)return;
+    $("m-rate").value=slot.rate!=null?slot.rate:"";
+    $("m-split").value=slot.split||1;
+    $("m-start").value=hm(slot.start_time);
+    $("m-end").value=hm(slot.end_time);
+    $("m-subject").value=slot.subject||"";
+    $("m-level").value=slot.level||"";
+    recalcCost();
   }
   function openAdd(open, lesson){
     $("modal").classList.toggle("on",open);
