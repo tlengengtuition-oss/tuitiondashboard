@@ -51,6 +51,13 @@
   .brk .bv{font-weight:700;white-space:nowrap;text-align:right}
   .brk .bv small{display:block;color:var(--owed);font-weight:600;font-size:11px}
   #fy-tiles .note{font-size:11px}
+  .mprog-card{padding:16px 18px}
+  .mprog-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+  .mprog-lbl{font-weight:700;font-size:14px;color:var(--navy)}
+  .mprog-pct{font-weight:800;font-size:17px;color:var(--teal)}
+  .mprog-track{height:12px;background:#eee7d6;border-radius:7px;overflow:hidden}
+  .mprog-fill{height:100%;background:var(--teal);border-radius:7px;transition:width .35s ease}
+  .mprog-sub{margin-top:8px;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -83,6 +90,12 @@
       <div class="val" id="k-projected">—</div><div class="note">booked this month, excl. cancelled</div></div>
     <div class="card kpi"><div class="label">Lessons this week</div>
       <div class="val" id="k-week">—</div><div class="note" id="k-week-n">Mon–Sun</div></div>
+  </div>
+
+  <div class="card panel mprog-card">
+    <div class="mprog-top"><span class="mprog-lbl" id="mprog-lbl">Collected this month</span><span class="mprog-pct" id="mprog-pct">—</span></div>
+    <div class="mprog-track"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div></div>
+    <div class="mprog-sub" id="mprog-sub"></div>
   </div>
 
   <div class="card panel">

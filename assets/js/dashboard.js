@@ -44,6 +44,15 @@
     var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
     $("k-projected").textContent=TL.sgd(projected);
     $("k-collected").textContent=TL.sgd(collected);
+    // collection progress for the month
+    var pct=projected>0?Math.round(collected/projected*100):0;
+    if($("mprog-fill"))$("mprog-fill").style.width=Math.min(100,pct)+"%";
+    if($("mprog-pct"))$("mprog-pct").textContent=projected>0?pct+"%":"—";
+    if($("mprog-sub")){
+      $("mprog-sub").textContent=projected>0
+        ? TL.sgd(collected)+" collected of "+TL.sgd(projected)+" booked · "+TL.sgd(projected-collected)+" outstanding"
+        : "No lessons booked this month yet.";
+    }
     var d1=new Date(selY,selM,1);
     $("k-collected-n").textContent=d1.toLocaleString("en-SG",{month:"long"});
     if($("dm-label"))$("dm-label").textContent=d1.toLocaleString("en-SG",{month:"long",year:"numeric"});
