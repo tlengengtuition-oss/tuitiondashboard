@@ -12,20 +12,19 @@
     if(st){
       editingId=st.id;
       $("m-title").textContent="Edit student";$("m-save").textContent="Save changes";
-      $("m-name").value=st.name||"";$("m-kind").value=st.kind||"individual";
+      $("m-name").value=st.name||"";
       $("m-level").value=st.level||"";$("m-contact").value=st.contact||"";$("m-recipient").value=st.recipient_name||"";$("m-notes").value=st.notes||"";
     }else{
       editingId=null;
       $("m-title").textContent="Add student";$("m-save").textContent="Save student";
       ["m-name","m-level","m-contact","m-recipient","m-notes"].forEach(function(id){$(id).value="";});
-      $("m-kind").value="individual";
     }
     $("m-name").focus();
   }
   async function save(){
     var name=$("m-name").value.trim(),msg=$("m-msg");
     if(!name){msg.textContent="Give the student a name.";msg.className="msg err";return;}
-    var fields={name:name,kind:$("m-kind").value,
+    var fields={name:name,
       level:$("m-level").value.trim()||null,contact:$("m-contact").value.trim()||null,
       recipient_name:$("m-recipient").value.trim()||null,
       notes:$("m-notes").value.trim()||null};
@@ -96,7 +95,6 @@
         '<button class="tact del" data-del="'+r.id+'">Remove</button>';
     return '<tr class="'+(active?"":"inactive")+'" data-id="'+r.id+'">'+
       '<td class="name" data-label="Name"><a class="slink" href="student.html?id='+r.id+'">'+esc(r.name)+"</a></td>"+
-      '<td data-label="Type"><span class="kind-tag">'+esc(r.kind)+"</span></td>"+
       '<td data-label="Level">'+(r.level?esc(r.level):'<span class="muted">—</span>')+"</td>"+
       '<td data-label="Contact">'+(r.contact?esc(r.contact):'<span class="muted">—</span>')+"</td>"+
       '<td class="acts">'+acts+"</td></tr>";

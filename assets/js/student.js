@@ -38,7 +38,7 @@
 
   function renderHead(){
     var items=[];
-    items.push({k:"Type",v:'<span class="kind-tag">'+esc(student.kind)+'</span>'+(student.active?"":' <span class="kind-tag">discontinued</span>')});
+    if(!student.active)items.push({k:"Status",v:'<span class="kind-tag">discontinued</span>'});
     if(student.level)items.push({k:"Level",v:esc(student.level)});
     if(student.contact)items.push({k:"Contact",v:esc(student.contact)});
     if(student.recipient_name)items.push({k:"Messages to",v:esc(student.recipient_name)});
@@ -51,7 +51,7 @@
   }
   function openEdit(){
     if(!student)return;
-    $("e-name").value=student.name||"";$("e-kind").value=student.kind||"individual";
+    $("e-name").value=student.name||"";
     $("e-level").value=student.level||"";$("e-contact").value=student.contact||"";
     $("e-recipient").value=student.recipient_name||"";$("e-notes").value=student.notes||"";
     $("e-msg").textContent="";$("e-msg").className="msg";
@@ -63,7 +63,7 @@
     if(!name){msg.textContent="Give the student a name.";msg.className="msg err";return;}
     var b=$("e-save");b.disabled=true;
     var res=await window.sb.from("students").update({
-      name:name,kind:$("e-kind").value,
+      name:name,
       level:$("e-level").value.trim()||null,contact:$("e-contact").value.trim()||null,
       recipient_name:$("e-recipient").value.trim()||null,notes:$("e-notes").value.trim()||null
     }).eq("id",sid);

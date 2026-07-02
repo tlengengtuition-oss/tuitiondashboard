@@ -12,6 +12,17 @@
   .genwrap .btn:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
   .genwrap .gennav{padding:9px 11px;font-weight:700;border-left:none}
   .genwrap #gen-btn,.genwrap #gen-month-btn{border-left:none;border-right:none}
+  .combine-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;background:var(--navy);color:#fff;
+    border-radius:12px;padding:12px 16px;margin-bottom:12px}
+  .combine-bar .cb-txt{font-weight:700;font-size:14px}
+  .combine-bar .cb-sum{opacity:.85;font-size:13px}
+  .combine-bar .spacer{flex:1}
+  .combine-bar button{all:unset;cursor:pointer;font-weight:700;font-size:13px;border-radius:8px;padding:7px 14px}
+  .combine-bar .cb-inv{background:var(--gold);color:#1a1a1a}
+  .combine-bar .cb-rem{background:rgba(255,255,255,.16);color:#fff}
+  .combine-bar .cb-clear{background:transparent;color:#fff;opacity:.75;padding:7px 6px}
+  .gsel{display:flex;align-items:center;gap:9px}
+  .gsel input{width:17px;height:17px;accent-color:var(--gold);cursor:pointer}
 </style>
 </head>
 <body>
@@ -36,6 +47,7 @@
   </div>
 
   <div class="section-title">Outstanding by student <span class="hint" id="out-hint"></span></div>
+  <div id="combine-bar" class="combine-bar" style="display:none"></div>
   <div id="outstanding"></div>
 
   <div class="section-title">Records <span class="hint" id="month-hint"></span>
