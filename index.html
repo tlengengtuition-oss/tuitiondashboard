@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=11">
+<link rel="stylesheet" href="assets/css/app.css?v=10">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#fffdf7,#fbf4e4);border:1px solid var(--gold);
@@ -55,9 +55,14 @@
   .mprog-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
   .mprog-lbl{font-weight:700;font-size:14px;color:var(--navy)}
   .mprog-pct{font-weight:800;font-size:17px;color:var(--teal)}
-  .mprog-track{height:12px;background:#eee7d6;border-radius:7px;overflow:hidden}
-  .mprog-fill{height:100%;background:var(--teal);border-radius:7px;transition:width .35s ease}
-  .mprog-sub{margin-top:8px;color:var(--muted);font-size:13px}
+  .mprog-track{height:12px;background:#eee7d6;border-radius:7px;overflow:hidden;display:flex}
+  .mprog-fill{height:100%;background:var(--teal);transition:width .35s ease}
+  .mprog-owed{height:100%;background:var(--owed);transition:width .35s ease}
+  .mprog-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+  .mprog-legend b{color:var(--ink);font-weight:700}
+  .mprog-legend .mdot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+  .mdot.teal{background:var(--teal)} .mdot.red{background:var(--owed)} .mdot.grey{background:#BCB3A0}
+  .mprog-sub{margin-top:8px;color:var(--muted);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -94,7 +99,12 @@
 
   <div class="card panel mprog-card">
     <div class="mprog-top"><span class="mprog-lbl" id="mprog-lbl">Collected this month</span><span class="mprog-pct" id="mprog-pct">—</span></div>
-    <div class="mprog-track"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div></div>
+    <div class="mprog-track"><div class="mprog-fill" id="mprog-fill" style="width:0%"></div><div class="mprog-owed" id="mprog-owed" style="width:0%"></div></div>
+    <div class="mprog-legend" id="mprog-legend">
+      <span><i class="mdot teal"></i>Collected <b id="mprog-c">—</b></span>
+      <span><i class="mdot red"></i>Owed <b id="mprog-o">—</b></span>
+      <span><i class="mdot grey"></i>Upcoming <b id="mprog-u">—</b></span>
+    </div>
     <div class="mprog-sub" id="mprog-sub"></div>
   </div>
 
@@ -165,9 +175,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=11"></script>
-<script src="assets/js/supabase.js?v=11"></script>
-<script src="assets/js/app.js?v=11"></script>
-<script src="assets/js/dashboard.js?v=11"></script>
+<script src="assets/js/config.js?v=10"></script>
+<script src="assets/js/supabase.js?v=10"></script>
+<script src="assets/js/app.js?v=10"></script>
+<script src="assets/js/dashboard.js?v=10"></script>
 </body>
 </html>

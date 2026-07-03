@@ -44,15 +44,21 @@
     var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
     $("k-projected").textContent=TL.sgd(projected);
     $("k-collected").textContent=TL.sgd(collected);
-    // collection progress for the month
+    // collection progress: collected (teal) + owed (red) + upcoming (grey remainder)
+    var owed=month.filter(function(l){return l.status==="done"&&!l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
+    var upcoming=Math.max(0,projected-collected-owed);
     var pct=projected>0?Math.round(collected/projected*100):0;
+    var owedPct=projected>0?Math.round(owed/projected*100):0;
     if($("mprog-fill"))$("mprog-fill").style.width=Math.min(100,pct)+"%";
+    if($("mprog-owed"))$("mprog-owed").style.width=Math.min(100-Math.min(100,pct),owedPct)+"%";
     if($("mprog-pct"))$("mprog-pct").textContent=projected>0?pct+"%":"—";
-    if($("mprog-sub")){
-      $("mprog-sub").textContent=projected>0
-        ? TL.sgd(collected)+" collected of "+TL.sgd(projected)+" booked · "+TL.sgd(projected-collected)+" outstanding"
-        : "No lessons booked this month yet.";
-    }
+    if($("mprog-c"))$("mprog-c").textContent=TL.sgd(collected);
+    if($("mprog-o"))$("mprog-o").textContent=TL.sgd(owed);
+    if($("mprog-u"))$("mprog-u").textContent=TL.sgd(upcoming);
+    if($("mprog-legend"))$("mprog-legend").style.display=projected>0?"flex":"none";
+    if($("mprog-sub"))$("mprog-sub").textContent=projected>0
+      ? TL.sgd(collected)+" collected of "+TL.sgd(projected)+" booked this month"
+      : "No lessons booked this month yet.";
     var d1=new Date(selY,selM,1);
     $("k-collected-n").textContent=d1.toLocaleString("en-SG",{month:"long"});
     if($("dm-label"))$("dm-label").textContent=d1.toLocaleString("en-SG",{month:"long",year:"numeric"});
@@ -99,15 +105,30 @@
     todaySlotBy={};
     function renderDay(listId, subId, headId, dateObj, label, withNote){
       var wday=(dateObj.getDay()+6)%7, dISO=iso(dateObj);
-      var day=slots.filter(function(s){return s.weekday===wday;})
-        .sort(function(a,b){return (a.start_time||"").localeCompare(b.start_time||"");});
+      // merge: actual lessons dated this day + recurring slots for this weekday not already logged
+      var seen={}, cancelled={}, day=[];
+      lessons.filter(function(l){return l.lesson_date===dISO&&l.status==="cancelled";}).forEach(function(l){
+        cancelled[l.student_id+"|"+hm(l.start_time)]=1;   // a cancelled lesson overrides the recurring slot
+      });
+      lessons.filter(function(l){return l.lesson_date===dISO&&l.status!=="cancelled";}).forEach(function(l){
+        seen[l.student_id+"|"+hm(l.start_time)]=1;
+        day.push({student_id:l.student_id,start_time:l.start_time,end_time:l.end_time,subject:l.subject});
+      });
+      slots.filter(function(s){return s.weekday===wday;}).forEach(function(s){
+        var key=s.student_id+"|"+hm(s.start_time);
+        if(seen[key]||cancelled[key])return;
+        seen[key]=1;
+        day.push({student_id:s.student_id,start_time:s.start_time,end_time:s.end_time,subject:s.subject});
+      });
+      day.sort(function(a,b){return (a.start_time||"").localeCompare(b.start_time||"");});
       if($(headId))$(headId).textContent=label;
       if($(subId))$(subId).textContent=dateObj.toLocaleDateString("en-SG",{weekday:"long",day:"numeric",month:"long"});
       if(!day.length){$(listId).innerHTML='<div class="tr-empty">No lessons scheduled.</div>';return;}
       $(listId).innerHTML=day.map(function(s){
         var btn="";
         if(withNote){
-          todaySlotBy[s.student_id]=s;
+          var slotForNote=slots.filter(function(x){return x.student_id===s.student_id&&hm(x.start_time)===hm(s.start_time);})[0];
+          if(slotForNote)todaySlotBy[s.student_id]=slotForNote;
           var les=todayLesBy[s.student_id];
           var has=les&&(les.topics||les.homework||les.remarks);
           btn='<button class="tnote'+(has?" has":"")+'" data-note-stu="'+s.student_id+'">'+(has?"Edit note":"Add note")+'</button>';
@@ -281,7 +302,7 @@
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,amount,paid,status,subject,level,topics,homework,remarks");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,amount,paid,status,subject,level,topics,homework,remarks");
     var lessons=ls.data||[];
 
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
