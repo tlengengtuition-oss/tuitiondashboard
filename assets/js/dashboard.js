@@ -157,8 +157,8 @@
         }
         return '<div class="teach-row"><div class="tr-time">'+hm(s.start_time)+'</div>'+
           '<div class="tr-body"><div class="tr-name-row"><div class="tr-name"><a class="snl" href="student.html?id='+s.student_id+'">'+esc(nameById[s.student_id]||"—")+'</a>'+
-          (s.subject?'<span class="tr-subj">'+esc(s.subject)+'</span>':'')+'</div>'+btn+'</div>'+
-          '<div class="tr-cols"><div class="tr-notes">'+summarizeOne(lastBeforeSubject(s.student_id,dISO,s.subject),s.subject)+'</div>'+examChips(s.student_id)+'</div>'+
+          (s.subject?'<span class="tr-subj">'+esc(s.subject)+'</span>':'')+'</div>'+examChips(s.student_id)+btn+'</div>'+
+          '<div class="tr-notes">'+summarizeOne(lastBeforeSubject(s.student_id,dISO,s.subject),s.subject)+'</div>'+
           '</div></div>';
       }).join("");
       if(withNote)$(listId).querySelectorAll("[data-note-stu]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteStu);});});
