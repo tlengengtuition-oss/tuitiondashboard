@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=10">
+<link rel="stylesheet" href="assets/css/app.css?v=18">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#fffdf7,#fbf4e4);border:1px solid var(--gold);
@@ -30,7 +30,7 @@
   .teach-sec{margin-bottom:16px}
   .teach-sec h2{margin-bottom:2px}
   .teach-sub{color:var(--muted);font-size:13px;margin-bottom:6px}
-  .teach-row{display:flex;gap:13px;align-items:flex-start;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:10px}
+  .teach-row{display:flex;gap:13px;align-items:flex-start;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:10px;overflow:hidden}
   .teach-row:first-child{border-top:1px solid var(--line)}
   .tr-time{flex:0 0 auto;min-width:52px;text-align:center;background:var(--cream);border:1px solid var(--line);color:var(--navy);font-weight:800;font-size:12.5px;border-radius:8px;padding:6px 8px}
   .tr-body{flex:1;min-width:0}
@@ -45,14 +45,21 @@
   .tr-note{font-size:13px;line-height:1.55;margin-top:1px}
   .tr-note b{color:var(--navy)}
   .tr-recap.prev{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);opacity:.9}
-  .tr-cols{display:flex;gap:12px;align-items:stretch;margin-top:9px;flex-wrap:wrap}
-  .tr-notes{flex:1;min-width:220px;background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
-  .tr-exams{flex:0 0 auto;width:200px;background:rgba(179,64,47,.06);border:1px solid rgba(179,64,47,.25);border-radius:10px;padding:9px 12px}
+  .tr-cols{display:flex;gap:12px;align-items:stretch;margin-top:9px;flex-wrap:wrap;min-width:0}
+  .tr-notes{flex:1 1 220px;min-width:0;max-width:100%;background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:9px 12px;overflow-wrap:anywhere}
+  .tr-exams{flex:0 1 200px;min-width:0;max-width:100%;background:rgba(179,64,47,.06);border:1px solid rgba(179,64,47,.25);border-radius:10px;padding:9px 12px}
   .tr-exh{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--owed);margin-bottom:5px}
   .exchip{padding:3px 0}
   .exchip .ex-l{font-weight:700;color:var(--navy);display:block;font-size:12.5px}
   .exchip .ex-d{color:var(--muted);font-size:11px}
   .tr-empty{color:var(--muted);font-size:12.5px;font-style:italic;margin-top:4px}
+  .tr-notes,.tr-exams{overflow-wrap:anywhere}
+  @media (max-width:600px){
+    .teach-row{padding:12px}
+    .tr-cols{flex-direction:column;gap:9px}
+    .tr-notes{min-width:0;width:100%}
+    .tr-exams{width:100%}
+  }
   .brk{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
   .brk:first-child{border-top:none}
   .brk .bn{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -184,9 +191,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=10"></script>
-<script src="assets/js/supabase.js?v=10"></script>
-<script src="assets/js/app.js?v=10"></script>
-<script src="assets/js/dashboard.js?v=10"></script>
+<script src="assets/js/config.js?v=18"></script>
+<script src="assets/js/supabase.js?v=18"></script>
+<script src="assets/js/app.js?v=18"></script>
+<script src="assets/js/dashboard.js?v=18"></script>
 </body>
 </html>

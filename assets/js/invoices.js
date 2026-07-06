@@ -33,11 +33,17 @@
     w.onload=function(){ setTimeout(function(){ w.focus(); w.print(); }, 250); };
   }
 
+  function todayISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
   async function togglePaid(inv){
     var next=inv.status==="paid"?"issued":"paid";
-    var res=await window.sb.from("invoices").update({status:next}).eq("id",inv.id);
+    var res=await window.sb.from("invoices").update({status:next,paid_date:next==="paid"?todayISO():null}).eq("id",inv.id);
     if(res.error){alert("Couldn't update: "+res.error.message);return;}
     load();
+  }
+  async function updatePaidDate(id,date){
+    var res=await window.sb.from("invoices").update({paid_date:date||null}).eq("id",id);
+    if(res.error){alert("Couldn't update the paid date: "+res.error.message);load();return;}
+    var v=invoices.filter(function(x){return x.id===id;})[0]; if(v)v.paid_date=date||null;
   }
   async function del(id){
     if(!confirm("Delete this saved invoice? This only removes the saved copy — it does not change any lessons or payments."))return;
@@ -54,12 +60,13 @@
     body.innerHTML=invoices.map(function(v){
       var paid=v.status==="paid";
       var badge=paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Issued</span>';
+      var pd=paid?' <input type="date" data-pd="'+v.id+'" value="'+(v.paid_date||"")+'" title="Paid on" style="font-size:12px;padding:2px 5px;border:1px solid var(--line);border-radius:6px;margin-left:6px;color:var(--muted)">':'';
       return '<tr>'+
         '<td data-label="Issued">'+prettyDate(v.issued_date)+'</td>'+
         '<td class="name" data-label="Student">'+(v.student_id?'<a class="snl" href="student.html?id='+v.student_id+'">'+esc(studentName(v))+'</a>':esc(studentName(v)))+'</td>'+
         '<td data-label="Invoice no.">'+esc(v.invoice_no)+'</td>'+
         '<td data-label="Total">'+TL.sgd(v.total)+'</td>'+
-        '<td data-label="Status">'+badge+'</td>'+
+        '<td data-label="Status">'+badge+pd+'</td>'+
         '<td class="acts">'+
           '<button class="tact" data-view="'+v.id+'">View</button>'+
           '<button class="tact" data-paid="'+v.id+'">'+(paid?"Mark unpaid":"Mark paid")+'</button>'+
@@ -70,12 +77,13 @@
     body.querySelectorAll("[data-view]").forEach(function(b){b.addEventListener("click",function(){openView(find(b.dataset.view));});});
     body.querySelectorAll("[data-paid]").forEach(function(b){b.addEventListener("click",function(){togglePaid(find(b.dataset.paid));});});
     body.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){del(b.dataset.del);});});
+    body.querySelectorAll("[data-pd]").forEach(function(inp){inp.addEventListener("change",function(){updatePaidDate(inp.dataset.pd,inp.value);});});
   }
 
   async function load(){
     var st=await window.sb.from("students").select("id,name");
     nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
-    var res=await window.sb.from("invoices").select("id,student_id,invoice_no,issued_date,total,status,data").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
+    var res=await window.sb.from("invoices").select("id,student_id,invoice_no,issued_date,total,status,paid_date,data").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
     if(res.error){$("i-count").textContent="Couldn't load invoices: "+res.error.message;return;}
     invoices=res.data||[];render();
   }

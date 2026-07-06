@@ -95,7 +95,8 @@
         var members=byHH[h];
         var hhLabel=members.map(function(m){return recipientById[m];}).filter(Boolean)[0]||contactById[members[0]]||"Household";
         var hhSum=members.reduce(function(t,m){return t+groups[m].reduce(function(s,l){return s+Number(l.amount);},0);},0);
-        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all with this phone number"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span></span><span class="gsum">'+TL.sgd(hhSum)+'</span></div>'+members.map(studentCard).join("")+'</div>';
+        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all with this phone number"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span></span>'+
+          '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+'</span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button></span></div>'+members.map(studentCard).join("")+'</div>';
       }
       return studentCard(id);
     }).join("");
@@ -121,6 +122,8 @@
         renderOutstanding(lastUnpaid);
       });
     });
+    $("outstanding").querySelectorAll("[data-hhinv]").forEach(function(b){b.addEventListener("click",function(){openInvoiceMany(b.dataset.hhinv.split(","));});});
+    $("outstanding").querySelectorAll("[data-hhrem]").forEach(function(b){b.addEventListener("click",function(){remindMany(b.dataset.hhrem.split(","));});});
     updateCombineBar();
   }
 
