@@ -93,8 +93,9 @@
         if(doneHH[h])return "";
         doneHH[h]=1;
         var members=byHH[h];
+        var hhLabel=members.map(function(m){return recipientById[m];}).filter(Boolean)[0]||contactById[members[0]]||"Household";
         var hhSum=members.reduce(function(t,m){return t+groups[m].reduce(function(s,l){return s+Number(l.amount);},0);},0);
-        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all with this parent"><span class="hh-name">⌂ '+esc(h)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span></span><span class="gsum">'+TL.sgd(hhSum)+'</span></div>'+members.map(studentCard).join("")+'</div>';
+        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all with this phone number"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span></span><span class="gsum">'+TL.sgd(hhSum)+'</span></div>'+members.map(studentCard).join("")+'</div>';
       }
       return studentCard(id);
     }).join("");
@@ -593,7 +594,7 @@
     profile=pr.error?null:pr.data;
 
     var st=await window.sb.from("students").select("id,name,active,contact,recipient_name").order("name");
-    students=st.data||[];nameById={};contactById={};recipientById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;householdBy[s.id]=(s.recipient_name||"").trim()||null;});
+    students=st.data||[];nameById={};contactById={};recipientById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;householdBy[s.id]=(function(c){var d=(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;})(s.contact);});
     studentOptions();
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
