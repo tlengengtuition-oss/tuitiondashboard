@@ -23,7 +23,7 @@
 
     var lres=await window.sb.from("lessons").select("id,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks").eq("student_id",sid);
     lessons=lres.data||[];
-    var xres=await window.sb.from("exams").select("id,exam_date,assessment_type,subject,topics,remarks").eq("student_id",sid);
+    var xres=await window.sb.from("exams").select("id,exam_date,assessment_type,subject,topics,remarks,score,max_score").eq("student_id",sid);
     exams=xres.data||[];
     var slres=await window.sb.from("recurring_slots").select("id,weekday,start_time,end_time,subject,rate").eq("student_id",sid);
     var slots=slres.data||[];
@@ -34,6 +34,7 @@
     renderNotes(lessons);
     renderSlots(slots);
     renderExams(exams);
+    renderProgress(exams);
   }
 
   function renderHead(){
@@ -194,6 +195,43 @@
     $("p-slots").innerHTML='<div class="slotwrap">'+rows+link+'</div>';
   }
 
+  function renderProgress(rows){
+    var pts=rows.filter(function(e){return e.score!=null&&e.max_score>0&&e.exam_date;})
+      .map(function(e){return {t:new Date(e.exam_date+"T00:00:00").getTime(),date:e.exam_date,pct:Math.round(e.score/e.max_score*100),subject:(e.subject||"General")};})
+      .sort(function(a,b){return a.t-b.t;});
+    var card=$("p-progress-card");
+    if(pts.length<2){ card.style.display="none"; return; }
+    card.style.display="";
+    var W=360,H=190,padL=32,padR=12,padT=12,padB=26;
+    var x0=padL,x1=W-padR,y0=H-padB,y1=padT;
+    var tmin=pts[0].t,tmax=pts[pts.length-1].t; if(tmax===tmin)tmax=tmin+1;
+    function X(t){return x0+(t-tmin)/(tmax-tmin)*(x1-x0);}
+    function Y(p){return y0-(p/100)*(y0-y1);}
+    var colors=["#0E7C7B","#B5892B","#1A2A4F","#B3402F","#6C4F8C","#2E7D32"];
+    // group by subject
+    var bySub={},order=[];
+    pts.forEach(function(p){ if(!bySub[p.subject]){bySub[p.subject]=[];order.push(p.subject);} bySub[p.subject].push(p); });
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:520px;display:block">';
+    // y gridlines 0/50/100
+    [0,50,100].forEach(function(g){var y=Y(g);svg+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#e7ddc7"/>'+
+      '<text x="'+(x0-6)+'" y="'+(y+3)+'" text-anchor="end" font-size="9" fill="#8a8577">'+g+'%</text>';});
+    // x labels (first + last date)
+    svg+='<text x="'+x0+'" y="'+(H-8)+'" font-size="9" fill="#8a8577">'+prettyDate(pts[0].date)+'</text>'+
+         '<text x="'+x1+'" y="'+(H-8)+'" text-anchor="end" font-size="9" fill="#8a8577">'+prettyDate(pts[pts.length-1].date)+'</text>';
+    order.forEach(function(sub,i){
+      var col=colors[i%colors.length],ps=bySub[sub];
+      if(ps.length>1){
+        var d=ps.map(function(p,j){return (j?"L":"M")+X(p.t).toFixed(1)+" "+Y(p.pct).toFixed(1);}).join(" ");
+        svg+='<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="2"/>';
+      }
+      ps.forEach(function(p){svg+='<circle cx="'+X(p.t).toFixed(1)+'" cy="'+Y(p.pct).toFixed(1)+'" r="3.2" fill="'+col+'"><title>'+esc(sub)+" · "+prettyDate(p.date)+" · "+p.pct+'%</title></circle>';});
+    });
+    svg+='</svg>';
+    var legend='<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:12px">'+
+      order.map(function(sub,i){return '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:'+colors[i%colors.length]+';display:inline-block"></i>'+esc(sub)+'</span>';}).join("")+'</div>';
+    $("p-progress").innerHTML=svg+legend;
+  }
+
   function renderExams(rows){
     if(!rows.length){$("p-exams").innerHTML='<p class="muted" style="font-size:13.5px">No exams yet.</p>';return;}
     var today=todayISO();
@@ -201,9 +239,10 @@
     $("p-exams").innerHTML=rows.map(function(e){
       var past=e.exam_date&&e.exam_date<today;
       var typ=e.assessment_type?'<span class="kind-tag">'+esc(e.assessment_type)+'</span> ':"";
-      return '<div class="lrow"'+(past?' style="opacity:.6"':"")+'><span class="lwhen">'+prettyDate(e.exam_date)+'</span>'+
+      var resu=(e.score!=null&&e.max_score)?'<b>'+esc(e.score+"/"+e.max_score)+'</b> <small class="muted">('+Math.round(e.score/e.max_score*100)+'%)</small>':(past?'<span class="muted">no result</span>':"");
+      return '<div class="lrow"'+(past&&e.score==null?' style="opacity:.6"':"")+'><span class="lwhen">'+prettyDate(e.exam_date)+'</span>'+
         '<span>'+typ+(e.subject?esc(e.subject):"")+'</span>'+
-        '<span class="right"><button class="tact" data-xed="'+e.id+'">Edit</button></span></div>';
+        '<span class="right">'+(resu?resu+' ':"")+'<button class="tact" data-xed="'+e.id+'">Edit</button></span></div>';
     }).join("");
     $("p-exams").querySelectorAll("[data-xed]").forEach(function(b){b.addEventListener("click",function(){openExam(b.dataset.xed);});});
   }
@@ -219,6 +258,8 @@
     $("x-subject").value=e?(e.subject||""):"";
     $("x-topics").value=e?(e.topics||""):"";
     $("x-remarks").value=e?(e.remarks||""):"";
+    $("x-score").value=e&&e.score!=null?e.score:"";
+    $("x-maxscore").value=e&&e.max_score!=null?e.max_score:"";
     $("x-msg").textContent="";$("x-msg").className="msg";
     $("x-modal").classList.add("on");
   }
@@ -228,7 +269,9 @@
     if(!date){msg.textContent="Set an exam date.";msg.className="msg err";return;}
     var fields={exam_date:date,assessment_type:$("x-type").value.trim()||null,
       subject:$("x-subject").value.trim()||null,topics:$("x-topics").value.trim()||null,
-      remarks:$("x-remarks").value.trim()||null};
+      remarks:$("x-remarks").value.trim()||null,
+      score:$("x-score").value!==""?parseFloat($("x-score").value):null,
+      max_score:$("x-maxscore").value!==""?parseFloat($("x-maxscore").value):null};
     var b=$("x-save");b.disabled=true;
     var res=examId
       ? await window.sb.from("exams").update(fields).eq("id",examId)

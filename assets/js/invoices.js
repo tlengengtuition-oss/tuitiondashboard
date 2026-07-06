@@ -56,7 +56,7 @@
       var badge=paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Issued</span>';
       return '<tr>'+
         '<td data-label="Issued">'+prettyDate(v.issued_date)+'</td>'+
-        '<td class="name" data-label="Student">'+esc(studentName(v))+'</td>'+
+        '<td class="name" data-label="Student">'+(v.student_id?'<a class="snl" href="student.html?id='+v.student_id+'">'+esc(studentName(v))+'</a>':esc(studentName(v)))+'</td>'+
         '<td data-label="Invoice no.">'+esc(v.invoice_no)+'</td>'+
         '<td data-label="Total">'+TL.sgd(v.total)+'</td>'+
         '<td data-label="Status">'+badge+'</td>'+

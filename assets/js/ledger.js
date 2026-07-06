@@ -1,6 +1,6 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedStudents = {}, lastUnpaid = [];
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedStudents = {}, lastUnpaid = [], householdBy = {};
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -77,12 +77,26 @@
       var sb=groups[b].reduce(function(t,l){return t+Number(l.amount);},0);return sb-sa;});
     if(!ids.length){$("outstanding").innerHTML='<div class="card empty"><h3>All settled 🎉</h3><p>No unpaid lessons right now.</p></div>';$("out-hint").textContent="";return;}
     $("out-hint").textContent=ids.length+(ids.length===1?" student owing":" students owing");
-    $("outstanding").innerHTML=ids.map(function(id){
+    function studentCard(id){
       var rows=groups[id].sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
       var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
       var lessonIds=rows.map(function(l){return l.id;});
       var inner=rows.map(function(l){return '<div class="lrow"><span class="lwhen">'+prettyDate(l.lesson_date)+"</span><span>"+(l.subject?esc(l.subject):'<span class="muted">lesson</span>')+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
-      return '<div class="card group"><div class="group-head"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select to bill together"><span class="gname">'+esc(nameById[id]||"—")+'</span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button><button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+      return '<div class="card group"><div class="group-head"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select to bill together"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button><button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+    }
+    // group owing students by household
+    var byHH={}; ids.forEach(function(id){var h=householdBy[id];if(h)(byHH[h]=byHH[h]||[]).push(id);});
+    var doneHH={};
+    $("outstanding").innerHTML=ids.map(function(id){
+      var h=householdBy[id];
+      if(h&&byHH[h].length>=2){
+        if(doneHH[h])return "";
+        doneHH[h]=1;
+        var members=byHH[h];
+        var hhSum=members.reduce(function(t,m){return t+groups[m].reduce(function(s,l){return s+Number(l.amount);},0);},0);
+        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all with this parent"><span class="hh-name">⌂ '+esc(h)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span></span><span class="gsum">'+TL.sgd(hhSum)+'</span></div>'+members.map(studentCard).join("")+'</div>';
+      }
+      return studentCard(id);
     }).join("");
     $("outstanding").querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){markPaid([b.dataset.pay]);});});
     $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",function(){if(confirm("Mark all these lessons as paid?"))markPaid(b.dataset.payall.split(","));});});
@@ -95,6 +109,15 @@
       cb.addEventListener("change",function(){
         if(cb.checked)selectedStudents[cb.dataset.sel]=1; else delete selectedStudents[cb.dataset.sel];
         updateCombineBar();
+      });
+    });
+    $("outstanding").querySelectorAll("[data-hh]").forEach(function(cb){
+      var h=decodeURIComponent(cb.dataset.hh);
+      var members=ids.filter(function(id){return householdBy[id]===h;});
+      cb.checked=members.length>0&&members.every(function(id){return selectedStudents[id];});
+      cb.addEventListener("change",function(){
+        members.forEach(function(id){ if(cb.checked)selectedStudents[id]=1; else delete selectedStudents[id]; });
+        renderOutstanding(lastUnpaid);
       });
     });
     updateCombineBar();
@@ -190,10 +213,11 @@
     $("month-hint").textContent=rows.length+" lessons";
     body.innerHTML=rows.map(function(l){
       var badge=l.status==="cancelled"?'<span class="kind-tag">cancelled</span>':(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
+      if(l.postponed)badge+=' <span class="kind-tag" style="background:#C8922A;color:#fff">postponed</span>';
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
-      return '<tr><td data-label="Date">'+prettyDate(l.lesson_date)+'</td><td class="name" data-label="Student">'+esc(nameById[l.student_id]||"—")+'</td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
+      return '<tr><td data-label="Date">'+prettyDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
         '<td class="acts"><button class="tact" data-edit="'+l.id+'">Postpone / edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("");
     body.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openAdd(true,monthById[b.dataset.edit]);});});
@@ -287,12 +311,12 @@
       $("m-date").value=lesson.lesson_date;
       $("m-subject").value=lesson.subject||"";$("m-level").value=lesson.level||"";
       $("m-start").value=hm(lesson.start_time);$("m-end").value=hm(lesson.end_time);
-      $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;
+      $("m-rate").value=lesson.rate;$("m-split").value=lesson.split||1;$("m-paid").checked=!!lesson.paid;$("m-postponed").checked=!!lesson.postponed;
       recalcCost();
     }else{
       editLessonId=null;
       $("m-title").textContent="Add lesson";$("m-save").textContent="Save lesson";
-      $("m-date").value=todayISO();$("m-paid").checked=false;
+      $("m-date").value=todayISO();$("m-paid").checked=false;$("m-postponed").checked=false;
       ["m-subject","m-level","m-start","m-end","m-rate","m-cost"].forEach(function(id){$(id).value="";});
       $("m-split").value="1";
       prefillFromSlot();
@@ -308,7 +332,7 @@
     var paid=$("m-paid").checked;
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
-      status:date>todayISO()?"scheduled":"done",paid:paid,paid_date:paid?date:null};
+      status:date>todayISO()?"scheduled":"done",paid:paid,paid_date:paid?date:null,postponed:$("m-postponed").checked};
     $("m-save").disabled=true;
     var res=editLessonId
       ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)
@@ -569,13 +593,13 @@
     profile=pr.error?null:pr.data;
 
     var st=await window.sb.from("students").select("id,name,active,contact,recipient_name").order("name");
-    students=st.data||[];nameById={};contactById={};recipientById={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;});
+    students=st.data||[];nameById={};contactById={};recipientById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;householdBy[s.id]=(s.recipient_name||"").trim()||null;});
     studentOptions();
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
     slots=sl.data||[];
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,rate,split,amount,paid,paid_date,status");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,rate,split,amount,paid,paid_date,status,postponed");
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
 

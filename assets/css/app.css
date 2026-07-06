@@ -1,4 +1,4 @@
-/* v12 */
+/* v13 */
 /* =====================================================================
    T-Leng Tuition Dashboard — house style
    navy / gold / cream / teal · Georgia headings · sans body
@@ -317,3 +317,8 @@ tr.inactive td.name{color:var(--muted)}
   .nav{display:flex;flex-direction:row;flex-wrap:wrap;width:100%;overflow:visible;gap:6px;margin:0}
   .nav a{flex:0 0 auto;white-space:nowrap}
 }
+
+
+/* clickable student names (link to profile) */
+a.snl{color:inherit;text-decoration:none;cursor:pointer}
+a.snl:hover{color:var(--gold);text-decoration:underline}

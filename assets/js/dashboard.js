@@ -83,26 +83,45 @@
   }
 
   function shortDate(d){return new Date(d+"T00:00:00").toLocaleDateString("en-SG",{day:"numeric",month:"short"});}
-  function summarizeLastN(list){
-    if(!list.length) return '<div class="tr-empty">No previous lessons recorded.</div>';
-    return list.map(function(l,i){
-      var head=(i===0?"Last lesson · ":"Before · ")+shortDate(l.lesson_date)+(l.subject?" · "+esc(l.subject):"");
-      var parts=[];
-      if(l.topics)   parts.push('<div class="tr-note"><b>Topics:</b> '+esc(l.topics)+'</div>');
-      if(l.homework) parts.push('<div class="tr-note"><b>Homework:</b> '+esc(l.homework)+'</div>');
-      if(l.remarks)  parts.push('<div class="tr-note"><b>Remarks:</b> '+esc(l.remarks)+'</div>');
-      return '<div class="tr-recap'+(i>0?" prev":"")+'"><div class="tr-when">'+head+'</div>'+
-        (parts.length?parts.join(""):'<div class="tr-empty">No notes recorded for that lesson.</div>')+'</div>';
-    }).join("");
+  function summarizeOne(l, subjLabel){
+    if(!l) return '<div class="tr-empty">No previous '+(subjLabel?esc(subjLabel)+' ':'')+'lesson recorded.</div>';
+    var head="Last "+(l.subject?esc(l.subject)+" ":"")+"lesson · "+shortDate(l.lesson_date);
+    var parts=[];
+    if(l.topics)   parts.push('<div class="tr-note"><b>Topics:</b> '+esc(l.topics)+'</div>');
+    if(l.homework) parts.push('<div class="tr-note"><b>Homework:</b> '+esc(l.homework)+'</div>');
+    if(l.remarks)  parts.push('<div class="tr-note"><b>Remarks:</b> '+esc(l.remarks)+'</div>');
+    return '<div class="tr-when">'+head+'</div>'+(parts.length?parts.join(""):'<div class="tr-empty">No notes recorded for that lesson.</div>');
   }
-  function renderTeaching(slots, lessons, nameById){
+  function renderTeaching(slots, lessons, nameById, exams){
     var doneByStu={};
     lessons.forEach(function(l){ if(l.status!=="done")return; (doneByStu[l.student_id]=doneByStu[l.student_id]||[]).push(l); });
     Object.keys(doneByStu).forEach(function(k){doneByStu[k].sort(function(a,b){return b.lesson_date.localeCompare(a.lesson_date);});});
-    function lastNBefore(stu, beforeISO, n){var a=doneByStu[stu]||[],out=[];for(var i=0;i<a.length&&out.length<n;i++){if(a[i].lesson_date<beforeISO)out.push(a[i]);}return out;}
     var today=new Date(); today.setHours(0,0,0,0);
     var tmr=new Date(today); tmr.setDate(today.getDate()+1);
     var todayISOv=iso(today);
+    // last done lesson before a date, matching subject when the upcoming lesson has one
+    function lastBeforeSubject(stu, beforeISO, subject){
+      var a=doneByStu[stu]||[], subj=(subject||"").trim().toLowerCase();
+      for(var i=0;i<a.length;i++){
+        if(a[i].lesson_date>=beforeISO)continue;
+        if(!subj)return a[i];
+        if((a[i].subject||"").trim().toLowerCase()===subj)return a[i];
+      }
+      return null;
+    }
+    // upcoming exams by student
+    var examsByStu={};
+    (exams||[]).forEach(function(e){ if(e.exam_date&&e.exam_date>=todayISOv){ (examsByStu[e.student_id]=examsByStu[e.student_id]||[]).push(e); } });
+    Object.keys(examsByStu).forEach(function(k){examsByStu[k].sort(function(a,b){return a.exam_date.localeCompare(b.exam_date);});});
+    function examChips(stu){
+      var up=examsByStu[stu]||[]; if(!up.length)return "";
+      var items=up.slice(0,3).map(function(e){
+        var d=new Date(e.exam_date+"T00:00:00"), days=Math.round((d-today)/86400000);
+        var lbl=[e.assessment_type,e.subject].filter(Boolean).join(" ")||"Exam";
+        return '<div class="exchip"><span class="ex-l">'+esc(lbl)+'</span><span class="ex-d">'+shortDate(e.exam_date)+' · '+(days<=0?"today":"in "+days+"d")+'</span></div>';
+      }).join("");
+      return '<div class="tr-exams"><div class="tr-exh">Upcoming exams</div>'+items+'</div>';
+    }
     // today's lessons + slots, keyed by student, for the quick-note button
     todayLesBy={}; lessons.forEach(function(l){ if(l.lesson_date===todayISOv&&l.status!=="cancelled")todayLesBy[l.student_id]=l; });
     todaySlotBy={};
@@ -137,9 +156,10 @@
           btn='<button class="tnote'+(has?" has":"")+'" data-note-stu="'+s.student_id+'">'+(has?"Edit note":"Add note")+'</button>';
         }
         return '<div class="teach-row"><div class="tr-time">'+hm(s.start_time)+'</div>'+
-          '<div class="tr-body"><div class="tr-name-row"><div class="tr-name">'+esc(nameById[s.student_id]||"—")+
+          '<div class="tr-body"><div class="tr-name-row"><div class="tr-name"><a class="snl" href="student.html?id='+s.student_id+'">'+esc(nameById[s.student_id]||"—")+'</a>'+
           (s.subject?'<span class="tr-subj">'+esc(s.subject)+'</span>':'')+'</div>'+btn+'</div>'+
-          summarizeLastN(lastNBefore(s.student_id,dISO,2))+'</div></div>';
+          '<div class="tr-cols"><div class="tr-notes">'+summarizeOne(lastBeforeSubject(s.student_id,dISO,s.subject),s.subject)+'</div>'+examChips(s.student_id)+'</div>'+
+          '</div></div>';
       }).join("");
       if(withNote)$(listId).querySelectorAll("[data-note-stu]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteStu);});});
     }
@@ -259,10 +279,10 @@
     }).join("");
 
     // per-student breakdown (by collected desc)
-    var sList=Object.keys(perStudent).map(function(id){var s=perStudent[id];return {name:nameByIdM[id]||"—",c:s.c,owe:s.owe,n:s.n};})
+    var sList=Object.keys(perStudent).map(function(id){var s=perStudent[id];return {id:id,name:nameByIdM[id]||"—",c:s.c,owe:s.owe,n:s.n};})
       .sort(function(a,b){return b.c-a.c||b.owe-a.owe;});
     $("fy-students").innerHTML=sList.length?sList.map(function(s){
-      return '<div class="brk"><span class="bn">'+esc(s.name)+'<div class="bmeta">'+s.n+' lesson'+(s.n===1?"":"s")+'</div></span>'+
+      return '<div class="brk"><span class="bn"><a class="snl" href="student.html?id='+s.id+'">'+esc(s.name)+'</a><div class="bmeta">'+s.n+' lesson'+(s.n===1?"":"s")+'</div></span>'+
         '<span class="bv">'+TL.sgd(s.c)+(s.owe>0?'<small>owed '+TL.sgd(s.owe)+'</small>':'')+'</span></div>';
     }).join(""):'<div class="muted" style="font-size:13.5px">No income recorded for this year.</div>';
 
@@ -349,7 +369,7 @@
     var ex=await window.sb.from("exams").select("student_id,exam_date,assessment_type,subject,topics");
     var exams=ex.data||[];
     renderExams(exams,nameById,"teach-exam-list",null);
-    renderTeaching(sl.data||[],lessons,nameById);
+    renderTeaching(sl.data||[],lessons,nameById,exams);
 
     if(!segWired){
       segWired=true;

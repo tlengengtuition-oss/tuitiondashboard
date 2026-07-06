@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=10">
+<link rel="stylesheet" href="assets/css/app.css?v=13">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#fffdf7,#fbf4e4);border:1px solid var(--gold);
@@ -44,6 +44,13 @@
   .tr-note{font-size:13px;line-height:1.5;margin-top:1px}
   .tr-note b{color:var(--navy)}
   .tr-recap.prev{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);opacity:.9}
+  .tr-cols{display:flex;gap:16px;align-items:flex-start;margin-top:5px;flex-wrap:wrap}
+  .tr-notes{flex:1;min-width:200px}
+  .tr-exams{flex:0 0 auto;max-width:230px;background:rgba(179,64,47,.06);border:1px solid rgba(179,64,47,.2);border-radius:9px;padding:8px 11px}
+  .tr-exh{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--owed);margin-bottom:5px}
+  .exchip{padding:3px 0}
+  .exchip .ex-l{font-weight:700;color:var(--navy);display:block;font-size:12.5px}
+  .exchip .ex-d{color:var(--muted);font-size:11px}
   .tr-empty{color:var(--muted);font-size:12.5px;font-style:italic;margin-top:4px}
   .brk{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
   .brk:first-child{border-top:none}
@@ -176,9 +183,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=10"></script>
-<script src="assets/js/supabase.js?v=10"></script>
-<script src="assets/js/app.js?v=10"></script>
-<script src="assets/js/dashboard.js?v=10"></script>
+<script src="assets/js/config.js?v=13"></script>
+<script src="assets/js/supabase.js?v=13"></script>
+<script src="assets/js/app.js?v=13"></script>
+<script src="assets/js/dashboard.js?v=13"></script>
 </body>
 </html>

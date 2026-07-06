@@ -22,10 +22,11 @@
       $("m-title").textContent="Edit exam";$("m-save").textContent="Save changes";
       $("m-student").value=ex.student_id;$("m-date").value=ex.exam_date||"";$("m-type").value=ex.assessment_type||"";
       $("m-subject").value=ex.subject||"";$("m-topics").value=ex.topics||"";$("m-remarks").value=ex.remarks||"";
+      $("m-score").value=ex.score!=null?ex.score:"";$("m-maxscore").value=ex.max_score!=null?ex.max_score:"";
     }else{
       editingId=null;
       $("m-title").textContent="Add exam";$("m-save").textContent="Save exam";
-      ["m-type","m-subject","m-topics","m-remarks"].forEach(function(id){$(id).value="";});
+      ["m-type","m-subject","m-topics","m-remarks","m-score","m-maxscore"].forEach(function(id){$(id).value="";});
       $("m-date").value="";
     }
   }
@@ -38,7 +39,7 @@
     var fields={student_id:sid,exam_date:date,
       assessment_type:$("m-type").value.trim()||null,
       subject:$("m-subject").value.trim()||null,
-      topics:$("m-topics").value.trim()||null,
+      topics:$("m-topics").value.trim()||null,score:$("m-score").value!==""?parseFloat($("m-score").value):null,max_score:$("m-maxscore").value!==""?parseFloat($("m-maxscore").value):null,
       remarks:$("m-remarks").value.trim()||null};
     $("m-save").disabled=true;
     var res=editingId
@@ -58,7 +59,7 @@
 
   function row(ex, upcoming){
     var acts='<button class="tact" data-edit="'+ex.id+'">Edit</button><button class="tact del" data-del="'+ex.id+'">Delete</button>';
-    var base='<td data-label="Date">'+prettyDate(ex.exam_date)+'</td><td class="name" data-label="Student">'+esc(nameById[ex.student_id]||"—")+"</td>"+
+    var base='<td data-label="Date">'+prettyDate(ex.exam_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+ex.student_id+'">'+esc(nameById[ex.student_id]||"—")+'</a></td>'+
       '<td data-label="Type">'+(ex.assessment_type?'<span class="kind-tag">'+esc(ex.assessment_type)+'</span>':'<span class="muted">—</span>')+"</td>"+
       '<td data-label="Subject">'+(ex.subject?esc(ex.subject):'<span class="muted">—</span>')+"</td>"+
       '<td data-label="Topics">'+(ex.topics?esc(ex.topics):'<span class="muted">—</span>')+"</td>";
@@ -66,6 +67,11 @@
       var d=daysAway(ex.exam_date);
       var soon=d<=14;
       base+='<td data-label="In"><span class="days'+(soon?" soon":"")+'" style="display:inline-block;min-width:46px"><b>'+d+'</b><small>'+(d===1?"day":"days")+'</small></span></td>';
+    }else{
+      var rhtml=(ex.score!=null&&ex.max_score)
+        ? '<b>'+esc(ex.score+"/"+ex.max_score)+'</b> <small class="muted">('+Math.round(ex.score/ex.max_score*100)+'%)</small>'
+        : '<span class="muted">— add result</span>';
+      base+='<td data-label="Result">'+rhtml+'</td>';
     }
     return '<tr>'+base+'<td class="acts">'+acts+'</td></tr>';
   }
@@ -81,7 +87,7 @@
     students=st.data||[];nameById={};students.forEach(function(s){nameById[s.id]=s.name;});
     studentOptions();
 
-    var res=await window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,remarks");
+    var res=await window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,remarks,score,max_score");
     if(res.error){$("x-count").textContent="Couldn't load exams: "+res.error.message;return;}
     exams=res.data||[];
     var today=todayISO();
