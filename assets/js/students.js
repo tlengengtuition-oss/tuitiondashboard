@@ -109,27 +109,40 @@
     scope.querySelectorAll("[data-on]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.on,true);});});
     scope.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){remove(b.dataset.del,find(b.dataset.del).name);});});
   }
+  function matchesSearch(s,q){
+    if(!q)return true;
+    return [s.name,s.recipient_name,s.level,s.contact].some(function(v){return (v||"").toLowerCase().indexOf(q)>-1;});
+  }
+  function renderRoster(){
+    var q=($("s-search")?$("s-search").value:"").trim().toLowerCase();
+    var actAll=students.filter(function(s){return s.active!==false;});
+    var offAll=students.filter(function(s){return s.active===false;});
+    var act=actAll.filter(function(s){return matchesSearch(s,q);});
+    var off=offAll.filter(function(s){return matchesSearch(s,q);});
+    $("s-count").textContent=q?(act.length+" of "+actAll.length+" shown"):(actAll.length?actAll.length+(actAll.length===1?" active student":" active students"):"");
+
+    var table=$("s-table"),empty=$("s-empty"),body=$("s-body");
+    if(!actAll.length){table.style.display="none";empty.style.display="block";}
+    else if(!act.length){empty.style.display="none";table.style.display="table";body.innerHTML='<tr><td colspan="5" style="color:var(--muted);padding:14px 4px">No active students match "'+esc(q)+'".</td></tr>';}
+    else{empty.style.display="none";table.style.display="table";body.innerHTML=act.map(function(r){return rowHtml(r,true);}).join("");wire(body);}
+
+    if(offAll.length){
+      $("disc-title").style.display="";$("disc-card").style.display="";
+      $("disc-hint").textContent=offAll.length+" hidden from slot & lesson pickers";
+      $("disc-body").innerHTML=off.length?off.map(function(r){return rowHtml(r,false);}).join(""):'<tr><td colspan="5" style="color:var(--muted);padding:12px 4px">No matches.</td></tr>';
+      wire($("disc-body"));
+    }else{$("disc-title").style.display="none";$("disc-card").style.display="none";}
+  }
   async function load(){
     var res=await window.sb.from("students").select("id,name,kind,level,contact,notes,active,recipient_name").order("name");
     if(res.error){$("s-count").textContent="Couldn't load students: "+res.error.message;return;}
     students=res.data||[];
-    var act=students.filter(function(s){return s.active!==false;});
-    var off=students.filter(function(s){return s.active===false;});
-    $("s-count").textContent=act.length?act.length+(act.length===1?" active student":" active students"):"";
-
-    var table=$("s-table"),empty=$("s-empty"),body=$("s-body");
-    if(!act.length){table.style.display="none";empty.style.display="block";}
-    else{empty.style.display="none";table.style.display="table";body.innerHTML=act.map(function(r){return rowHtml(r,true);}).join("");wire(body);}
-
-    if(off.length){
-      $("disc-title").style.display="";$("disc-card").style.display="";
-      $("disc-hint").textContent=off.length+" hidden from slot & lesson pickers";
-      $("disc-body").innerHTML=off.map(function(r){return rowHtml(r,false);}).join("");wire($("disc-body"));
-    }else{$("disc-title").style.display="none";$("disc-card").style.display="none";}
+    renderRoster();
   }
 
   function init(user){
     userId=user.id;
+    if($("s-search"))$("s-search").addEventListener("input",renderRoster);
     $("add-btn").addEventListener("click",function(){openModal(true,null);});
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});

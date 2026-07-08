@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=18">
+<link rel="stylesheet" href="assets/css/app.css?v=10">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -66,6 +66,17 @@
     </span>
   </div>
   <div class="card">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+      <input id="rec-search" type="search" placeholder="Filter by student, subject or level…" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px">
+      <select id="rec-status" style="padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff">
+        <option value="">All statuses</option>
+        <option value="unpaid">Unpaid</option>
+        <option value="paid">Paid</option>
+        <option value="postponed">Postponed</option>
+        <option value="scheduled">Scheduled</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
     <div class="empty" id="month-empty" style="display:none"><h3>No lessons this month yet</h3></div>
     <div class="tscroll"><table class="tbl" id="month-table" style="display:none">
       <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Level</th><th>Amount</th><th>Status</th><th></th></tr></thead>
@@ -80,7 +91,7 @@
       <div class="field"><label for="m-student">Student</label><select id="m-student"></select></div>
       <div class="row2">
         <div class="field"><label for="m-date" style="display:flex;justify-content:space-between;align-items:center">Date <span style="font-weight:normal;font-size:12.5px;display:inline-flex;align-items:center;gap:5px;color:var(--muted);cursor:pointer"><input id="m-postponed" type="checkbox" style="width:15px;height:15px;accent-color:var(--gold)"> Postponed</span></label><input id="m-date" type="date"></div>
-        <div class="field"><label for="m-subject">Subject</label><input id="m-subject" type="text" placeholder="optional"></div>
+        <div class="field"><label for="m-subject">Subject</label><input id="m-subject" list="dl-subject" type="text" placeholder="optional"><datalist id="dl-subject"></datalist></div>
         <div class="field"><label for="m-level">Level</label><input id="m-level" type="text" placeholder="optional"></div>
       </div>
       <div class="row2">
@@ -136,10 +147,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=18"></script>
-<script src="assets/js/supabase.js?v=18"></script>
-<script src="assets/js/app.js?v=18"></script>
-<script src="assets/js/paynow.js?v=18"></script>
-<script src="assets/js/ledger.js?v=18"></script>
+<script src="assets/js/config.js?v=10"></script>
+<script src="assets/js/supabase.js?v=10"></script>
+<script src="assets/js/app.js?v=10"></script>
+<script src="assets/js/paynow.js?v=10"></script>
+<script src="assets/js/ledger.js?v=10"></script>
 </body>
 </html>

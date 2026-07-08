@@ -1,5 +1,6 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
+  function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
   var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedStudents = {}, lastUnpaid = [], householdBy = {};
   var $ = function (id) { return document.getElementById(id); };
 
@@ -205,11 +206,20 @@
       if(period.mode==="all")return true;
       return l.lesson_date.slice(0,7)===period.y+"-"+pad(period.m+1);
     });
+    var q=($("rec-search")?$("rec-search").value:"").trim().toLowerCase();
+    var stat=$("rec-status")?$("rec-status").value:"";
+    if(q)rows=rows.filter(function(l){return [nameById[l.student_id],l.subject,l.level].some(function(v){return (v||"").toLowerCase().indexOf(q)>-1;});});
+    if(stat)rows=rows.filter(function(l){
+      if(stat==="unpaid")return l.status==="done"&&!l.paid;
+      if(stat==="paid")return l.paid;
+      if(stat==="postponed")return !!l.postponed;
+      return l.status===stat; // scheduled / cancelled
+    });
     var table=$("month-table"),empty=$("month-empty"),body=$("month-body");
     monthById={};rows.forEach(function(l){monthById[l.id]=l;});
     if(!rows.length){
       table.style.display="none";empty.style.display="block";
-      empty.innerHTML="<h3>No lessons in "+periodLabel()+"</h3>";
+      empty.innerHTML="<h3>"+((q||stat)?"No lessons match the filter":"No lessons in "+periodLabel())+"</h3>";
       $("month-hint").textContent="";return;
     }
     empty.style.display="none";table.style.display="table";
@@ -622,7 +632,7 @@
     $("k-projected").textContent=TL.sgd(projected);
 
     renderOutstanding(unpaid);
-    allLessons=lessons;
+    allLessons=lessons;fillSubjects(allLessons.map(function(l){return l.subject;}).concat(slots.map(function(s){return s.subject;})));
     renderRecords();
   }
 
@@ -655,6 +665,8 @@
     on("next-m","click",function(){shiftMonth(1);});
     on("all-time","click",toggleAll);
     on("csv-btn","click",exportCSV);
+    on("rec-search","input",renderRecords);
+    on("rec-status","change",renderRecords);
     load();
   }
   TL.requireAuth("ledger",init);
