@@ -1,5 +1,6 @@
 // Weekly planner — Mon–Sun grid from recurring_slots; add, EDIT, remove slots.
 (function () {
+  function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
   var DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   var SHORT=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   var userId=null, students=[], allStudents=[], allSlots=[], editingId=null;
@@ -15,6 +16,59 @@
     $("m-subject").value="";$("m-level").value="";$("m-start").value="";$("m-end").value="";$("m-rate").value="";$("m-split").value="1";splitHint();
     $("m-day").value="0";if(students.length)$("m-student").value=students[0].id;
   }
+  // ---- Calendar export (ICS) ----
+  // One recurring weekly event per slot. Times are written as floating local
+  // times (no timezone suffix) so they land at the same clock time in any calendar.
+  function icsEsc(s){return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");}
+  function fold(line){ // RFC 5545: lines over 75 octets must be folded
+    if(line.length<=74)return line;
+    var out=line.slice(0,74),rest=line.slice(74);
+    while(rest.length){ out+="\r\n "+rest.slice(0,73); rest=rest.slice(73); }
+    return out;
+  }
+  function pad2(n){return String(n).padStart(2,"0");}
+  function nextDateFor(weekday){ // weekday 0=Mon..6=Sun -> next occurrence (incl. today)
+    var d=new Date(); d.setHours(0,0,0,0);
+    var cur=(d.getDay()+6)%7;                 // today as 0=Mon..6=Sun
+    d.setDate(d.getDate()+((weekday-cur)+7)%7);
+    return d;
+  }
+  function stamp(d,hhmmStr){
+    var p=(hhmmStr||"00:00").split(":");
+    return d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+"T"+pad2(p[0])+pad2(p[1])+"00";
+  }
+  function exportICS(){
+    var slots=allSlots.filter(function(s){return s.start_time&&s.end_time;});
+    if(!slots.length){alert("No recurring slots to export yet. Add them on the planner first.");return;}
+    var DAYS=["MO","TU","WE","TH","FR","SA","SU"];
+    var now=new Date();
+    var dtstamp=now.getUTCFullYear()+pad2(now.getUTCMonth()+1)+pad2(now.getUTCDate())+"T"+
+                pad2(now.getUTCHours())+pad2(now.getUTCMinutes())+pad2(now.getUTCSeconds())+"Z";
+    var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//T-Leng Tuition//Planner//EN",
+           "CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:T-Leng Tuition — Timetable"];
+    slots.forEach(function(s){
+      var first=nextDateFor(s.weekday);
+      var title=[nameOf(s.student_id),s.subject].filter(Boolean).join(" · ")||"Lesson";
+      var desc=[s.level?"Level: "+s.level:"", s.rate?"Rate: S$"+s.rate+"/hr":"",
+                (s.split&&s.split>1)?"Split between "+s.split:""].filter(Boolean).join("\n");
+      L.push("BEGIN:VEVENT");
+      L.push("UID:slot-"+s.id+"@tleng");
+      L.push("DTSTAMP:"+dtstamp);
+      L.push("DTSTART:"+stamp(first,hhmm(s.start_time)));
+      L.push("DTEND:"+stamp(first,hhmm(s.end_time)));
+      L.push("RRULE:FREQ=WEEKLY;BYDAY="+DAYS[s.weekday]);
+      L.push(fold("SUMMARY:"+icsEsc(title)));
+      if(desc)L.push(fold("DESCRIPTION:"+icsEsc(desc)));
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    var blob=new Blob([L.join("\r\n")+"\r\n"],{type:"text/calendar;charset=utf-8"});
+    var url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="T-Leng-Timetable.ics";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},4000);
+  }
+
   function splitHint(){
     var el=$("m-splithint");if(!el)return;
     var rate=parseFloat($("m-rate").value),sp=Math.max(1,parseInt($("m-split").value,10)||1),
@@ -105,7 +159,7 @@
     if(!st.error){allStudents=st.data||[];students=allStudents.filter(function(s){return s.active!==false;});studentOptions();}
     var res=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split");
     if(res.error){$("p-total").textContent="Couldn't load schedule: "+res.error.message;return;}
-    allSlots=res.data||[];render();
+    allSlots=res.data||[];fillSubjects(allSlots.map(function(s){return s.subject;}));render();
   }
 
   async function removeSlot(id){
@@ -136,6 +190,7 @@
   function init(user){
     userId=user.id;
     $("add-btn").addEventListener("click",function(){openModal(true,null);});
+    var ics=$("ics-btn"); if(ics)ics.addEventListener("click",exportICS);
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});
     $("m-save").addEventListener("click",save);

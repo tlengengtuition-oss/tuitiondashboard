@@ -109,24 +109,52 @@
     scope.querySelectorAll("[data-on]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.on,true);});});
     scope.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){remove(b.dataset.del,find(b.dataset.del).name);});});
   }
+  function fillOpt(id,vals,label){
+    var el=$(id);if(!el)return;var cur=el.value;
+    el.innerHTML='<option value="">'+label+'</option>'+vals.map(function(v){return '<option value="'+String(v).replace(/"/g,"&quot;")+'">'+esc(v)+'</option>';}).join("");
+    el.value=cur;
+  }
+  function fillStuFilters(){
+    var lvl=[],par=[];
+    students.forEach(function(s){
+      if(s.level&&lvl.indexOf(s.level)<0)lvl.push(s.level);
+      if(s.recipient_name&&par.indexOf(s.recipient_name)<0)par.push(s.recipient_name);
+    });
+    fillOpt("s-level",lvl.sort(),"All levels");
+    fillOpt("s-parent",par.sort(),"All parents");
+  }
+  function clearStuFilters(){
+    ["s-search","s-level","s-parent","s-status"].forEach(function(id){var el=$(id);if(el)el.value="";});
+    renderRoster();
+  }
   function matchesSearch(s,q){
     if(!q)return true;
     return [s.name,s.recipient_name,s.level,s.contact].some(function(v){return (v||"").toLowerCase().indexOf(q)>-1;});
   }
   function renderRoster(){
     var q=($("s-search")?$("s-search").value:"").trim().toLowerCase();
+    var fLvl=$("s-level")?$("s-level").value:"";
+    var fPar=$("s-parent")?$("s-parent").value:"";
+    var fStat=$("s-status")?$("s-status").value:"";
+    function pass(s){
+      return matchesSearch(s,q) && (!fLvl||(s.level||"")===fLvl) && (!fPar||(s.recipient_name||"")===fPar);
+    }
+    var anyFilter=!!(q||fLvl||fPar||fStat);
+    ["s-level","s-parent","s-status"].forEach(function(id){var el=$(id);if(el)el.classList.toggle("on",!!el.value);});
+    if($("s-clear"))$("s-clear").style.display=anyFilter?"":"none";
+
     var actAll=students.filter(function(s){return s.active!==false;});
     var offAll=students.filter(function(s){return s.active===false;});
-    var act=actAll.filter(function(s){return matchesSearch(s,q);});
-    var off=offAll.filter(function(s){return matchesSearch(s,q);});
-    $("s-count").textContent=q?(act.length+" of "+actAll.length+" shown"):(actAll.length?actAll.length+(actAll.length===1?" active student":" active students"):"");
+    var act=(fStat==="off")?[]:actAll.filter(pass);
+    var off=(fStat==="active")?[]:offAll.filter(pass);
+    $("s-count").textContent=anyFilter?(act.length+off.length)+" of "+students.length+" shown":(actAll.length?actAll.length+(actAll.length===1?" active student":" active students"):"");
 
     var table=$("s-table"),empty=$("s-empty"),body=$("s-body");
     if(!actAll.length){table.style.display="none";empty.style.display="block";}
-    else if(!act.length){empty.style.display="none";table.style.display="table";body.innerHTML='<tr><td colspan="5" style="color:var(--muted);padding:14px 4px">No active students match "'+esc(q)+'".</td></tr>';}
+    else if(!act.length){empty.style.display="none";table.style.display="table";body.innerHTML='<tr><td colspan="5" style="color:var(--muted);padding:14px 4px">'+(fStat==="off"?"Showing discontinued only.":"No active students match these filters.")+'</td></tr>';}
     else{empty.style.display="none";table.style.display="table";body.innerHTML=act.map(function(r){return rowHtml(r,true);}).join("");wire(body);}
 
-    if(offAll.length){
+    if(offAll.length&&fStat!=="active"){
       $("disc-title").style.display="";$("disc-card").style.display="";
       $("disc-hint").textContent=offAll.length+" hidden from slot & lesson pickers";
       $("disc-body").innerHTML=off.length?off.map(function(r){return rowHtml(r,false);}).join(""):'<tr><td colspan="5" style="color:var(--muted);padding:12px 4px">No matches.</td></tr>';
@@ -137,12 +165,15 @@
     var res=await window.sb.from("students").select("id,name,kind,level,contact,notes,active,recipient_name").order("name");
     if(res.error){$("s-count").textContent="Couldn't load students: "+res.error.message;return;}
     students=res.data||[];
+    fillStuFilters();
     renderRoster();
   }
 
   function init(user){
     userId=user.id;
     if($("s-search"))$("s-search").addEventListener("input",renderRoster);
+    ["s-level","s-parent","s-status"].forEach(function(id){var el=$(id);if(el)el.addEventListener("change",renderRoster);});
+    if($("s-clear"))$("s-clear").addEventListener("click",clearStuFilters);
     $("add-btn").addEventListener("click",function(){openModal(true,null);});
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});

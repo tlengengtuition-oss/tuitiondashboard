@@ -69,11 +69,25 @@
   }
 
   // ---------- rendering ----------
+  function daysSince(iso){
+    var d=new Date(iso+"T00:00:00"),t=new Date();t.setHours(0,0,0,0);
+    return Math.max(0,Math.round((t-d)/86400000));
+  }
+  function ageTag(days){
+    if(days<7)return "";
+    var lbl=days>=30?(Math.floor(days/30)+"mth"+(days>=60?"s":"")):(Math.floor(days/7)+"wk"+(days>=14?"s":""));
+    var cls=days>=30?"age bad":(days>=14?"age warn":"age");
+    return '<span class="'+cls+'">'+lbl+' overdue</span>';
+  }
   function renderOutstanding(unpaid){
     lastUnpaid=unpaid;
     var groups={};unpaid.forEach(function(l){(groups[l.student_id]=groups[l.student_id]||[]).push(l);});
     outGroups=groups;
+    function oldestOf(id){return groups[id].reduce(function(m,l){return (!m||l.lesson_date<m)?l.lesson_date:m;},null);}
+    // oldest debt first — chase these before anything else
     var ids=Object.keys(groups).sort(function(a,b){
+      var oa=oldestOf(a),ob=oldestOf(b);
+      if(oa!==ob)return oa.localeCompare(ob);
       var sa=groups[a].reduce(function(t,l){return t+Number(l.amount);},0);
       var sb=groups[b].reduce(function(t,l){return t+Number(l.amount);},0);return sb-sa;});
     if(!ids.length){$("outstanding").innerHTML='<div class="card empty"><h3>All settled 🎉</h3><p>No unpaid lessons right now.</p></div>';$("out-hint").textContent="";return;}
@@ -82,8 +96,9 @@
       var rows=groups[id].sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
       var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
       var lessonIds=rows.map(function(l){return l.id;});
-      var inner=rows.map(function(l){return '<div class="lrow"><span class="lwhen">'+prettyDate(l.lesson_date)+"</span><span>"+(l.subject?esc(l.subject):'<span class="muted">lesson</span>')+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
-      return '<div class="card group"><div class="group-head"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select to bill together"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button><button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+      var age=ageTag(daysSince(rows[0].lesson_date));
+      var inner=rows.map(function(l){var d=daysSince(l.lesson_date);return '<div class="lrow"><span class="lwhen">'+prettyDate(l.lesson_date)+(d>=14?' <span class="agedot" title="'+d+' days unpaid">•</span>':"")+"</span><span>"+(l.subject?esc(l.subject):'<span class="muted">lesson</span>')+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
+      return '<div class="card group"><div class="group-head"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select to bill together"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button><button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }
     // group owing students by household
     var byHH={}; ids.forEach(function(id){var h=householdBy[id];if(h)(byHH[h]=byHH[h]||[]).push(id);});
@@ -96,7 +111,8 @@
         var members=byHH[h];
         var hhLabel=members.map(function(m){return recipientById[m];}).filter(Boolean)[0]||contactById[members[0]]||"Household";
         var hhSum=members.reduce(function(t,m){return t+groups[m].reduce(function(s,l){return s+Number(l.amount);},0);},0);
-        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all with this phone number"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span></span>'+
+        var hhOldest=members.reduce(function(m,id){var o=oldestOf(id);return (!m||o<m)?o:m;},null);
+        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all with this phone number"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
           '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+'</span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button></span></div>'+members.map(studentCard).join("")+'</div>';
       }
       return studentCard(id);
@@ -198,6 +214,27 @@
     window.open("https://wa.me/"+num+"?text="+encodeURIComponent(fillTemplate(tpl,vars)),"_blank");
   }
   function periodLabel(){return period.mode==="all"?"All time":new Date(period.y,period.m,1).toLocaleString("en-SG",{month:"long",year:"numeric"});}
+  function fillOpt(id,pairs,label){
+    var el=$(id);if(!el)return;var cur=el.value;
+    el.innerHTML='<option value="">'+label+'</option>'+pairs.map(function(p){return '<option value="'+String(p[0]).replace(/"/g,"&quot;")+'">'+esc(p[1])+'</option>';}).join("");
+    el.value=cur;
+  }
+  function fillRecFilters(){
+    var stu=[],sub=[],lvl=[];
+    allLessons.forEach(function(l){
+      if(l.student_id&&stu.indexOf(l.student_id)<0)stu.push(l.student_id);
+      if(l.subject&&sub.indexOf(l.subject)<0)sub.push(l.subject);
+      if(l.level&&lvl.indexOf(l.level)<0)lvl.push(l.level);
+    });
+    stu.sort(function(a,b){return (nameById[a]||"").localeCompare(nameById[b]||"");});
+    fillOpt("rec-student",stu.map(function(id){return [id,nameById[id]||"—"];}),"All students");
+    fillOpt("rec-subject",sub.sort().map(function(s){return [s,s];}),"All subjects");
+    fillOpt("rec-level",lvl.sort().map(function(s){return [s,s];}),"All levels");
+  }
+  function clearRecFilters(){
+    ["rec-search","rec-student","rec-subject","rec-level","rec-status"].forEach(function(id){var el=$(id);if(el)el.value="";});
+    renderRecords();
+  }
   function renderRecords(){
     if(!period)period={mode:"month",y:new Date().getFullYear(),m:new Date().getMonth()};
     $("period-label").textContent=periodLabel();
@@ -207,19 +244,28 @@
       return l.lesson_date.slice(0,7)===period.y+"-"+pad(period.m+1);
     });
     var q=($("rec-search")?$("rec-search").value:"").trim().toLowerCase();
+    var fStu=$("rec-student")?$("rec-student").value:"";
+    var fSub=$("rec-subject")?$("rec-subject").value:"";
+    var fLvl=$("rec-level")?$("rec-level").value:"";
     var stat=$("rec-status")?$("rec-status").value:"";
     if(q)rows=rows.filter(function(l){return [nameById[l.student_id],l.subject,l.level].some(function(v){return (v||"").toLowerCase().indexOf(q)>-1;});});
+    if(fStu)rows=rows.filter(function(l){return l.student_id===fStu;});
+    if(fSub)rows=rows.filter(function(l){return (l.subject||"")===fSub;});
+    if(fLvl)rows=rows.filter(function(l){return (l.level||"")===fLvl;});
     if(stat)rows=rows.filter(function(l){
       if(stat==="unpaid")return l.status==="done"&&!l.paid;
       if(stat==="paid")return l.paid;
       if(stat==="postponed")return !!l.postponed;
       return l.status===stat; // scheduled / cancelled
     });
+    var anyFilter=!!(q||fStu||fSub||fLvl||stat);
+    ["rec-student","rec-subject","rec-level","rec-status"].forEach(function(id){var el=$(id);if(el)el.classList.toggle("on",!!el.value);});
+    if($("rec-clear"))$("rec-clear").style.display=anyFilter?"":"none";
     var table=$("month-table"),empty=$("month-empty"),body=$("month-body");
     monthById={};rows.forEach(function(l){monthById[l.id]=l;});
     if(!rows.length){
       table.style.display="none";empty.style.display="block";
-      empty.innerHTML="<h3>"+((q||stat)?"No lessons match the filter":"No lessons in "+periodLabel())+"</h3>";
+      empty.innerHTML="<h3>"+(anyFilter?"No lessons match these filters":"No lessons in "+periodLabel())+"</h3>";
       $("month-hint").textContent="";return;
     }
     empty.style.display="none";table.style.display="table";
@@ -632,7 +678,7 @@
     $("k-projected").textContent=TL.sgd(projected);
 
     renderOutstanding(unpaid);
-    allLessons=lessons;fillSubjects(allLessons.map(function(l){return l.subject;}).concat(slots.map(function(s){return s.subject;})));
+    allLessons=lessons;fillSubjects(allLessons.map(function(l){return l.subject;}).concat(slots.map(function(s){return s.subject;})));fillRecFilters();
     renderRecords();
   }
 
@@ -666,7 +712,8 @@
     on("all-time","click",toggleAll);
     on("csv-btn","click",exportCSV);
     on("rec-search","input",renderRecords);
-    on("rec-status","change",renderRecords);
+    ["rec-student","rec-subject","rec-level","rec-status"].forEach(function(id){on(id,"change",renderRecords);});
+    on("rec-clear","click",clearRecFilters);
     load();
   }
   TL.requireAuth("ledger",init);

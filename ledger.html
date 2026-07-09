@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=10">
+<link rel="stylesheet" href="assets/css/app.css?v=17">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -23,6 +23,10 @@
   .combine-bar .cb-clear{background:transparent;color:#fff;opacity:.75;padding:7px 6px}
   .gsel{display:flex;align-items:center;gap:9px}
   .gsel input{width:17px;height:17px;accent-color:var(--gold);cursor:pointer}
+  .age{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;border-radius:20px;padding:2px 8px;margin-left:8px;background:rgba(181,137,43,.14);color:#8a6a1f;white-space:nowrap}
+  .age.warn{background:rgba(200,146,42,.18);color:#8a5f14}
+  .age.bad{background:rgba(179,64,47,.13);color:var(--owed)}
+  .agedot{color:var(--owed);font-weight:900}
   .hh-block{border:1.5px solid var(--gold);border-radius:14px;padding:8px;margin-bottom:12px;background:rgba(200,146,42,.05)}
   .hh-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px 10px;flex-wrap:wrap}
   .hh-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -66,9 +70,12 @@
     </span>
   </div>
   <div class="card">
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-      <input id="rec-search" type="search" placeholder="Filter by student, subject or level…" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px">
-      <select id="rec-status" style="padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff">
+    <div class="filters">
+      <input id="rec-search" type="search" placeholder="Search…">
+      <select id="rec-student"><option value="">All students</option></select>
+      <select id="rec-subject"><option value="">All subjects</option></select>
+      <select id="rec-level"><option value="">All levels</option></select>
+      <select id="rec-status">
         <option value="">All statuses</option>
         <option value="unpaid">Unpaid</option>
         <option value="paid">Paid</option>
@@ -76,6 +83,7 @@
         <option value="scheduled">Scheduled</option>
         <option value="cancelled">Cancelled</option>
       </select>
+      <button class="btn" id="rec-clear" style="display:none">Clear</button>
     </div>
     <div class="empty" id="month-empty" style="display:none"><h3>No lessons this month yet</h3></div>
     <div class="tscroll"><table class="tbl" id="month-table" style="display:none">
@@ -147,10 +155,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=10"></script>
-<script src="assets/js/supabase.js?v=10"></script>
-<script src="assets/js/app.js?v=10"></script>
-<script src="assets/js/paynow.js?v=10"></script>
-<script src="assets/js/ledger.js?v=10"></script>
+<script src="assets/js/config.js?v=17"></script>
+<script src="assets/js/supabase.js?v=17"></script>
+<script src="assets/js/app.js?v=17"></script>
+<script src="assets/js/paynow.js?v=17"></script>
+<script src="assets/js/ledger.js?v=17"></script>
 </body>
 </html>

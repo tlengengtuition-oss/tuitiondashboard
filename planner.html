@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Planner · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=18">
+<link rel="stylesheet" href="assets/css/app.css?v=17">
 <style>
   /* make the lesson time the visual anchor of each slot */
   .slot{padding-top:9px}
@@ -21,6 +21,7 @@
 <div id="view">
   <div class="toolbar">
     <div class="sub week-tot" id="p-total">Loading your schedule…</div>
+    <button class="btn" id="ics-btn" title="Download your timetable as a calendar file">Add to calendar</button>
     <button class="btn btn-gold" id="add-btn">+ Add slot</button>
   </div>
 
@@ -48,7 +49,7 @@
       <div class="row2">
         <div class="field">
           <label for="m-subject">Subject</label>
-          <input id="m-subject" type="text" placeholder="e.g. Math">
+          <input id="m-subject" list="dl-subject" type="text" placeholder="e.g. Math"><datalist id="dl-subject"></datalist>
         </div>
         <div class="field">
           <label for="m-level">Level</label>
@@ -86,9 +87,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=18"></script>
-<script src="assets/js/supabase.js?v=18"></script>
-<script src="assets/js/app.js?v=18"></script>
-<script src="assets/js/planner.js?v=18"></script>
+<script src="assets/js/config.js?v=17"></script>
+<script src="assets/js/supabase.js?v=17"></script>
+<script src="assets/js/app.js?v=17"></script>
+<script src="assets/js/planner.js?v=17"></script>
 </body>
 </html>
