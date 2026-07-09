@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sign in · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=18">
+<link rel="stylesheet" href="assets/css/app.css?v=19">
 <style>
   .oauth-div{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--muted);font-size:12.5px}
   .oauth-div::before,.oauth-div::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -80,8 +80,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=18"></script>
-<script src="assets/js/supabase.js?v=18"></script>
+<script src="assets/js/config.js?v=19"></script>
+<script src="assets/js/supabase.js?v=19"></script>
 <script>
 (function () {
   var mode = "in";
@@ -126,7 +126,7 @@
     window.sb.auth.getSession().then(async function (r) {
       if (r.data && r.data.session) {
         if (await needsMfa()) { startChallenge(); return; }
-        location.replace("index.html");
+        location.replace("app.html");
       }
     });
   }
@@ -143,9 +143,9 @@
     try {
       var lf = await window.sb.auth.mfa.listFactors();
       var totp = (lf.data && lf.data.totp || []).filter(function(f){return f.status==="verified";})[0];
-      if (!totp) { location.replace("index.html"); return; }  // nothing to challenge
+      if (!totp) { location.replace("app.html"); return; }  // nothing to challenge
       challengeFactorId = totp.id;
-    } catch (e) { location.replace("index.html"); return; }
+    } catch (e) { location.replace("app.html"); return; }
     $("form-area").style.display = "none";
     $("created").style.display = "none";
     $("mfa-area").style.display = "block";
@@ -158,7 +158,7 @@
     try {
       var r = await window.sb.auth.mfa.challengeAndVerify({ factorId: challengeFactorId, code: code });
       if (r.error) throw r.error;
-      location.replace("index.html");
+      location.replace("app.html");
     } catch (e) {
       m.textContent = e.message || "That code didn't match. Try the current one.";
       m.className = "msg err";
@@ -188,13 +188,13 @@
             consent_version: "v1", consent_accepted_at: new Date().toISOString() },
             emailRedirectTo: new URL("confirmed.html", location.href).href } });
         if (up.error) throw up.error;
-        if (up.data.session) { location.replace("index.html"); return; }  // confirm off → logged in
+        if (up.data.session) { location.replace("app.html"); return; }  // confirm off → logged in
         showCreated(email, true);                                         // confirm on → success screen
       } else {
         var inn = await window.sb.auth.signInWithPassword({ email: email, password: pw });
         if (inn.error) throw inn.error;
         if (await needsMfa()) { startChallenge(); return; }
-        location.replace("index.html");
+        location.replace("app.html");
       }
     } catch (e) {
       show(e.message || "Something went wrong.", false);
@@ -212,7 +212,7 @@
     try {
       var r = await window.sb.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: new URL("index.html", location.href).href }
+        options: { redirectTo: new URL("app.html", location.href).href }
       });
       if (r.error) throw r.error;
       // on success the browser redirects to Google; nothing more to do here

@@ -6,7 +6,7 @@ window.TL = (function () {
   var OWNER_ID = "ad4e2f4f-90c9-4fd9-8d51-e85b0e0bebb4";  // only this account sees Materials
   var isOwner = false;
   var NAV = [
-    { id: "dashboard", label: "Dashboard", href: "index.html",    ic: "◧" },
+    { id: "dashboard", label: "Dashboard", href: "app.html",    ic: "◧" },
     { id: "planner",   label: "Planner",   href: "planner.html",  ic: "▦" },
     { id: "ledger",    label: "Ledger",    href: "ledger.html",   ic: "₪" },
     { id: "students",  label: "Students",  href: "students.html", ic: "☺" },
