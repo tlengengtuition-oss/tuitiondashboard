@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=17">
+<link rel="stylesheet" href="assets/css/app.css?v=18">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#fffdf7,#fbf4e4);border:1px solid var(--gold);
@@ -156,6 +156,11 @@
   </div>
 
   <div id="teach-view" style="display:none">
+    <div class="card panel teach-sec" id="yday-sec" style="display:none">
+      <h2 id="yday-h">Yesterday <span class="hint" id="yday-hint"></span></h2>
+      <div class="teach-sub" id="yday-sub"></div>
+      <div id="yday-list"></div>
+    </div>
     <div class="card panel teach-sec">
       <h2 id="today-h">Today</h2>
       <div class="teach-sub" id="today-sub"></div>
@@ -191,9 +196,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=17"></script>
-<script src="assets/js/supabase.js?v=17"></script>
-<script src="assets/js/app.js?v=17"></script>
-<script src="assets/js/dashboard.js?v=17"></script>
+<script src="assets/js/config.js?v=18"></script>
+<script src="assets/js/supabase.js?v=18"></script>
+<script src="assets/js/app.js?v=18"></script>
+<script src="assets/js/dashboard.js?v=18"></script>
 </body>
 </html>

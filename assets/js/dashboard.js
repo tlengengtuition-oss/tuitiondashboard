@@ -11,7 +11,7 @@
   var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   var chartObj=null, yearChartObj=null, allLessons=[], nameByIdM={}, selY=null, selM=null, dmWired=false;
   var fyStart=1, fyAnchor=null, finSub="month", finSubWired=false;
-  var userId=null, tnWired=false, todaySlotBy={}, todayLesBy={}, noteStu=null, noteLes=null, noteSlot=null;
+  var userId=null, tnWired=false, todaySlotBy={}, todayLesBy={}, noteStu=null, noteLes=null, noteSlot=null, noteDate=null;
 
   function drawStacked(canvasId, labels, collected, pending, upcoming, prev){
     var r2=function(v){return Math.round(v*100)/100;};
@@ -122,8 +122,8 @@
       }).join("");
       return '<div class="tr-exams"><div class="tr-exh">Upcoming exams</div>'+items+'</div>';
     }
-    // today's lessons + slots, keyed by student, for the quick-note button
-    todayLesBy={}; lessons.forEach(function(l){ if(l.lesson_date===todayISOv&&l.status!=="cancelled")todayLesBy[l.student_id]=l; });
+    // lessons + slots keyed by student|date, so the note button targets the right day
+    todayLesBy={}; lessons.forEach(function(l){ if(l.status!=="cancelled")todayLesBy[l.student_id+"|"+l.lesson_date]=l; });
     todaySlotBy={};
     function renderDay(listId, subId, headId, dateObj, label, withNote){
       var wday=(dateObj.getDay()+6)%7, dISO=iso(dateObj);
@@ -149,11 +149,12 @@
       $(listId).innerHTML=day.map(function(s){
         var btn="";
         if(withNote){
+          var key=s.student_id+"|"+dISO;
           var slotForNote=slots.filter(function(x){return x.student_id===s.student_id&&hm(x.start_time)===hm(s.start_time);})[0];
-          if(slotForNote)todaySlotBy[s.student_id]=slotForNote;
-          var les=todayLesBy[s.student_id];
+          if(slotForNote)todaySlotBy[key]=slotForNote;
+          var les=todayLesBy[key];
           var has=les&&(les.topics||les.homework||les.remarks);
-          btn='<button class="tnote'+(has?" has":"")+'" data-note-stu="'+s.student_id+'">'+(has?"Edit note":"Add note")+'</button>';
+          btn='<button class="tnote'+(has?" has":"")+'" data-note-stu="'+s.student_id+'" data-note-date="'+dISO+'">'+(has?"Edit note":"Add note")+'</button>';
         }
         return '<div class="teach-row"><div class="tr-time">'+hm(s.start_time)+'</div>'+
           '<div class="tr-body">'+
@@ -162,20 +163,48 @@
           '<div class="tr-cols"><div class="tr-notes">'+summarizeOne(lastBeforeSubject(s.student_id,dISO,s.subject),s.subject)+'</div>'+examChips(s.student_id)+'</div>'+
           '</div></div>';
       }).join("");
-      if(withNote)$(listId).querySelectorAll("[data-note-stu]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteStu);});});
+      if(withNote)$(listId).querySelectorAll("[data-note-stu]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteStu,b.dataset.noteDate);});});
     }
+    // Yesterday — only lessons you actually taught that still have no notes
+    (function(){
+      var yday=new Date(today); yday.setDate(today.getDate()-1);
+      var yISO=iso(yday);
+      var missing=lessons.filter(function(l){
+        return l.lesson_date===yISO && l.status==="done" && !(l.topics||l.homework||l.remarks);
+      }).sort(function(a,b){return (a.start_time||"").localeCompare(b.start_time||"");});
+      var sec=$("yday-sec"); if(!sec)return;
+      if(!missing.length){ sec.style.display="none"; return; }
+      sec.style.display="";
+      $("yday-hint").textContent=missing.length+" without notes";
+      $("yday-sub").textContent=yday.toLocaleDateString("en-SG",{weekday:"long",day:"numeric",month:"long"});
+      $("yday-list").innerHTML=missing.map(function(l){
+        return '<div class="teach-row"><div class="tr-time">'+hm(l.start_time)+'</div>'+
+          '<div class="tr-body"><div class="tr-head"><div class="tr-name"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a>'+
+          (l.subject?'<span class="tr-subj">'+esc(l.subject)+'</span>':'')+'</div>'+
+          '<button class="tnote" data-note-stu="'+l.student_id+'" data-note-date="'+yISO+'">Add note</button></div>'+
+          '</div></div>';
+      }).join("");
+      $("yday-list").querySelectorAll("[data-note-stu]").forEach(function(b){
+        b.addEventListener("click",function(){openNote(b.dataset.noteStu,b.dataset.noteDate);});
+      });
+    })();
     renderDay("today-list","today-sub","today-h", today, "Today", true);
     renderDay("tmr-list","tmr-sub","tmr-h", tmr, "Tomorrow", false);
   }
 
-  // ---- quick lesson note (today) ----
-  function openNote(stu){
-    noteStu=stu; noteSlot=todaySlotBy[stu]||null;
-    var les=todayLesBy[stu]||null; noteLes=les;
+  // ---- quick lesson note (today / yesterday) ----
+  function openNote(stu, dISO){
+    dISO=dISO||iso(new Date());
+    noteStu=stu; noteDate=dISO;
+    var key=stu+"|"+dISO;
+    noteSlot=todaySlotBy[key]||null;
+    var les=todayLesBy[key]||null; noteLes=les;
     var name=nameByIdM[stu]||"student";
-    var when=new Date().toLocaleDateString("en-SG",{weekday:"long",day:"numeric",month:"long"});
+    var dObj=new Date(dISO+"T00:00:00");
+    var when=dObj.toLocaleDateString("en-SG",{weekday:"long",day:"numeric",month:"long"});
+    var isToday=dISO===iso(new Date());
     var subj=(noteSlot&&noteSlot.subject)?noteSlot.subject:(les&&les.subject?les.subject:"");
-    $("tn-title").textContent="Today's note · "+name;
+    $("tn-title").textContent=(isToday?"Today's note · ":"Note · ")+name;
     $("tn-sub").textContent=when+(subj?" · "+subj:"");
     $("tn-topics").value=les?(les.topics||""):"";
     $("tn-homework").value=les?(les.homework||""):"";
@@ -192,7 +221,7 @@
     if(noteLes){
       res=await window.sb.from("lessons").update(fields).eq("id",noteLes.id);
     } else if(noteSlot){
-      var t=iso(new Date());
+      var t=noteDate||iso(new Date());
       res=await window.sb.from("lessons").insert(Object.assign({
         tutor_id:userId, student_id:noteStu, slot_id:noteSlot.id||null, lesson_date:t,
         start_time:noteSlot.start_time, end_time:noteSlot.end_time, subject:noteSlot.subject, level:noteSlot.level,
@@ -424,4 +453,4 @@
   }
 
   TL.requireAuth("dashboard",function(){load();});
-})(); 
+})();
