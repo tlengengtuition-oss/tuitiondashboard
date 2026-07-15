@@ -329,9 +329,63 @@
   }
 
   // ---------- actions ----------
+  // ---- keep invoices in step with payments ----
+  // Reuse: if an unpaid invoice already covers these lessons, mark THAT paid.
+  // Create: otherwise generate a paid receipt so it can be sent to the parent.
+  async function createPaidInvoice(rows){
+    if(!profile)return;
+    var byStu={};rows.forEach(function(l){(byStu[l.student_id]=byStu[l.student_id]||[]).push(l);});
+    var stuIds=Object.keys(byStu),single=stuIds.length===1;
+    var names=stuIds.map(function(id){return nameById[id]||"Student";});
+    var billTo=single?names[0]:(names.length===2?names[0]+" & "+names[1]:names.join(", "));
+    var now=new Date();
+    var total=Math.round(rows.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
+    var slug=single?((names[0]||"").replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase()||"STUDENT")
+                   :(names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP");
+    var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
+    var sorted=rows.slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
+    if(!single)sorted=sorted.map(function(l){return Object.assign({_who:nameById[l.student_id]||"—"},l);});
+    var dstr=now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"});
+    var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,dateStr:dstr,paidStr:dstr,
+      student:billTo,lessons:sorted,total:total,combined:!single,paid:true,
+      payTo:profile.paynow_id?PayNow.normalize(profile.paynow_type,profile.paynow_id):""};
+    var html=invoiceHTML(data,"");   // paid receipt — no QR needed
+    return window.sb.from("invoices").insert({
+      tutor_id:userId,student_id:single?stuIds[0]:null,invoice_no:invoiceNo,
+      issued_date:iso(now),total:total,status:"paid",paid_date:todayISO(),
+      data:{html:html,title:"Invoice_"+slug+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate()),
+        students:single?null:stuIds,name:single?null:billTo,lesson_ids:rows.map(function(l){return l.id;})}
+    });
+  }
+  async function syncInvoiceOnPaid(ids){
+    var rows=allLessons.filter(function(l){return ids.indexOf(l.id)>-1;});
+    if(!rows.length)return;
+    var q=await window.sb.from("invoices").select("id,data,status");
+    if(q.error)return;
+    var match=null;
+    (q.data||[]).forEach(function(v){
+      if(match)return;
+      var lids=(v.data&&v.data.lesson_ids)||null;
+      if(!lids||!lids.length)return;
+      if(lids.some(function(x){return ids.indexOf(x)>-1;}))match=v;
+    });
+    if(match){
+      if(match.status==="paid")return;              // already settled — nothing to do
+      var lids=match.data.lesson_ids;
+      var chk=await window.sb.from("lessons").select("id,paid").in("id",lids);
+      var got=chk.data||[];
+      // only settle the invoice once every lesson on it is paid
+      if(got.length&&got.every(function(l){return l.paid;}))
+        await window.sb.from("invoices").update({status:"paid",paid_date:todayISO()}).eq("id",match.id);
+      return;                       // an invoice exists — never duplicate it
+    }
+    await createPaidInvoice(rows);
+  }
   async function markPaid(ids){
     var res=await window.sb.from("lessons").update({paid:true,paid_date:todayISO()}).in("id",ids);
     if(res.error){alert("Couldn't update: "+res.error.message);return;}
+    try{ await syncInvoiceOnPaid(ids); }
+    catch(e){ console.warn("Invoice sync skipped:",e); }   // payment still stands
     load();
   }
 
@@ -458,11 +512,15 @@
       '<div class="inv-to"><span class="lbl">Bill to</span><br><b>'+esc(d.student)+'</b></div>'+
       '<table class="inv-table"><thead><tr><th>Date</th>'+(combined?"<th>Student</th>":"")+'<th>Description</th><th class="r">Amount</th></tr></thead>'+
         '<tbody>'+rows+'</tbody></table>'+
-      '<div class="inv-total"><span>Total due</span><span>'+TL.sgd(d.total)+'</span></div>'+
-      '<div class="inv-pay"><img src="'+qrUrl+'" alt="PayNow QR">'+
-        '<div><div class="pn-h"><span class="pn-dot"></span>PayNow</div>'+
-        '<div class="pn-sub">Scan with any Singapore banking app to pay.<br>'+
-        'Pays to <b>'+esc(d.payTo)+'</b><br>Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>'+
+      '<div class="inv-total"><span>'+(d.paid?"Total paid":"Total due")+'</span><span>'+TL.sgd(d.total)+'</span></div>'+
+      (d.paid
+        ? '<div class="inv-pay"><div><div class="pn-h"><span class="pn-dot"></span>Paid</div>'+
+          '<div class="pn-sub">Received with thanks'+(d.paidStr?" on <b>"+esc(d.paidStr)+"</b>":"")+'.<br>'+
+          (d.payTo?'Paid to <b>'+esc(d.payTo)+'</b><br>':'')+'Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>'
+        : '<div class="inv-pay"><img src="'+qrUrl+'" alt="PayNow QR">'+
+          '<div><div class="pn-h"><span class="pn-dot"></span>PayNow</div>'+
+          '<div class="pn-sub">Scan with any Singapore banking app to pay.<br>'+
+          'Pays to <b>'+esc(d.payTo)+'</b><br>Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>')+
       '</div>';
   }
 
@@ -520,7 +578,7 @@
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
         window._invHTML=invoiceHTML(data,url);
-        window._invMeta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons)};
+        window._invMeta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons),lessonIds:lessons.map(function(l){return l.id;})};
         $("inv-body").innerHTML=window._invHTML;
         $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
         $("inv-backdrop").classList.add("on");
@@ -553,7 +611,7 @@
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
         window._invHTML=invoiceHTML(data,url);
-        window._invMeta={studentId:null,students:ids,name:billTo,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(all)};
+        window._invMeta={studentId:null,students:ids,name:billTo,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(all),lessonIds:all.map(function(l){return l.id;})};
         $("inv-body").innerHTML=window._invHTML;
         $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
         $("inv-backdrop").classList.add("on");
@@ -569,7 +627,7 @@
       tutor_id:userId,student_id:m.studentId,invoice_no:m.invoiceNo,
       issued_date:m.issuedDate,total:m.total,status:"issued",
       data:{html:window._invHTML,title:window._invTitle||("Invoice_"+m.invoiceNo),
-        students:m.students||null,name:m.name||null}
+        students:m.students||null,name:m.name||null,lesson_ids:m.lessonIds||null}
     });
     b.disabled=false;
     if(res.error){b.textContent="Save to app";alert("Couldn't save invoice: "+res.error.message);return;}
