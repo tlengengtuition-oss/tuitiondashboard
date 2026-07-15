@@ -182,80 +182,68 @@ db/
   their own isolated data.
 
 ---
-
 ## Raphael's updates
 
 A running log of Raphael's changes, newest first.
 
-### 2026-07-15 — Ledger: lesson-creating actions move into Records (`v22`)
+### 2026-07-15 — Ledger UI pass (`v19` → `v22`)
 
-Follow-on from the tabs. The page-level toolbar (`Log this week` / `Log this month` /
-`Log custom range` / `+ Add lesson`) now lives inside the **Records** tab.
+Made the Ledger quicker to read and act on. Three commits, all **presentation only** — no
+schema change, no new queries, and no change to how any amount is calculated. Same data,
+better arranged.
 
-The tell was that **nothing in that toolbar served Outstanding** — every button creates
-lesson rows, while Outstanding has its own actions (Remind, Invoice, Mark paid, combine
-bar). It was never a page-level toolbar; it was the Records toolbar sitting at page level.
-Now each tab owns its own verbs: Records creates and edits lessons, Outstanding collects
-money.
+**1 · The Records table is scannable** (`87d8f3a`, `v20`)
 
-It also fixes a feedback gap: logging from the Outstanding tab used to be mostly invisible,
-because generated future lessons are stamped `scheduled` and Outstanding only lists `done`
-+ unpaid. You now watch the rows land in the table you're already looking at.
+- **Weekday on every date** — `Tue 15 Jul` instead of `15 Jul`, so a row ties back to its
+  recurring slot without doing date maths. New `recDate()`; scoped to Records, so
+  `prettyDate()` and the outstanding cards are untouched.
+- **Today's row is highlighted** — cream with a gold left border; a gold-edged cream card
+  on mobile, where rows collapse to cards.
+- **A "Today" button** in the period bar scrolls today into view with a brief pulse, and
+  snaps back to the current month first so it always lands somewhere. Respects
+  `prefers-reduced-motion`.
+- **A "Today · <date>" divider** appears on days with no lessons, at the past/future
+  boundary (rows sort newest-first). It anchors the button and separates booked from done.
+- **Cancelled rows dim** to 55% with the amount struck through — legible but clearly inert.
 
-Removed the `led-sub` "Lessons & payments" line along with the old bar — it duplicated the
-subtitle `mountShell()` already renders in the topbar, and nothing in the JS referenced it.
-No JS changes were needed; the button ids are unchanged.
+**2 · Outstanding and Records became tabs** (`e6d20b8`, `v21`)
 
-### 2026-07-15 — Ledger: Outstanding / Records tabs (`v21`)
+The page was very long: KPIs, a card per owing student plus household blocks, filters, then
+a month of rows. Outstanding ("chase the money") and Records ("fix the lesson log") are
+different jobs.
 
-The Ledger was one very long page — KPIs, then a card per owing student plus household
-blocks, then filters, then a month of lesson rows. Outstanding and Records are really two
-different jobs ("chase the money" vs "fix the lesson log"), so they're now tabs.
-
-- **Segmented control** — reuses the same `.seg` pattern the Dashboard uses for
-  Finance/Teaching, so it behaves identically. `setLedgerMode()` in `ledger.js` mirrors
-  `setDashMode()`.
-- **KPIs stay above the tabs** — pending / collected / projected summarize the whole page,
-  so they belong to neither tab.
-- **The owing count rides on the tab** (`Outstanding · 3`) and stays readable when the tab
-  is inactive — you can see who owes without switching. `setOutCount()` is called from both
-  exits of `renderOutstanding()` so it can't drift out of sync.
-- **Defaults to Outstanding**, then remembers your last tab in `localStorage`
-  (`tl_ledger_mode`), same as the dashboard's `tl_dash_mode`.
+- **Segmented control** reusing the Dashboard's `.seg` pattern — `setLedgerMode()` mirrors
+  `setDashMode()`. Defaults to Outstanding, then remembers your last tab in `localStorage`
+  (`tl_ledger_mode`).
+- **KPIs stay above the tabs** — they summarize the whole page, so they belong to neither.
+- **The owing count rides on the tab** (`Outstanding · 3`) and stays readable while
+  inactive, so tabbing never hides the fact that someone owes you. `setOutCount()` is
+  called from both exits of `renderOutstanding()` so it can't drift out of sync.
 - **`.seg` moved from `app.html`'s inline `<style>` into `app.css`** now that two pages use
-  it. The rules are byte-identical — the Dashboard is unaffected.
-- Also fixes a v20 mobile bug: today's card had a *lighter* actions strip than its cream
-  body, inverting how white cards look. Now a shade darker, as intended.
+  it. Rules are byte-identical; the Dashboard is unaffected.
 
-Verified by rendering the real markup against the real stylesheet in headless Chrome —
-both tabs, desktop and mobile.
+**3 · Lesson-creating actions moved into Records** (`2a60ff3`, `v22`)
 
-### 2026-07-15 — Ledger Records table: scannability pass (`v20`)
+- `Log this week` / `Log this month` / `Log custom range` / `+ Add lesson` now live in the
+  **Records** tab. Nothing in that toolbar ever served Outstanding — every button creates
+  lesson rows, while Outstanding has its own verbs (Remind, Invoice, Mark paid, combine
+  bar). It was never a page-level toolbar; it was the Records toolbar sitting at page level.
+- This also closes a feedback gap: logging from Outstanding used to be mostly invisible,
+  since generated future lessons are stamped `scheduled` and Outstanding only lists `done`
+  + unpaid. The new rows now land in the table you're already looking at.
+- Dropped the `led-sub` "Lessons & payments" line with the old bar — it duplicated the
+  subtitle `mountShell()` already renders in the topbar, and no JS referenced it.
 
-Made the **Records** table on the Ledger easier to read at a glance. All changes are in
-`renderRecords()` (`assets/js/ledger.js`), the table styles in `assets/css/app.css`, and
-one new button in `ledger.html`.
+**Verification.** The Records anchor logic was tested across seven cases (today has
+lessons / no lessons today / all-future / all-past / another month / all-time / cancelled
+today) to confirm exactly one anchor lands in the right place. Both tabs were rendered in
+headless Chrome at desktop and mobile widths against the real stylesheet. That caught one
+bug worth noting: today's mobile card had a *lighter* actions strip than its cream body,
+inverting how white cards look — fixed in `v21`.
 
-- **Weekday on every date** — dates now read `Tue 15 Jul` instead of `15 Jul`, so each row
-  ties back to its recurring slot without doing date maths. New `recDate()` helper; scoped
-  to Records only, so `prettyDate()` and the outstanding cards are unchanged.
-- **Today's row is highlighted** — cream background with a gold left border. On mobile
-  (≤820px, where rows become cards) it's a gold-edged cream card instead.
-- **New "Today" button** in the period bar — scrolls today into view with a brief gold
-  pulse, and snaps back to the current month first if you've navigated away, so it always
-  lands somewhere. Respects `prefers-reduced-motion`.
-- **Today divider** — on a day with no lessons, a `Today · Wed 15 Jul` marker slots in at
-  the past/future boundary (rows sort newest-first), giving the button an anchor and
-  visually separating what's booked from what's done.
-- **Cancelled rows dimmed** to 55% with the amount struck through — still legible, clearly
-  inert, no longer competing with real lessons when scanning.
-
-Bumped to **`v20`** via `bash bump-version.sh 20` — this touches the `?v=` query on every
-page, which is why the other HTML files show up in the diff.
-
-> **Not verified visually.** The Ledger needs a Supabase session to render, so the CSS was
-> reasoned from the existing tokens rather than observed in a browser. Worth eyeballing the
-> gold inset border against the `.name` column, and the mobile card layout.
+**Note on `?v=`.** Every commit here bumps the cache-busting number across all pages via
+`bump-version.sh`, which is why 13 HTML files show up in each diff with no real change.
+Only `ledger.html`, `ledger.js`, `app.css` and `app.html` carry actual edits.
 
 ### Notes for future work
 
@@ -263,7 +251,9 @@ page, which is why the other HTML files show up in the diff.
   string-matching normalised phone numbers — there's no `household_id` anywhere in the
   schema. Siblings on different parents' numbers silently don't group, and combined
   invoices are saved with `student_id = null` and recover the name by parsing `data.title`.
-  Promoting household to a real column/table is the obvious first structural improvement.
+  Promoting household to a real column/table is the obvious first structural improvement —
+  and unlike everything above, it's a data-model change: a migration against the live
+  database, a backfill, and no staging copy to rehearse on.
 - **`db/schema.sql` is frozen at the first commit.** The live Supabase database is well
   ahead of it — `invoices` and `materials` tables, plus many columns, exist live but aren't
   in the file, and the `migration_*.sql` files this README references were never committed.
