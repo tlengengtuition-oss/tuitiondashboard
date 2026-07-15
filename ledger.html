@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=21">
+<link rel="stylesheet" href="assets/css/app.css?v=22">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -37,16 +37,6 @@
 </head>
 <body>
 <div id="view">
-  <div class="toolbar">
-    <div class="sub" id="led-sub">Lessons &amp; payments</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <span class="genwrap"><button class="btn gennav" id="wk-prev" title="Earlier week">‹</button><button class="btn" id="gen-btn">Log this week</button><button class="btn gennav" id="wk-next" title="Later week">›</button></span>
-      <span class="genwrap"><button class="btn gennav" id="mo-prev" title="Earlier month">‹</button><button class="btn" id="gen-month-btn">Log this month</button><button class="btn gennav" id="mo-next" title="Later month">›</button></span>
-      <button class="btn" id="gen-custom-btn">Log custom range…</button>
-      <button class="btn btn-gold" id="add-btn">+ Add lesson</button>
-    </div>
-  </div>
-
   <div class="kpi-grid">
     <div class="card kpi owed"><div class="label">Total pending</div>
       <div class="val" id="k-pending">—</div><div class="note" id="k-pending-n">conducted, not paid</div></div>
@@ -68,6 +58,14 @@
   </div>
 
   <div id="rec-view" style="display:none">
+  <div class="toolbar">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <span class="genwrap"><button class="btn gennav" id="wk-prev" title="Earlier week">‹</button><button class="btn" id="gen-btn">Log this week</button><button class="btn gennav" id="wk-next" title="Later week">›</button></span>
+      <span class="genwrap"><button class="btn gennav" id="mo-prev" title="Earlier month">‹</button><button class="btn" id="gen-month-btn">Log this month</button><button class="btn gennav" id="mo-next" title="Later month">›</button></span>
+      <button class="btn" id="gen-custom-btn">Log custom range…</button>
+      <button class="btn btn-gold" id="add-btn">+ Add lesson</button>
+    </div>
+  </div>
   <div class="section-title">Records <span class="hint" id="month-hint"></span>
     <span class="period">
       <button class="btn" id="prev-m">&lsaquo;</button>
@@ -165,10 +163,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=21"></script>
-<script src="assets/js/supabase.js?v=21"></script>
-<script src="assets/js/app.js?v=21"></script>
-<script src="assets/js/paynow.js?v=21"></script>
-<script src="assets/js/ledger.js?v=21"></script>
+<script src="assets/js/config.js?v=22"></script>
+<script src="assets/js/supabase.js?v=22"></script>
+<script src="assets/js/app.js?v=22"></script>
+<script src="assets/js/paynow.js?v=22"></script>
+<script src="assets/js/ledger.js?v=22"></script>
 </body>
 </html>

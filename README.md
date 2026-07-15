@@ -187,6 +187,25 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-15 — Ledger: lesson-creating actions move into Records (`v22`)
+
+Follow-on from the tabs. The page-level toolbar (`Log this week` / `Log this month` /
+`Log custom range` / `+ Add lesson`) now lives inside the **Records** tab.
+
+The tell was that **nothing in that toolbar served Outstanding** — every button creates
+lesson rows, while Outstanding has its own actions (Remind, Invoice, Mark paid, combine
+bar). It was never a page-level toolbar; it was the Records toolbar sitting at page level.
+Now each tab owns its own verbs: Records creates and edits lessons, Outstanding collects
+money.
+
+It also fixes a feedback gap: logging from the Outstanding tab used to be mostly invisible,
+because generated future lessons are stamped `scheduled` and Outstanding only lists `done`
++ unpaid. You now watch the rows land in the table you're already looking at.
+
+Removed the `led-sub` "Lessons & payments" line along with the old bar — it duplicated the
+subtitle `mountShell()` already renders in the topbar, and nothing in the JS referenced it.
+No JS changes were needed; the button ids are unchanged.
+
 ### 2026-07-15 — Ledger: Outstanding / Records tabs (`v21`)
 
 The Ledger was one very long page — KPIs, then a card per owing student plus household
