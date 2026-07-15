@@ -92,8 +92,9 @@
       if(oa!==ob)return oa.localeCompare(ob);
       var sa=groups[a].reduce(function(t,l){return t+Number(l.amount);},0);
       var sb=groups[b].reduce(function(t,l){return t+Number(l.amount);},0);return sb-sa;});
-    if(!ids.length){$("outstanding").innerHTML='<div class="card empty"><h3>All settled 🎉</h3><p>No unpaid lessons right now.</p></div>';$("out-hint").textContent="";return;}
+    if(!ids.length){$("outstanding").innerHTML='<div class="card empty"><h3>All settled 🎉</h3><p>No unpaid lessons right now.</p></div>';$("out-hint").textContent="";setOutCount(0);return;}
     $("out-hint").textContent=ids.length+(ids.length===1?" student owing":" students owing");
+    setOutCount(ids.length);
     function studentCard(id){
       var rows=groups[id].sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
       var sum=rows.reduce(function(t,l){return t+Number(l.amount);},0);
@@ -305,6 +306,17 @@
   }
   function shiftMonth(d){period.mode="month";var dt=new Date(period.y,period.m+d,1);period.y=dt.getFullYear();period.m=dt.getMonth();renderRecords();}
   function toggleAll(){period.mode=period.mode==="all"?"month":"all";if(period.mode==="month"){period.y=new Date().getFullYear();period.m=new Date().getMonth();}renderRecords();}
+  // Outstanding / Records tabs — mirrors setDashMode() on the dashboard.
+  function setLedgerMode(mode){
+    var rec=mode==="rec";
+    if($("out-view"))$("out-view").style.display=rec?"none":"block";
+    if($("rec-view"))$("rec-view").style.display=rec?"block":"none";
+    if($("seg-out"))$("seg-out").classList.toggle("on",!rec);
+    if($("seg-rec"))$("seg-rec").classList.toggle("on",rec);
+    try{localStorage.setItem("tl_ledger_mode",mode);}catch(e){}
+  }
+  // Count rides on the tab so you can see who's owing without switching to look.
+  function setOutCount(n){var el=$("seg-out-n");if(el)el.textContent=n?" · "+n:"";}
   // Jump to today — snaps back to the current month first, so the button always lands somewhere.
   function goToday(){
     var n=new Date();
@@ -743,6 +755,11 @@
     on("rec-search","input",renderRecords);
     ["rec-student","rec-subject","rec-level","rec-status"].forEach(function(id){on(id,"change",renderRecords);});
     on("rec-clear","click",clearRecFilters);
+    on("seg-out","click",function(){setLedgerMode("out");});
+    on("seg-rec","click",function(){setLedgerMode("rec");});
+    var savedMode="out";
+    try{savedMode=localStorage.getItem("tl_ledger_mode")||"out";}catch(e){}
+    setLedgerMode(savedMode);
     load();
   }
   TL.requireAuth("ledger",init);

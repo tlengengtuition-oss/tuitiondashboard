@@ -1,4 +1,4 @@
-/* v20 */
+/* v21 */
 /* =====================================================================
    T-Leng Tuition Dashboard — house style
    navy / gold / cream / teal · Georgia headings · sans body
@@ -63,6 +63,12 @@ a{color:inherit}
 .field label{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px}
 .field input,.field select{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fffdf8;color:var(--ink)}
 .field input:focus,.field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(181,137,43,.18)}
+
+/* ---------- segmented control (dashboard modes, ledger tabs) ---------- */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:16px}
+.seg button{all:unset;cursor:pointer;padding:9px 20px;font-weight:700;font-size:14px;color:var(--muted);background:#fff;transition:background .12s}
+.seg button.on{background:var(--navy);color:#fff}
+.seg .seg-n{opacity:.62;margin-left:2px}
 
 /* ---------- misc ---------- */
 .badge{display:inline-flex;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700}
@@ -303,6 +309,8 @@ tr.inactive td.name{color:var(--muted)}
   /* today reads as a gold-edged cream card instead of a left border */
   .tbl tbody tr.today,.tbl tbody tr.today:hover{background:var(--cream);border-color:var(--gold)}
   .tbl tbody tr.today td:first-child{box-shadow:none}
+  /* keep the acts strip a shade darker than the card, as it is on white rows */
+  .tbl tbody tr.today td.acts{background:#F4EBD3}
   .tbl tbody tr.today-div{border-color:var(--gold);margin-bottom:12px}
   .tbl td{border:none;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;
           align-items:center;gap:14px;padding:11px 16px;text-align:right;font-size:14.5px}

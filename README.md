@@ -187,6 +187,30 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-15 — Ledger: Outstanding / Records tabs (`v21`)
+
+The Ledger was one very long page — KPIs, then a card per owing student plus household
+blocks, then filters, then a month of lesson rows. Outstanding and Records are really two
+different jobs ("chase the money" vs "fix the lesson log"), so they're now tabs.
+
+- **Segmented control** — reuses the same `.seg` pattern the Dashboard uses for
+  Finance/Teaching, so it behaves identically. `setLedgerMode()` in `ledger.js` mirrors
+  `setDashMode()`.
+- **KPIs stay above the tabs** — pending / collected / projected summarize the whole page,
+  so they belong to neither tab.
+- **The owing count rides on the tab** (`Outstanding · 3`) and stays readable when the tab
+  is inactive — you can see who owes without switching. `setOutCount()` is called from both
+  exits of `renderOutstanding()` so it can't drift out of sync.
+- **Defaults to Outstanding**, then remembers your last tab in `localStorage`
+  (`tl_ledger_mode`), same as the dashboard's `tl_dash_mode`.
+- **`.seg` moved from `app.html`'s inline `<style>` into `app.css`** now that two pages use
+  it. The rules are byte-identical — the Dashboard is unaffected.
+- Also fixes a v20 mobile bug: today's card had a *lighter* actions strip than its cream
+  body, inverting how white cards look. Now a shade darker, as intended.
+
+Verified by rendering the real markup against the real stylesheet in headless Chrome —
+both tabs, desktop and mobile.
+
 ### 2026-07-15 — Ledger Records table: scannability pass (`v20`)
 
 Made the **Records** table on the Ledger easier to read at a glance. All changes are in

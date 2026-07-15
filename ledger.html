@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=20">
+<link rel="stylesheet" href="assets/css/app.css?v=21">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -56,10 +56,18 @@
       <div class="val" id="k-projected">—</div><div class="note">booked this month, excl. cancelled</div></div>
   </div>
 
+  <div class="seg" id="led-seg">
+    <button id="seg-out" class="on">Outstanding<span class="seg-n" id="seg-out-n"></span></button>
+    <button id="seg-rec">Records</button>
+  </div>
+
+  <div id="out-view">
   <div class="section-title">Outstanding by student <span class="hint" id="out-hint"></span></div>
   <div id="combine-bar" class="combine-bar" style="display:none"></div>
   <div id="outstanding"></div>
+  </div>
 
+  <div id="rec-view" style="display:none">
   <div class="section-title">Records <span class="hint" id="month-hint"></span>
     <span class="period">
       <button class="btn" id="prev-m">&lsaquo;</button>
@@ -91,6 +99,7 @@
       <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Level</th><th>Amount</th><th>Status</th><th></th></tr></thead>
       <tbody id="month-body"></tbody>
     </table></div>
+  </div>
   </div>
 
   <!-- add-lesson modal -->
@@ -156,10 +165,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=20"></script>
-<script src="assets/js/supabase.js?v=20"></script>
-<script src="assets/js/app.js?v=20"></script>
-<script src="assets/js/paynow.js?v=20"></script>
-<script src="assets/js/ledger.js?v=20"></script>
+<script src="assets/js/config.js?v=21"></script>
+<script src="assets/js/supabase.js?v=21"></script>
+<script src="assets/js/app.js?v=21"></script>
+<script src="assets/js/paynow.js?v=21"></script>
+<script src="assets/js/ledger.js?v=21"></script>
 </body>
 </html>
