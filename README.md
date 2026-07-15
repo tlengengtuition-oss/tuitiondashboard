@@ -180,3 +180,50 @@ db/
   passwords in any committed file — those belong only in the Supabase dashboard.
 - **Multi-tutor ready:** the schema is keyed per tutor, so additional accounts each get
   their own isolated data.
+
+---
+
+## Raphael's updates
+
+A running log of Raphael's changes, newest first.
+
+### 2026-07-15 — Ledger Records table: scannability pass (`v20`)
+
+Made the **Records** table on the Ledger easier to read at a glance. All changes are in
+`renderRecords()` (`assets/js/ledger.js`), the table styles in `assets/css/app.css`, and
+one new button in `ledger.html`.
+
+- **Weekday on every date** — dates now read `Tue 15 Jul` instead of `15 Jul`, so each row
+  ties back to its recurring slot without doing date maths. New `recDate()` helper; scoped
+  to Records only, so `prettyDate()` and the outstanding cards are unchanged.
+- **Today's row is highlighted** — cream background with a gold left border. On mobile
+  (≤820px, where rows become cards) it's a gold-edged cream card instead.
+- **New "Today" button** in the period bar — scrolls today into view with a brief gold
+  pulse, and snaps back to the current month first if you've navigated away, so it always
+  lands somewhere. Respects `prefers-reduced-motion`.
+- **Today divider** — on a day with no lessons, a `Today · Wed 15 Jul` marker slots in at
+  the past/future boundary (rows sort newest-first), giving the button an anchor and
+  visually separating what's booked from what's done.
+- **Cancelled rows dimmed** to 55% with the amount struck through — still legible, clearly
+  inert, no longer competing with real lessons when scanning.
+
+Bumped to **`v20`** via `bash bump-version.sh 20` — this touches the `?v=` query on every
+page, which is why the other HTML files show up in the diff.
+
+> **Not verified visually.** The Ledger needs a Supabase session to render, so the CSS was
+> reasoned from the existing tokens rather than observed in a browser. Worth eyeballing the
+> gold inset border against the `.name` column, and the mobile card layout.
+
+### Notes for future work
+
+- **Households aren't a real concept.** `ledger.js` derives them at render time by
+  string-matching normalised phone numbers — there's no `household_id` anywhere in the
+  schema. Siblings on different parents' numbers silently don't group, and combined
+  invoices are saved with `student_id = null` and recover the name by parsing `data.title`.
+  Promoting household to a real column/table is the obvious first structural improvement.
+- **`db/schema.sql` is frozen at the first commit.** The live Supabase database is well
+  ahead of it — `invoices` and `materials` tables, plus many columns, exist live but aren't
+  in the file, and the `migration_*.sql` files this README references were never committed.
+  Harmless day-to-day (the live DB is the source of truth), but it means the repo can't
+  rebuild the database, and Part 1's setup instructions would produce a broken app for
+  anyone deploying fresh.

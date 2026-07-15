@@ -1,4 +1,4 @@
-/* v19 */
+/* v20 */
 /* =====================================================================
    T-Leng Tuition Dashboard — house style
    navy / gold / cream / teal · Georgia headings · sans body
@@ -109,6 +109,18 @@ a{color:inherit}
 .tbl tbody tr:last-child td{border-bottom:none}
 .tbl tbody tr:hover{background:#fcfaf3}
 .tbl .name{font-weight:600}
+/* Records table — today marker, today divider, inert cancelled rows */
+.tbl tbody tr.today{background:var(--cream)}
+.tbl tbody tr.today:hover{background:#F7EFD9}
+.tbl tbody tr.today td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
+.tbl tbody tr.today-div{background:var(--bg)}
+.tbl tbody tr.today-div td{padding:7px 16px;font-size:11.5px;font-weight:700;letter-spacing:.06em;
+                           text-transform:uppercase;color:var(--gold)}
+.tbl tbody tr.is-cancelled{opacity:.55}
+.tbl tbody tr.is-cancelled td[data-label="Amount"]{text-decoration:line-through}
+.tbl tbody tr.flash td{animation:tl-flash 1.2s ease-out 1}
+@keyframes tl-flash{0%,50%{background-color:rgba(181,137,43,.24)}100%{background-color:transparent}}
+@media(prefers-reduced-motion:reduce){.tbl tbody tr.flash td{animation:none}}
 .kind-tag{display:inline-block;font-size:11px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--line);padding:2px 8px;border-radius:999px;text-transform:capitalize}
 .row-act{all:unset;cursor:pointer;color:var(--owed);font-weight:600;font-size:13px}
 .row-act:hover{text-decoration:underline}
@@ -288,6 +300,10 @@ tr.inactive td.name{color:var(--muted)}
   .tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
   .tbl tr{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;background:var(--paper);overflow:hidden;box-shadow:var(--shadow)}
   .tbl tbody tr:hover{background:var(--paper)}
+  /* today reads as a gold-edged cream card instead of a left border */
+  .tbl tbody tr.today,.tbl tbody tr.today:hover{background:var(--cream);border-color:var(--gold)}
+  .tbl tbody tr.today td:first-child{box-shadow:none}
+  .tbl tbody tr.today-div{border-color:var(--gold);margin-bottom:12px}
   .tbl td{border:none;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;
           align-items:center;gap:14px;padding:11px 16px;text-align:right;font-size:14.5px}
   .tbl td:last-child{border-bottom:none}

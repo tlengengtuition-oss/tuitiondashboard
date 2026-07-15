@@ -10,6 +10,8 @@
   function todayISO(){return iso(new Date());}
   function hm(t){return t?t.slice(0,5):"";}
   function prettyDate(s){if(!s)return"";var p=s.split("-");var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return (+p[2])+" "+mo[(+p[1])-1];}
+  // Records table only — the weekday ties each row back to its recurring slot.
+  function recDate(s){if(!s)return"";var p=s.split("-");var wd=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];return wd[new Date(+p[0],+p[1]-1,+p[2]).getDay()]+" "+prettyDate(s);}
   function monthOccurrences(weekday){var now=new Date(),y=now.getFullYear(),m=now.getMonth(),c=0,d=new Date(y,m,1);while(d.getMonth()===m){if(((d.getDay()+6)%7)===weekday)c++;d.setDate(d.getDate()+1);}return c;}
   function monthRange(){var now=new Date(),y=now.getFullYear(),m=now.getMonth();return{first:y+"-"+pad(m+1)+"-01",last:y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate()),label:now.toLocaleString("en-SG",{month:"long"})};}
   function mondayOf(date){var d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d;}
@@ -271,15 +273,31 @@
     empty.style.display="none";table.style.display="table";
     rows.sort(function(a,b){return b.lesson_date.localeCompare(a.lesson_date);});
     $("month-hint").textContent=rows.length+" lessons";
+    // Anchor the "Today" jump. Rows run newest-first, so when today has no lessons
+    // the divider goes in front of the first older row — i.e. where today would sit.
+    var today=todayISO();
+    var todayInView=period.mode==="all"||today.slice(0,7)===period.y+"-"+pad(period.m+1);
+    var hasToday=rows.some(function(l){return l.lesson_date===today;});
+    var divider='<tr class="today-div" id="rec-today"><td colspan="7">Today · '+recDate(today)+'</td></tr>';
+    var placed=false;
     body.innerHTML=rows.map(function(l){
+      var lead="";
+      if(todayInView&&!hasToday&&!placed&&l.lesson_date<today){lead=divider;placed=true;}
+      var isToday=todayInView&&l.lesson_date===today;
+      var cls=[];
+      if(isToday)cls.push("today");
+      if(l.status==="cancelled")cls.push("is-cancelled");
+      var attrs=(isToday&&!placed?(placed=true,' id="rec-today"'):"")+(cls.length?' class="'+cls.join(" ")+'"':"");
       var badge=l.status==="cancelled"?'<span class="kind-tag">cancelled</span>':(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
       if(l.postponed)badge+=' <span class="kind-tag" style="background:#C8922A;color:#fff">postponed</span>';
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
-      return '<tr><td data-label="Date">'+prettyDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
+      return lead+'<tr'+attrs+'><td data-label="Date">'+recDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
         '<td class="acts"><button class="tact" data-edit="'+l.id+'">Postpone / edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
-    }).join("");
+    }).join("")
+      // every row is newer than today (or filters hid it) — today belongs at the bottom
+      +(todayInView&&!placed?divider:"");
     body.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(){openAdd(true,monthById[b.dataset.edit]);});});
     body.querySelectorAll("[data-cancel]").forEach(function(b){b.addEventListener("click",function(){cancelLesson(b.dataset.cancel);});});
     body.querySelectorAll("[data-restore]").forEach(function(b){b.addEventListener("click",function(){restoreLesson(monthById[b.dataset.restore]);});});
@@ -287,6 +305,16 @@
   }
   function shiftMonth(d){period.mode="month";var dt=new Date(period.y,period.m+d,1);period.y=dt.getFullYear();period.m=dt.getMonth();renderRecords();}
   function toggleAll(){period.mode=period.mode==="all"?"month":"all";if(period.mode==="month"){period.y=new Date().getFullYear();period.m=new Date().getMonth();}renderRecords();}
+  // Jump to today — snaps back to the current month first, so the button always lands somewhere.
+  function goToday(){
+    var n=new Date();
+    if(period.mode!=="all"&&(period.y!==n.getFullYear()||period.m!==n.getMonth())){
+      period={mode:"month",y:n.getFullYear(),m:n.getMonth()};renderRecords();
+    }
+    var el=$("rec-today");if(!el)return;
+    el.scrollIntoView({behavior:"smooth",block:"center"});
+    el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");
+  }
 
   function csvCell(v){v=String(v==null?"":v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
   function exportCSV(){
@@ -709,6 +737,7 @@
     on("inv-save","click",saveInvoice);
     on("prev-m","click",function(){shiftMonth(-1);});
     on("next-m","click",function(){shiftMonth(1);});
+    on("today-btn","click",goToday);
     on("all-time","click",toggleAll);
     on("csv-btn","click",exportCSV);
     on("rec-search","input",renderRecords);
