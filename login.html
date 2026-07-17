@@ -31,8 +31,8 @@
         <button id="tab-up">Create account</button>
       </div>
       <div class="field" id="name-field" style="display:none">
-        <label for="name">Your name</label>
-        <input id="name" type="text" autocomplete="name" placeholder="T-Leng">
+        <label for="name">Business name</label>
+        <input id="name" type="text" autocomplete="organization" placeholder="T-Leng Tuition">
       </div>
       <div class="field">
         <label for="email">Email</label>
@@ -181,14 +181,20 @@
     $("go").disabled = true;
     try {
       if (mode === "up") {
-        var name = $("name").value.trim();
+        var biz = $("name").value.trim();
         if (!$("consent").checked) { show("Please accept the Terms and Privacy Policy to create an account.", false); return; }
         var up = await window.sb.auth.signUp(
-          { email: email, password: pw, options: { data: { full_name: name,
+          { email: email, password: pw, options: { data: { business_name: biz,
             consent_version: "v1", consent_accepted_at: new Date().toISOString() },
             emailRedirectTo: new URL("confirmed.html", location.href).href } });
         if (up.error) throw up.error;
-        if (up.data.session) { location.replace("app.html"); return; }  // confirm off → logged in
+        if (up.data.session) {
+          // Confirm-email off: we're logged in, so persist the business name onto the
+          // profile the signup trigger just created (RLS needs this session). Non-fatal —
+          // it can always be set later in Settings.
+          if (biz) { try { await window.sb.from("profiles").update({ business_name: biz }).eq("id", up.data.user.id); } catch (e) {} }
+          location.replace("app.html"); return;
+        }
         showCreated(email, true);                                         // confirm on → success screen
       } else {
         var inn = await window.sb.auth.signInWithPassword({ email: email, password: pw });

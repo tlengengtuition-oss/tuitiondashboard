@@ -196,9 +196,21 @@ to `"T-Leng Tuition"` when blank.
 - `requireAuth()` fetches `business_name` once after auth and brands the shell with it.
 - The `TL` monogram badge is now derived from the name — initials of the first two words
   (`T-Leng Tuition` → `TL`, `Raphael Tuition` → `RT`), so it stays in step.
-- Shown verbatim (no possessive). Public pages (`login`, `index`, `landing`) keep the
-  product name, since they render before anyone logs in.
+- Shown verbatim (no possessive). Public pages (`index`, `landing`) keep the product name,
+  since they render before anyone logs in.
 - **Note:** the sidebar picks up a Settings change on next page load, not live.
+
+**Captured at registration too.** The signup form's old "Your name" field (which fed
+`full_name`, a column nothing in the app ever read) is now **"Business name"** and feeds
+`business_name` — so a new tutor's sidebar is branded from the moment they sign up, no
+Settings visit needed.
+
+- Sent as signup metadata, and written to the profile client-side right after signup.
+- That client-side write only runs when a session exists at signup, i.e. **email
+  confirmation OFF** (the current setup). For the confirmation-ON case, run
+  **`db/migration_business_name.sql`** once in the Supabase SQL editor — it updates the
+  `handle_new_user` trigger to persist `business_name` from the metadata server-side, so it
+  works either way. (Coordinate with the DB owner before running — it's the shared project.)
 
 ### 2026-07-15 — Ledger UI pass (`v19` → `v22`)
 
