@@ -16,9 +16,25 @@ window.TL = (function () {
     { id: "settings",  label: "Settings",  href: "settings.html", ic: "⚙" }
   ];
 
+  var DEFAULT_BRAND = "T-Leng Tuition";
+  var brandName = DEFAULT_BRAND;   // set per-user from profiles.business_name in requireAuth
+
+  // Two-letter badge from the brand: initials of the first two words
+  // ("T-Leng Tuition" → "TL", "Raphael Tuition" → "RT"), else first two letters.
+  function monogram(name) {
+    var w = String(name || "").split(/[\s-]+/).filter(function (t) { return /[A-Za-z0-9]/.test(t); });
+    var s = w.length >= 2 ? (w[0][0] + w[1][0]) : (w[0] || "").slice(0, 2);
+    return s.toUpperCase() || "TL";
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
   function mono() {
-    return '<span class="mono">TL</span><span><b>T-Leng Tuition</b>' +
-           '<small>Dashboard</small></span>';
+    return '<span class="mono">' + esc(monogram(brandName)) + '</span><span><b>' +
+           esc(brandName) + '</b><small>Dashboard</small></span>';
   }
 
   function configBanner() {
@@ -88,6 +104,12 @@ window.TL = (function () {
         location.replace("login.html?mfa=1"); return;
       }
     } catch (e) { /* MFA unavailable — proceed as normal */ }
+    // Brand the sidebar with this tutor's business name; fall back to the default.
+    try {
+      var pr = await window.sb.from("profiles").select("business_name").eq("id", session.user.id).single();
+      var bn = pr.data && pr.data.business_name && pr.data.business_name.trim();
+      brandName = bn || DEFAULT_BRAND;
+    } catch (e) { brandName = DEFAULT_BRAND; }
     mountShell(active, session.user.email, meta[0], meta[1]);
     if (typeof init === "function") init(session.user);
   }

@@ -186,6 +186,20 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-17 — Per-tutor sidebar brand (`v23`)
+
+The sidebar brand used to hardcode the string `"T-Leng Tuition"` in `app.js`, so every
+account showed the same name. It now reads each tutor's **`business_name`** (the field
+already set in Settings and already used for invoices / reminders / PayNow) and falls back
+to `"T-Leng Tuition"` when blank.
+
+- `requireAuth()` fetches `business_name` once after auth and brands the shell with it.
+- The `TL` monogram badge is now derived from the name — initials of the first two words
+  (`T-Leng Tuition` → `TL`, `Raphael Tuition` → `RT`), so it stays in step.
+- Shown verbatim (no possessive). Public pages (`login`, `index`, `landing`) keep the
+  product name, since they render before anyone logs in.
+- **Note:** the sidebar picks up a Settings change on next page load, not live.
+
 ### 2026-07-15 — Ledger UI pass (`v19` → `v22`)
 
 Made the Ledger quicker to read and act on. Three commits, all **presentation only** — no
