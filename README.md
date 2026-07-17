@@ -196,7 +196,8 @@ to `"T-Leng Tuition"` when blank.
 - `requireAuth()` fetches `business_name` once after auth and brands the shell with it.
 - The `TL` monogram badge is now derived from the name — initials of the first two words
   (`T-Leng Tuition` → `TL`, `Raphael Tuition` → `RT`), so it stays in step.
-- Shown verbatim (no possessive). Public pages (`index`, `landing`) keep the product name,
+- Shown possessive — "Raphael Tuition" → "Raphael Tuition’s Dashboard" (a name ending in s
+  takes just an apostrophe). Public pages (`index`, `landing`) keep the plain product name,
   since they render before anyone logs in.
 - **Note:** the sidebar picks up a Settings change on next page load, not live.
 

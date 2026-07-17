@@ -32,9 +32,15 @@ window.TL = (function () {
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
+  // "Raphael Tuition" → "Raphael Tuition's"; a name already ending in s takes just "'".
+  function possessive(name) {
+    var s = String(name || "");
+    return /s$/i.test(s) ? s + "’" : s + "’s";
+  }
+
   function mono() {
     return '<span class="mono">' + esc(monogram(brandName)) + '</span><span><b>' +
-           esc(brandName) + '</b><small>Dashboard</small></span>';
+           esc(possessive(brandName)) + '</b><small>Dashboard</small></span>';
   }
 
   function configBanner() {
