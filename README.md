@@ -186,6 +186,26 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-22 — Calendar: month view + faster loads (`v26`)
+
+Two things on the Calendar: a **month view** and a fix for slow loading.
+
+- **Week / Month toggle** (segmented control, same as the dashboard; remembered in
+  `localStorage` as `tl_cal_mode`). Month view is a day-cell grid — each day shows compact
+  lesson chips coloured by status, dashed for projected, ⚠ + red for clashes. Recurring
+  lessons project across every future week, so you can page months ahead and see the whole
+  plan. Click a day → jumps into that week. Leading/trailing days from adjacent months are
+  greyed.
+- **Faster loading.** The old path was a 6-round-trip serial waterfall. Now: `students` +
+  `recurring_slots` load in parallel (one `Promise.all`), and **lessons are fetched a whole
+  month at a time and cached in memory** keyed `YYYY-MM`. Paging or toggling back to a month
+  already seen does **zero** network — instant. This is the proportional slice of what
+  Google/Apple calendars do (range prefetch + stale cache); the heavier machinery they use
+  (on-device DB, delta-sync tokens, webhooks) is overkill at one tutor's data volume.
+
+Still read-only — creating/editing lessons stays in the Ledger. Click-to-add-on-calendar
+was considered and deferred.
+
 ### 2026-07-22 — Calendar tab, phase 1 (`v25`)
 
 New **Calendar** nav item (between Planner and Ledger) — a week time-grid of the schedule,

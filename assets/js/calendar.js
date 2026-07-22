@@ -1,56 +1,118 @@
-// Calendar — week time-grid of the ledger.
+// Calendar — week/month view of the ledger.
 // Shows real logged lessons (with status/paid) plus faded "projected" blocks
 // from the recurring template for occurrences not yet logged. Read-only:
 // clicking a block opens a details popover that links into the Ledger.
+//
+// Loading: students + active slots load once; lessons are fetched a whole month
+// at a time and cached in memory (keyed "YYYY-MM"), so paging/toggling back to a
+// month already seen is instant. All fetches for a view run in parallel.
 (function () {
   var $ = function (id) { return document.getElementById(id); };
-  var HOUR_PX = 46, MIN_HR = 6;  // min hours shown so a light week isn't a sliver
+  var HOUR_PX = 46, MIN_HR = 6;
 
-  var userId = null, weekStart = null;
-  var students = [], slots = [], lessons = [], nameById = {}, loadedStatic = false, lastBlocks = [];
+  var userId = null, anchor = null, mode = "week";
+  var students = [], slots = [], nameById = {}, loadedStatic = false;
+  var lessonCache = {}, lastBlocks = [];
 
   function pad(n){ return (n<10?"0":"")+n; }
   function iso(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
   function hhmm(t){ return t ? String(t).slice(0,5) : ""; }
+  function hhmm2(min){ return pad(Math.floor(min/60))+":"+pad(min%60); }
   function toMin(t){ var p=String(t||"0:0").split(":"); return (+p[0])*60+(+p[1]); }
   function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function mondayOf(date){ var d=new Date(date); d.setHours(0,0,0,0); d.setDate(d.getDate()-((d.getDay()+6)%7)); return d; }
   function addDays(d,n){ var x=new Date(d); x.setDate(x.getDate()+n); return x; }
-  function dayIdx(dateISO){ var d=new Date(dateISO+"T00:00:00"); return (d.getDay()+6)%7; }  // Mon=0…Sun=6
+  function dayIdx(dateISO){ var d=new Date(dateISO+"T00:00:00"); return (d.getDay()+6)%7; }
 
   var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var MONF=["January","February","March","April","May","June","July","August","September","October","November","December"];
   var DAY=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
-  function rangeLabel(ws){
-    var end=addDays(ws,6);
+  // ---- what span is on screen ----
+  function visibleRange(){
+    if(mode==="month"){
+      var first=new Date(anchor.getFullYear(),anchor.getMonth(),1);
+      var last=new Date(anchor.getFullYear(),anchor.getMonth()+1,0);
+      return { start:mondayOf(first), end:addDays(mondayOf(last),6) };
+    }
+    var ws=mondayOf(anchor);
+    return { start:ws, end:addDays(ws,6) };
+  }
+  function monthsIn(range){
+    var out=[], d=new Date(range.start.getFullYear(),range.start.getMonth(),1),
+        endM=new Date(range.end.getFullYear(),range.end.getMonth(),1);
+    while(d<=endM){ out.push(d.getFullYear()+"-"+pad(d.getMonth()+1)); d=new Date(d.getFullYear(),d.getMonth()+1,1); }
+    return out;
+  }
+  function rangeLabel(){
+    if(mode==="month") return MONF[anchor.getMonth()]+" "+anchor.getFullYear();
+    var ws=mondayOf(anchor), end=addDays(ws,6);
     return ws.getMonth()===end.getMonth()
       ? ws.getDate()+"–"+end.getDate()+" "+MON[end.getMonth()]
       : ws.getDate()+" "+MON[ws.getMonth()]+" – "+end.getDate()+" "+MON[end.getMonth()];
   }
   function hourLabel(min){ var h=Math.floor(min/60), ap=(h<12||h>=24)?"AM":"PM", hr=h%12; if(hr===0)hr=12; return hr+" "+ap; }
 
-  // Real lessons this week, plus projected blocks for un-logged slot occurrences.
-  function buildBlocks(){
-    var wsISO=iso(weekStart), weISO=iso(addDays(weekStart,6)), blocks=[], seen={};
+  // ---- data ----
+  async function loadStatic(){
+    var r=await Promise.all([
+      window.sb.from("students").select("id,name,active"),
+      window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true)
+    ]);
+    students=r[0].error?[]:(r[0].data||[]);
+    nameById={}; students.forEach(function(s){ nameById[s.id]=s.name; });
+    slots=r[1].error?[]:(r[1].data||[]);
+    loadedStatic=true;
+  }
+  async function fetchMonth(key){
+    var p=key.split("-"), y=+p[0], m=+p[1]-1;
+    var first=iso(new Date(y,m,1)), last=iso(new Date(y,m+1,0));
+    var ls=await window.sb.from("lessons")
+      .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed")
+      .gte("lesson_date",first).lte("lesson_date",last);
+    lessonCache[key]=ls.error?[]:(ls.data||[]);
+  }
+  function lessonsForRange(range){
+    var s=iso(range.start), e=iso(range.end), out=[];
+    monthsIn(range).forEach(function(k){
+      (lessonCache[k]||[]).forEach(function(l){ if(l.lesson_date>=s&&l.lesson_date<=e) out.push(l); });
+    });
+    return out;
+  }
+  // Load only what's missing (static once, uncached months), all in parallel, then paint.
+  async function ensureData(){
+    var range=visibleRange();
+    var need=monthsIn(range).filter(function(k){ return !(k in lessonCache); });
+    var jobs=[];
+    if(!loadedStatic) jobs.push(loadStatic());
+    need.forEach(function(k){ jobs.push(fetchMonth(k)); });
+    if(jobs.length) await Promise.all(jobs);   // cached range → no network, instant
+    render();
+  }
+
+  // ---- blocks: real lessons + projected slot occurrences across a date range ----
+  function buildBlocks(range){
+    var blocks=[], seen={}, lessons=lessonsForRange(range);
     lessons.forEach(function(l){
-      if(l.lesson_date<wsISO||l.lesson_date>weISO) return;
       seen[l.student_id+"|"+l.lesson_date+"|"+hhmm(l.start_time)]=1;
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
-      blocks.push({ id:l.id, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
+      blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", amount:l.amount,
-        kind:"lesson", state:st, postponed:!!l.postponed, dateISO:l.lesson_date });
+        kind:"lesson", state:st, postponed:!!l.postponed });
     });
-    slots.forEach(function(s){
-      var d=addDays(weekStart,s.weekday), di=iso(d);
-      if(seen[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return;  // already logged
-      blocks.push({ id:"slot-"+s.id, day:s.weekday, startMin:toMin(s.start_time), endMin:toMin(s.end_time),
-        name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"",
-        kind:"proj", state:"proj", dateISO:di });
-    });
+    for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
+      var di=iso(d), wd=(d.getDay()+6)%7;
+      slots.forEach(function(s){
+        if(s.weekday!==wd) return;
+        if(seen[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return;
+        blocks.push({ id:"slot-"+s.id+"-"+di, dateISO:di, day:wd, startMin:toMin(s.start_time), endMin:toMin(s.end_time),
+          name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"", kind:"proj", state:"proj" });
+      });
+    }
     return blocks;
   }
 
-  // Within one day: cluster overlapping blocks, give each a lane, flag clusters that need 2+ lanes.
+  // Within one day: cluster overlaps, give each a lane, flag clusters needing 2+ lanes.
   function laneAssign(day){
     day.sort(function(a,b){ return a.startMin-b.startMin || a.endMin-b.endMin; });
     var i=0;
@@ -77,64 +139,96 @@
     return { start:start, end:end };
   }
 
+  // ---- week (time-grid) ----
   function evHTML(b, top, height){
     var cls=["cal-ev","is-"+b.state];
     if(b.clash) cls.push("is-clash");
     if(height<34) cls.push("tight");
     var w=100/b.lanes, left=b.lane*w;
     var style="top:"+top+"px;height:"+Math.max(height-2,15)+"px;left:calc("+left+"% + 2px);width:calc("+w+"% - 4px)";
-    var time=hhmm2(b.startMin);
     var sub=[b.subject,b.level].filter(Boolean).join(" · ");
     return '<div class="'+cls.join(" ")+'" style="'+style+'" data-ev="'+esc(String(b.id))+'">'+
-      '<span class="ce-t">'+time+(b.clash?'<span class="ce-warn">⚠</span>':'')+'</span>'+
+      '<span class="ce-t">'+hhmm2(b.startMin)+(b.clash?'<span class="ce-warn">⚠</span>':'')+'</span>'+
       '<span class="ce-n">'+esc(b.name)+(b.postponed?' ↻':'')+'</span>'+
       (sub?'<span class="ce-s">'+esc(sub)+'</span>':'')+'</div>';
   }
-  function hhmm2(min){ return pad(Math.floor(min/60))+":"+pad(min%60); }
-
-  function render(){
-    var el=$("cal"); if(!el) return;
-    $("cal-range").textContent=rangeLabel(weekStart);
-    var blocks=buildBlocks();
+  function renderWeek(range){
+    var ws=range.start, blocks=buildBlocks(range);
     var byDay=[[],[],[],[],[],[],[]];
     blocks.forEach(function(b){ byDay[b.day].push(b); });
     byDay.forEach(laneAssign);
-    lastBlocks=blocks;  // keep the laid-out blocks (with lane/clash) for the popover
-    var bd=bounds(blocks), hours=(bd.end-bd.start)/60, gridH=hours*HOUR_PX;
-    var today=iso(new Date());
+    lastBlocks=blocks;
+    var bd=bounds(blocks), hours=(bd.end-bd.start)/60, gridH=hours*HOUR_PX, today=iso(new Date());
 
     var headCells="";
     for(var d=0; d<7; d++){
-      var date=addDays(weekStart,d), isToday=iso(date)===today;
-      headCells+='<div class="cal-day-h'+(isToday?" today":"")+'">'+DAY[d]+'<b>'+date.getDate()+'</b></div>';
+      var date=addDays(ws,d), isT=iso(date)===today;
+      headCells+='<div class="cal-day-h'+(isT?" today":"")+'">'+DAY[d]+'<b>'+date.getDate()+'</b></div>';
     }
     var gutter="";
     for(var h=0; h<hours; h++)
       gutter+='<div class="cal-hr" style="height:'+HOUR_PX+'px"><span>'+hourLabel(bd.start+h*60)+'</span></div>';
-
     var cols="";
     for(var c=0; c<7; c++){
-      var isT=iso(addDays(weekStart,c))===today, evs="";
+      var isTc=iso(addDays(ws,c))===today, evs="";
       byDay[c].forEach(function(b){
         var top=(b.startMin-bd.start)/60*HOUR_PX, height=(b.endMin-b.startMin)/60*HOUR_PX;
         evs+=evHTML(b, top, height);
       });
-      cols+='<div class="cal-col'+(isT?" today":"")+'">'+evs+'</div>';
+      cols+='<div class="cal-col'+(isTc?" today":"")+'">'+evs+'</div>';
     }
-
     var gridBg="background-image:repeating-linear-gradient(var(--line) 0 1px,transparent 1px "+HOUR_PX+"px)";
+    var el=$("cal");
     el.innerHTML='<div class="cal-head"><div class="cal-gutter-h"></div>'+headCells+'</div>'+
       '<div class="cal-body"><div class="cal-gutter">'+gutter+'</div>'+
       '<div class="cal-cols" style="height:'+gridH+'px;'+gridBg+'">'+cols+'</div></div>';
     if(!blocks.length)
       el.innerHTML+='<div class="cal-empty">No lessons or recurring slots this week. Add slots on the Planner, or log lessons in the Ledger.</div>';
+    wireEvents();
+  }
 
-    el.querySelectorAll("[data-ev]").forEach(function(node){
+  // ---- month (day-cell grid) ----
+  function chipHTML(b){
+    var cls="cal-chip is-"+b.state+(b.clash?" is-clash":"");
+    return '<span class="'+cls+'" data-ev="'+esc(String(b.id))+'">'+(b.clash?'⚠ ':'')+hhmm2(b.startMin)+' '+esc(b.name)+'</span>';
+  }
+  function renderMonth(range){
+    var blocks=buildBlocks(range);
+    var byDate={}; blocks.forEach(function(b){ (byDate[b.dateISO]=byDate[b.dateISO]||[]).push(b); });
+    Object.keys(byDate).forEach(function(k){ laneAssign(byDate[k]); });   // sets clash per day
+    lastBlocks=blocks;
+    var today=iso(new Date()), curMonth=anchor.getMonth();
+    var head=DAY.map(function(d){ return '<div class="cal-mh">'+d+'</div>'; }).join("");
+    var cells="";
+    for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
+      var di=iso(d), inMonth=d.getMonth()===curMonth, isT=di===today;
+      var chips=(byDate[di]||[]).slice().sort(function(a,b){ return a.startMin-b.startMin; });
+      var shown=chips.slice(0,3).map(chipHTML).join("");
+      var more=chips.length>3?'<div class="cal-more">+'+(chips.length-3)+' more</div>':"";
+      cells+='<div class="cal-mday'+(inMonth?"":" other")+(isT?" today":"")+'" data-day="'+di+'">'+
+        '<div class="md-num">'+d.getDate()+'</div>'+shown+more+'</div>';
+    }
+    $("cal").innerHTML='<div class="cal-mhead">'+head+'</div><div class="cal-month">'+cells+'</div>';
+    // click a day (not a chip) → open that week
+    $("cal").querySelectorAll(".cal-mday").forEach(function(cell){
+      cell.addEventListener("click", function(){ anchor=new Date(cell.dataset.day+"T00:00:00"); setMode("week"); });
+    });
+    wireEvents();
+  }
+
+  function render(){
+    if(!$("cal")) return;
+    $("cal-range").textContent=rangeLabel();
+    if(mode==="month") renderMonth(visibleRange()); else renderWeek(visibleRange());
+  }
+
+  function wireEvents(){
+    $("cal").querySelectorAll("[data-ev]").forEach(function(node){
       node.addEventListener("click", function(e){ e.stopPropagation(); showPopover(node); });
     });
   }
 
-  // ---- details popover (read-only; edits live in the Ledger) ----
+  // ---- popover (read-only) ----
   function findBlock(id){ return lastBlocks.filter(function(b){ return String(b.id)===String(id); })[0]; }
   function showPopover(node){
     var b=findBlock(node.dataset.ev); if(!b) return;
@@ -142,8 +236,8 @@
     var label={paid:["Paid","rgba(14,124,123,.14)","#0b5b5a"], unpaid:["Unpaid","rgba(179,64,47,.12)","#8a2f22"],
       sched:["Scheduled","rgba(26,42,79,.10)","var(--navy)"], cancel:["Cancelled","#f3f0e8","var(--muted)"],
       proj:["Not logged yet","rgba(181,137,43,.12)","#7a5f1f"]}[b.state];
-    var when=DAY[b.day]+" "+addDays(weekStart,b.day).getDate()+" "+MON[addDays(weekStart,b.day).getMonth()]+
-             " · "+hhmm2(b.startMin)+"–"+hhmm2(b.endMin);
+    var dt=new Date(b.dateISO+"T00:00:00");
+    var when=DAY[(dt.getDay()+6)%7]+" "+dt.getDate()+" "+MON[dt.getMonth()]+" · "+hhmm2(b.startMin)+"–"+hhmm2(b.endMin);
     var sub=[b.subject,b.level].filter(Boolean).join(" · ");
     pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>'+esc(b.name)+'</h4>'+
       '<div class="cp-row">'+esc(when)+'</div>'+
@@ -162,42 +256,45 @@
   }
   function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; }
 
-  function shiftWeek(n){ weekStart=addDays(weekStart,n*7); loadWeek(); }
-  function goToday(){ weekStart=mondayOf(new Date()); loadWeek(); }
-
-  async function loadStatic(){
-    var st=await window.sb.from("students").select("id,name,active");
-    students=st.error?[]:(st.data||[]);
-    nameById={}; students.forEach(function(s){ nameById[s.id]=s.name; });
-    var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
-    slots=sl.error?[]:(sl.data||[]);
-    loadedStatic=true;
+  // ---- nav / mode ----
+  function setMode(m){
+    mode=m;
+    try{ localStorage.setItem("tl_cal_mode",m); }catch(e){}
+    $("seg-week").classList.toggle("on",m==="week");
+    $("seg-month").classList.toggle("on",m==="month");
+    ensureData();
   }
-  async function loadWeek(){
-    if(!loadedStatic) await loadStatic();
-    var wsISO=iso(weekStart), weISO=iso(addDays(weekStart,6));
-    var ls=await window.sb.from("lessons")
-      .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed")
-      .gte("lesson_date",wsISO).lte("lesson_date",weISO);
-    lessons=ls.error?[]:(ls.data||[]);
-    render();
+  function shiftRange(dir){
+    if(mode==="month") anchor=new Date(anchor.getFullYear(),anchor.getMonth()+dir,1);
+    else anchor=addDays(anchor,dir*7);
+    ensureData();
   }
+  function goToday(){ anchor=new Date(); ensureData(); }
 
   function init(user){
-    userId=user.id;
-    weekStart=mondayOf(new Date());
-    $("cal-prev").addEventListener("click", function(){ shiftWeek(-1); });
-    $("cal-next").addEventListener("click", function(){ shiftWeek(1); });
+    userId=user.id; anchor=new Date();
+    try{ mode=localStorage.getItem("tl_cal_mode")||"week"; }catch(e){ mode="week"; }
+    $("seg-week").classList.toggle("on",mode==="week");
+    $("seg-month").classList.toggle("on",mode==="month");
+    $("cal-prev").addEventListener("click", function(){ shiftRange(-1); });
+    $("cal-next").addEventListener("click", function(){ shiftRange(1); });
     $("cal-today").addEventListener("click", goToday);
+    $("seg-week").addEventListener("click", function(){ setMode("week"); });
+    $("seg-month").addEventListener("click", function(){ setMode("month"); });
     document.addEventListener("click", hidePopover);
     window.addEventListener("resize", hidePopover);
     if(window.TL && TL.promotePastLessons) TL.promotePastLessons();
-    loadWeek();
+    ensureData();
   }
 
   if (window.__CAL_TEST__) {
-    window.CAL = { setData:function(s,sl,l,ws){ students=s; slots=sl; lessons=l; weekStart=ws;
-      nameById={}; s.forEach(function(x){ nameById[x.id]=x.name; }); }, render:render };
+    window.CAL = { seed:function(s,sl,l,a,m){
+      students=s; slots=sl; loadedStatic=true; anchor=a; mode=m||"week";
+      nameById={}; s.forEach(function(x){ nameById[x.id]=x.name; });
+      lessonCache={}; (l||[]).forEach(function(x){ var k=x.lesson_date.slice(0,7); (lessonCache[k]=lessonCache[k]||[]).push(x); });
+      var w=$("seg-week"), mo=$("seg-month");
+      if(w) w.classList.toggle("on",mode==="week"); if(mo) mo.classList.toggle("on",mode==="month");
+    }, render:render };
   } else {
     TL.requireAuth("calendar", init);
   }

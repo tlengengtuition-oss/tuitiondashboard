@@ -4,12 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=25">
+<link rel="stylesheet" href="assets/css/app.css?v=26">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
   .cal-nav .btn{padding:7px 12px}
   .cal-range{min-width:150px;text-align:center;font-weight:700;font-size:14.5px;color:var(--navy)}
+  .cal-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .cal-right .seg{margin-bottom:0}
   .cal-legend{display:flex;align-items:center;gap:13px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
   .cal-legend span{display:inline-flex;align-items:center;gap:6px}
   .cal-sw{width:12px;height:12px;border-radius:3px;border:1px solid}
@@ -54,6 +56,30 @@
 
   .cal-empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:13.5px}
 
+  /* month grid */
+  .cal-mhead{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--line)}
+  .cal-mh{text-align:center;padding:8px 4px;font-size:11.5px;font-weight:700;color:var(--muted);border-left:1px solid var(--line)}
+  .cal-mh:first-child{border-left:none}
+  .cal-month{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cal-mday{min-height:96px;border-left:1px solid var(--line);border-top:1px solid var(--line);padding:4px 5px 6px;cursor:pointer;overflow:hidden}
+  .cal-mday:nth-child(7n+1){border-left:none}
+  .cal-mday:nth-child(-n+7){border-top:none}
+  .cal-mday:hover{background:#fcfaf3}
+  .cal-mday.other{background:#faf8f2}
+  .cal-mday.other .md-num{color:#c3bba6}
+  .cal-mday.today{background:var(--cream)}
+  .cal-mday .md-num{font-weight:700;font-size:12.5px;color:var(--navy);margin-bottom:2px}
+  .cal-mday.today .md-num{color:var(--gold)}
+  .cal-chip{display:block;font-size:10.5px;font-weight:600;line-height:1.35;padding:1px 5px;margin-top:2px;
+    border-radius:4px;border-left:3px solid;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .cal-chip.is-paid{background:rgba(14,124,123,.12);border-color:var(--teal);color:#0b5b5a}
+  .cal-chip.is-unpaid{background:rgba(179,64,47,.10);border-color:var(--owed);color:#8a2f22}
+  .cal-chip.is-sched{background:rgba(26,42,79,.08);border-color:var(--navy);color:var(--navy)}
+  .cal-chip.is-cancel{background:#f3f0e8;border-color:var(--line);color:var(--muted);text-decoration:line-through}
+  .cal-chip.is-proj{background:rgba(181,137,43,.08);border-color:rgba(181,137,43,.7);border-left-style:dashed;color:#7a5f1f}
+  .cal-chip.is-clash{border-color:var(--owed);box-shadow:inset 0 0 0 1px var(--owed)}
+  .cal-more{font-size:10px;color:var(--muted);margin-top:2px;font-weight:600}
+
   .cal-pop{position:fixed;z-index:50;max-width:260px;background:var(--paper);border:1px solid var(--line);
     border-radius:12px;box-shadow:0 10px 34px rgba(20,30,60,.18);padding:14px 16px;font-size:13px}
   .cal-pop h4{font-family:var(--serif);font-size:16px;margin:0 0 3px;color:var(--navy)}
@@ -83,12 +109,18 @@
       <button class="btn" id="cal-next" title="Next week">&rsaquo;</button>
       <button class="btn" id="cal-today">Today</button>
     </div>
-    <div class="cal-legend">
-      <span><i class="cal-sw sw-paid"></i>Paid</span>
-      <span><i class="cal-sw sw-unpaid"></i>Unpaid</span>
-      <span><i class="cal-sw sw-sched"></i>Scheduled</span>
-      <span><i class="cal-sw sw-proj"></i>Not logged</span>
-      <span><i class="cal-sw sw-clash"></i>Clash</span>
+    <div class="cal-right">
+      <div class="seg" id="cal-seg">
+        <button id="seg-week" class="on">Week</button>
+        <button id="seg-month">Month</button>
+      </div>
+      <div class="cal-legend">
+        <span><i class="cal-sw sw-paid"></i>Paid</span>
+        <span><i class="cal-sw sw-unpaid"></i>Unpaid</span>
+        <span><i class="cal-sw sw-sched"></i>Scheduled</span>
+        <span><i class="cal-sw sw-proj"></i>Not logged</span>
+        <span><i class="cal-sw sw-clash"></i>Clash</span>
+      </div>
     </div>
   </div>
   <div class="card cal-card">
@@ -98,9 +130,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=25"></script>
-<script src="assets/js/supabase.js?v=25"></script>
-<script src="assets/js/app.js?v=25"></script>
-<script src="assets/js/calendar.js?v=25"></script>
+<script src="assets/js/config.js?v=26"></script>
+<script src="assets/js/supabase.js?v=26"></script>
+<script src="assets/js/app.js?v=26"></script>
+<script src="assets/js/calendar.js?v=26"></script>
 </body>
 </html>
