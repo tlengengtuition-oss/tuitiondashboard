@@ -8,6 +8,7 @@ window.TL = (function () {
   var NAV = [
     { id: "dashboard", label: "Dashboard", href: "app.html",    ic: "◧" },
     { id: "planner",   label: "Planner",   href: "planner.html",  ic: "▦" },
+    { id: "calendar",  label: "Calendar",  href: "calendar.html", ic: "⊞" },
     { id: "ledger",    label: "Ledger",    href: "ledger.html",   ic: "₪" },
     { id: "students",  label: "Students",  href: "students.html", ic: "☺" },
     { id: "exams",     label: "Exams",     href: "exams.html",    ic: "◷" },
@@ -84,6 +85,7 @@ window.TL = (function () {
   async function requireAuth(active, init) {
     var meta = { dashboard: ["Dashboard", "Your week at a glance"],
                  planner: ["Weekly planner", "Mon–Sun schedule"],
+                 calendar: ["Calendar", "Lessons across the week"],
                  ledger: ["Ledger", "Lessons, payments & projections"],
                  settings: ["Settings", "Business & PayNow details"],
                  exams: ["Exams", "Upcoming assessments"],

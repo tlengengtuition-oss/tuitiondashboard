@@ -186,6 +186,32 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-22 — Calendar tab, phase 1 (`v25`)
+
+New **Calendar** nav item (between Planner and Ledger) — a week time-grid of the schedule,
+Google-Calendar style. New `calendar.html` + `assets/js/calendar.js`, plus a NAV/meta entry
+in `app.js`. No schema change; same three reads (`students`, `recurring_slots`, `lessons`)
+the rest of the app already uses.
+
+- **Shows both** real logged lessons *and* faded "projected" blocks from the recurring
+  template for occurrences not yet logged — so future weeks aren't blank. Uses the
+  generator's dedup key (`student_id | date | start_time`) to decide which is which.
+- **Colour by state:** paid (teal), done-unpaid (red), scheduled (navy), cancelled (grey,
+  struck), projected (dashed gold). Postponed lessons carry a ↻ marker.
+- **Overlap = clash.** Since pairs/orgs are a single row, any two blocks that overlap are a
+  real double-booking. They render side-by-side with a red outline + ⚠, and the popover
+  says "Overlaps another lesson". (Flags *all* overlaps — the app can't tell intentional
+  from accidental; a "known-OK" suppression can come later.)
+- **Read-only.** Clicking a block opens a details popover with an "Open in Ledger" link —
+  editing / paying / logging all stay in the Ledger. The calendar visualises and navigates.
+- Week ‹ › nav + Today button; time range auto-fits the week's earliest/latest lesson.
+
+**Phase 2 (Google Calendar sync) — not built.** Two paths, very different sizes: a
+downloadable `.ics` (planner.js already exports slots as `RRULE` events — easy, client-side)
+vs. true Google Calendar API sync (OAuth + storing refresh tokens → needs a Supabase Edge
+Function; can't be pure static). Decide when we get there.
+
+
 ### 2026-07-17 — Per-tutor sidebar brand (`v23`)
 
 The sidebar brand used to hardcode the string `"T-Leng Tuition"` in `app.js`, so every
