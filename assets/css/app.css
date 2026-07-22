@@ -175,6 +175,7 @@ a{color:inherit}
 .group-head .gsum{font-weight:800;color:var(--owed)}
 .lrow{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);font-size:13.5px}
 .lrow:last-child{border-bottom:none}
+.lrow .lchk{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex:none}
 .lrow .lwhen{color:var(--muted);font-size:12.5px;min-width:96px}
 .lrow .lamt{font-weight:700;margin-left:auto;white-space:nowrap}
 .mark{all:unset;cursor:pointer;color:var(--teal);font-weight:700;font-size:12px;border:1px solid var(--teal);padding:4px 10px;border-radius:7px;white-space:nowrap}
