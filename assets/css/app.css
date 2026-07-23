@@ -1,4 +1,4 @@
-/* v40 */
+/* v41 */
 /* =====================================================================
    T-Leng Tuition Dashboard — house style
    navy / gold / cream / teal · Georgia headings · sans body
@@ -66,6 +66,8 @@ a{color:inherit}
 .postal-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px}
 .postal-row input{width:120px;flex:0 0 auto}
 .postal-row .btn{padding:8px 12px;font-size:13px}
+.postal-row .btn.postal-find{padding:8px 10px}
+.postal-find svg{display:block}
 .postal-msg{font-size:12px;color:var(--muted)}
 .postal-msg.err{color:var(--owed)} .postal-msg.ok{color:var(--teal)}
 

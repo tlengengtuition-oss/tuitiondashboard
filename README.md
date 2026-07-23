@@ -186,6 +186,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Postal lookup as a magnifying-glass icon; location truncates on calendar (`v41`)
+
+- The "Find & add address" button is now a **magnifying-glass icon** (inline SVG, icon-only,
+  with title/aria-label), on both the student form and profile edit.
+- On the calendar, a long location no longer wraps and blows up the block: the `◍ location`
+  line now **truncates to one line** with an ellipsis. The **full** location still shows
+  (wrapped) in the click popover.
+
 ### 2026-07-23 — Postal-code → address lookup on the location field (`v40`)
 
 On the student add/edit form and the profile edit, a **Postal code** box + **Find & add
