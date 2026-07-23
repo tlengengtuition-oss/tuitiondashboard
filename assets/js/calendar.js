@@ -12,7 +12,7 @@
 
   var userId = null, anchor = null, mode = "week";
   var students = [], slots = [], nameById = {}, loadedStatic = false;
-  var lessonCache = {}, pending = {}, lastBlocks = [];
+  var lessonCache = {}, pending = {}, lastBlocks = [], hidden = {};
 
   function pad(n){ return (n<10?"0":"")+n; }
   function iso(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
@@ -125,7 +125,7 @@
           name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"", kind:"proj", state:"proj" });
       });
     }
-    return blocks;
+    return blocks.filter(function(b){ return !hidden[b.state]; });   // legend toggles
   }
 
   // Within one day: cluster overlaps, give each a lane, and flag genuine double-bookings.
@@ -293,9 +293,24 @@
   }
   function goToday(){ anchor=new Date(); ensureData(); }
 
+  function initLegend(){
+    document.querySelectorAll(".cal-legend .leg").forEach(function(btn){
+      var cat=btn.dataset.cat;
+      btn.classList.toggle("off", !!hidden[cat]);
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        if(hidden[cat]) delete hidden[cat]; else hidden[cat]=true;
+        btn.classList.toggle("off", !!hidden[cat]);
+        try{ localStorage.setItem("tl_cal_hidden", JSON.stringify(hidden)); }catch(e2){}
+        render();   // re-filter; no refetch needed
+      });
+    });
+  }
+
   function init(user){
     userId=user.id; anchor=new Date();
     try{ mode=localStorage.getItem("tl_cal_mode")||"week"; }catch(e){ mode="week"; }
+    try{ hidden=JSON.parse(localStorage.getItem("tl_cal_hidden")||"{}")||{}; }catch(e){ hidden={}; }
     $("seg-week").classList.toggle("on",mode==="week");
     $("seg-month").classList.toggle("on",mode==="month");
     $("cal-prev").addEventListener("click", function(){ shiftRange(-1); });
@@ -303,6 +318,7 @@
     $("cal-today").addEventListener("click", goToday);
     $("seg-week").addEventListener("click", function(){ setMode("week"); });
     $("seg-month").addEventListener("click", function(){ setMode("month"); });
+    initLegend();
     document.addEventListener("click", hidePopover);
     window.addEventListener("resize", hidePopover);
     if(window.TL && TL.promotePastLessons) TL.promotePastLessons();
@@ -316,7 +332,7 @@
       lessonCache={}; (l||[]).forEach(function(x){ var k=x.lesson_date.slice(0,7); (lessonCache[k]=lessonCache[k]||[]).push(x); });
       var w=$("seg-week"), mo=$("seg-month");
       if(w) w.classList.toggle("on",mode==="week"); if(mo) mo.classList.toggle("on",mode==="month");
-    }, render:render, ensureData:ensureData,
+    }, render:render, ensureData:ensureData, initLegend:initLegend,
        go:function(a,m){ anchor=a; if(m) mode=m; },
        cachedMonths:function(){ return Object.keys(lessonCache); } };
   } else {

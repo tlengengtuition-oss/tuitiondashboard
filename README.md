@@ -186,6 +186,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: legend items filter the view (`v30`)
+
+The legend is now interactive — click **Paid / Unpaid / Scheduled / Not logged / Cancelled**
+to show or hide that category. Off items dim + strike-through; the blocks disappear from both
+week and month views. Choice persists in `localStorage` (`tl_cal_hidden`). "Cancelled" was
+added to the legend (it wasn't shown before); "Clash" stays a plain key (it's an attribute,
+not a filterable category). Filtering happens before lane/clash layout, so hiding a category
+also drops any clash it was part of.
+
+Note: the legend is hidden on mobile (`max-width:820px`), so the filters are desktop-only for
+now — a mobile control can come later if needed.
+
 ### 2026-07-23 — Calendar: cancelled lessons don't count as clashes (`v29`)
 
 A clash now needs two *active* lessons to overlap. A cancelled lesson isn't happening, so
