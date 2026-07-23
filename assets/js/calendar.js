@@ -300,6 +300,48 @@
   }
   function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; }
 
+  // ---- export to .ics (one-time; import into Google/Apple Calendar) ----
+  function icsEsc(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); }
+  function icsFold(line){ var out="", s=line; while(s.length>73){ out+=s.slice(0,73)+"\r\n "; s=s.slice(73); } return out+s; }
+  function icsStamp(dateISO, hhmmv){ return dateISO.replace(/-/g,"")+"T"+hhmmv.replace(":","")+"00"; }
+  // Real logged lessons only (each a dated event), recent past + all future, excluding cancelled.
+  // Floating local time (no TZ) so events keep their clock time. Stable UID per lesson id.
+  async function exportICS(){
+    if(!loadedStatic) await loadStatic();
+    var from=new Date(); from.setMonth(from.getMonth()-2);
+    var ls=await window.sb.from("lessons")
+      .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id")
+      .gte("lesson_date", iso(from));
+    if(ls.error){ alert("Couldn't export: "+ls.error.message); return; }
+    var rows=(ls.data||[]).filter(function(l){ return l.status!=="cancelled"; });
+    if(!rows.length){ alert("No lessons to export yet — log some in the Ledger first."); return; }
+    var n=new Date();
+    var dtstamp=n.getUTCFullYear()+pad(n.getUTCMonth()+1)+pad(n.getUTCDate())+"T"+pad(n.getUTCHours())+pad(n.getUTCMinutes())+pad(n.getUTCSeconds())+"Z";
+    var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//T-Leng Tuition//Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:Tuition lessons"];
+    rows.forEach(function(l){
+      var summary=[nameById[l.student_id]||"Lesson", l.subject].filter(Boolean).join(" · ");
+      var d=[]; if(l.level) d.push("Level: "+l.level);
+      if(l.amount!=null) d.push("Amount: S$"+l.amount);
+      d.push(l.status==="scheduled"?"Scheduled":(l.paid?"Paid":"Unpaid"));
+      if(l.postponed) d.push("Postponed"); if(!l.slot_id) d.push("One-off");
+      var loc=locById[l.student_id]||"";
+      L.push("BEGIN:VEVENT");
+      L.push("UID:lesson-"+l.id+"@tleng");
+      L.push("DTSTAMP:"+dtstamp);
+      L.push("DTSTART:"+icsStamp(l.lesson_date, hhmm(l.start_time)));
+      L.push("DTEND:"+icsStamp(l.lesson_date, hhmm(l.end_time)));
+      L.push(icsFold("SUMMARY:"+icsEsc(summary)));
+      if(loc) L.push(icsFold("LOCATION:"+icsEsc(loc)));
+      L.push(icsFold("DESCRIPTION:"+icsEsc(d.join("\n"))));
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    var blob=new Blob([L.join("\r\n")+"\r\n"], {type:"text/calendar;charset=utf-8"});
+    var url=URL.createObjectURL(blob), a=document.createElement("a");
+    a.href=url; a.download="tuition-lessons.ics"; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
   // ---- nav / mode ----
   function setMode(m){
     mode=m;
@@ -338,6 +380,7 @@
     $("cal-prev").addEventListener("click", function(){ shiftRange(-1); });
     $("cal-next").addEventListener("click", function(){ shiftRange(1); });
     $("cal-today").addEventListener("click", goToday);
+    if($("cal-export")) $("cal-export").addEventListener("click", exportICS);
     $("seg-week").addEventListener("click", function(){ setMode("week"); });
     $("seg-month").addEventListener("click", function(){ setMode("month"); });
     initLegend();
@@ -354,7 +397,7 @@
       lessonCache={}; (l||[]).forEach(function(x){ var k=x.lesson_date.slice(0,7); (lessonCache[k]=lessonCache[k]||[]).push(x); });
       var w=$("seg-week"), mo=$("seg-month");
       if(w) w.classList.toggle("on",mode==="week"); if(mo) mo.classList.toggle("on",mode==="month");
-    }, render:render, ensureData:ensureData, initLegend:initLegend,
+    }, render:render, ensureData:ensureData, initLegend:initLegend, exportICS:exportICS,
        go:function(a,m){ anchor=a; if(m) mode=m; },
        blocks:function(){ return buildBlocks(visibleRange()); },
        cachedMonths:function(){ return Object.keys(lessonCache); } };

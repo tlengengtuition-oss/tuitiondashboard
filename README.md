@@ -186,6 +186,21 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: export to .ics (Google/Apple Calendar) (`v45`)
+
+An **Export .ics** button on the Calendar that downloads your lessons as a standard iCalendar
+file to import into Google or Apple Calendar. Client-side, no backend — same mechanism the
+Planner already uses for recurring slots.
+
+- Exports real logged lessons (each a dated `VEVENT`) from ~2 months ago onward; excludes
+  cancelled. Floating local time (keeps clock time), stable `UID` per lesson id.
+- `SUMMARY` = "Student · Subject", `LOCATION` = the student's location, `DESCRIPTION` = level /
+  amount / status, with Postponed / One-off noted.
+- This is Phase-2 **step 1** (a snapshot — re-export after changes). The live auto-updating
+  version is a Supabase **Edge Function** serving a subscribable `.ics` URL (Google "From URL"),
+  which is the proper endgame for one-way app→Google sync but needs deploying that function —
+  planned as a follow-up if the snapshot isn't enough.
+
 ### 2026-07-23 — Calendar: split the legend by clickable vs reference (`v44`)
 
 The status filters (Paid/Unpaid/Scheduled/Not logged/Cancelled — clickable to show/hide) stay
