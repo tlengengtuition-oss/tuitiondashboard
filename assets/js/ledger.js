@@ -9,6 +9,9 @@
   function iso(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
   function todayISO(){return iso(new Date());}
   function hm(t){return t?t.slice(0,5):"";}
+  // A lesson is "done" only once its end time has passed — so a lesson later TODAY stays
+  // "scheduled" (date-only comparison wrongly marked every today lesson done). endHM = "HH:MM".
+  function statusFor(dateISO,endHM){return new Date(dateISO+"T"+(endHM||"23:59")+":00").getTime()>Date.now()?"scheduled":"done";}
   function prettyDate(s){if(!s)return"";var p=s.split("-");var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return (+p[2])+" "+mo[(+p[1])-1];}
   // Records table only — the weekday ties each row back to its recurring slot.
   function recDate(s){if(!s)return"";var p=s.split("-");var wd=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];return wd[new Date(+p[0],+p[1]-1,+p[2]).getDay()]+" "+prettyDate(s);}
@@ -57,7 +60,7 @@
       slots.forEach(function(s){
         if(s.weekday!==wd)return;
         if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
-        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:di>todayISO()?"scheduled":"done",paid:false});
+        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
       });
     }
     b.disabled=false;
@@ -356,7 +359,7 @@
     load();
   }
   async function restoreLesson(l){
-    var status=l.lesson_date>todayISO()?"scheduled":"done";
+    var status=statusFor(l.lesson_date,hm(l.end_time));
     var res=await window.sb.from("lessons").update({status:status}).eq("id",l.id);
     if(res.error){alert("Couldn't restore: "+res.error.message);return;}
     load();
@@ -486,7 +489,7 @@
     var paid=$("m-paid").checked;
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
-      status:date>todayISO()?"scheduled":"done",paid:paid,paid_date:paid?date:null,postponed:$("m-postponed").checked};
+      status:statusFor(date,end),paid:paid,paid_date:paid?date:null,postponed:$("m-postponed").checked};
     $("m-save").disabled=true;
     var res=editLessonId
       ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)
@@ -509,7 +512,7 @@
       slots.forEach(function(s){
         if(s.weekday!==wd)return;
         if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
-        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:di>todayISO()?"scheduled":"done",paid:false});
+        rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
       });
     }
     if(!rows.length){alert(mo+" is already fully logged — nothing new to add.");return;}
@@ -528,7 +531,7 @@
     slots.forEach(function(s){
       var d=new Date(mon);d.setDate(mon.getDate()+s.weekday);var di=iso(d);
       if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
-      rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:di>todayISO()?"scheduled":"done",paid:false});
+      rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
     });
     if(!rows.length){alert("This week is already logged — nothing new to add.");return;}
     if(!confirm("Add "+rows.length+" lessons for "+weekStart+" to "+weekEnd+"?"))return;

@@ -186,7 +186,20 @@ db/
 
 A running log of Raphael's changes, newest first.
 
-### 2026-07-23 — slot_date: precise per-occurrence "not logged" (`v34`) — NEEDS MIGRATION
+### 2026-07-23 — Fix: a lesson later today showed as unpaid, not scheduled (`v35`)
+
+Status was decided by a **date-only** comparison (`date > todayISO() ? "scheduled" : "done"`),
+so any lesson on *today's* date was marked `done` immediately — even one hours away. A future
+lesson then rendered as "unpaid" (done + not paid) instead of "scheduled". Hit by postponing a
+lesson to later today.
+
+New `statusFor(dateISO, endHM)` compares the lesson's **end time** to now — matching what
+`promotePastLessons` already does — so a lesson stays `scheduled` until its end passes. Applied
+in all four spots that set status: `saveLesson`, `restoreLesson`, and the three generate
+functions. Existing rows already stamped `done` need a re-save (or self-correct once their time
+passes); everything from here is correct.
+
+### 2026-07-23 — slot_date: precise per-occurrence "not logged" (`v34`) — migration DONE (run 2026-07-23)
 
 The endgame for the postpone/projection edge cases. Adds a `slot_date` column to `lessons`:
 the recurring occurrence a lesson fulfils, fixed at generation and never moved by postpone
