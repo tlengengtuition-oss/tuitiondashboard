@@ -129,7 +129,7 @@
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", location:locById[l.student_id]||"", amount:l.amount,
-        kind:"lesson", state:st, postponed:!!l.postponed });
+        kind:"lesson", state:st, postponed:!!l.postponed, adhoc:!l.slot_id });
     });
     for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
       var di=iso(d), wd=(d.getDay()+6)%7;
@@ -190,7 +190,7 @@
     var sub=[b.subject,b.level].filter(Boolean).join(" · ");
     return '<div class="'+cls.join(" ")+'" style="'+style+'" data-ev="'+esc(String(b.id))+'">'+
       '<span class="ce-t">'+hhmm2(b.startMin)+(b.clash?'<span class="ce-warn">⚠</span>':'')+'</span>'+
-      '<span class="ce-n">'+esc(b.name)+(b.postponed?' ↻':'')+'</span>'+
+      '<span class="ce-n">'+esc(b.name)+(b.adhoc?' ✦':'')+(b.postponed?' ↻':'')+'</span>'+
       (sub?'<span class="ce-s">'+esc(sub)+'</span>':'')+
       (b.location?'<span class="ce-loc">◍ '+esc(b.location)+'</span>':'')+'</div>';
   }
@@ -288,6 +288,7 @@
       (b.kind==="lesson"&&b.amount!=null?'<div class="cp-row">Amount <b>'+TL.sgd(b.amount)+'</b></div>':'')+
       (b.clash?'<div class="cp-row" style="color:var(--owed);font-weight:700">⚠ Overlaps another lesson</div>':'')+
       '<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>'+
+      (b.adhoc?' <span class="cp-tag" style="background:rgba(26,42,79,.10);color:var(--navy)">✦ One-off</span>':'')+
       (b.postponed?' <span class="cp-tag" style="background:rgba(200,146,42,.18);color:#8a5f14">Postponed</span>':'')+
       '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Log in Ledger →":"Open in Ledger →")+'</a>';
     pop.style.display="block";

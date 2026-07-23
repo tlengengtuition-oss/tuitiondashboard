@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: legend keys for postponed + one-off lessons (`v43`)
+
+- Added a **↻ Postponed** key to the legend (the ↻ marker on postponed lessons was previously
+  unexplained).
+- **One-off / ad-hoc lessons** (added by hand, `slot_id = null`, i.e. not from the recurring
+  template) now carry a **✦** marker on the block and a "✦ One-off" tag in the popover, with a
+  matching legend key — so trials/makeups stand out from regular recurring lessons. Both are
+  plain legend keys (attributes, not filterable categories).
+
 ### 2026-07-23 — Postal lookup moves inside the location bar (`v42`)
 
 Dropped the separate postal input. The magnifying glass now sits **inside the Location field**;

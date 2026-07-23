@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=42">
+<link rel="stylesheet" href="assets/css/app.css?v=43">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -13,7 +13,8 @@
   .cal-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .cal-right .seg{margin-bottom:0}
   .cal-legend{display:flex;align-items:center;gap:13px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
-  .cal-legend .leg-key{display:inline-flex;align-items:center;gap:6px}
+  .cal-legend .leg-key{display:inline-flex;align-items:center;gap:5px}
+  .cal-legend .leg-sym{color:var(--navy);font-weight:800;font-size:12.5px}
   .cal-legend .leg{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
   .cal-legend .leg:hover{color:var(--ink)}
   .cal-legend .leg.off{opacity:.4;text-decoration:line-through}
@@ -128,6 +129,8 @@
         <button class="leg" data-cat="proj"><i class="cal-sw sw-proj"></i>Not logged</button>
         <button class="leg" data-cat="cancel"><i class="cal-sw sw-cancel"></i>Cancelled</button>
         <span class="leg-key"><i class="cal-sw sw-clash"></i>Clash</span>
+        <span class="leg-key"><b class="leg-sym">✦</b>One-off</span>
+        <span class="leg-key"><b class="leg-sym">↻</b>Postponed</span>
       </div>
     </div>
   </div>
@@ -138,9 +141,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=42"></script>
-<script src="assets/js/supabase.js?v=42"></script>
-<script src="assets/js/app.js?v=42"></script>
-<script src="assets/js/calendar.js?v=42"></script>
+<script src="assets/js/config.js?v=43"></script>
+<script src="assets/js/supabase.js?v=43"></script>
+<script src="assets/js/app.js?v=43"></script>
+<script src="assets/js/calendar.js?v=43"></script>
 </body>
 </html>
