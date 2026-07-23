@@ -128,7 +128,9 @@
     return blocks;
   }
 
-  // Within one day: cluster overlaps, give each a lane, flag clusters needing 2+ lanes.
+  // Within one day: cluster overlaps, give each a lane, and flag genuine double-bookings.
+  // A clash needs two *active* lessons to overlap — a cancelled lesson isn't happening,
+  // so overlapping it (either side) is not a clash.
   function laneAssign(day){
     day.sort(function(a,b){ return a.startMin-b.startMin || a.endMin-b.endMin; });
     var i=0;
@@ -141,7 +143,11 @@
         for(var k=0;k<laneEnds.length;k++){ if(b.startMin>=laneEnds[k]){ b.lane=k; laneEnds[k]=b.endMin; placed=true; break; } }
         if(!placed){ b.lane=laneEnds.length; laneEnds.push(b.endMin); }
       });
-      cluster.forEach(function(b){ b.lanes=laneEnds.length; b.clash=laneEnds.length>1; });
+      var active=cluster.filter(function(b){ return b.state!=="cancel"; });
+      cluster.forEach(function(b){
+        b.lanes=laneEnds.length;
+        b.clash = b.state!=="cancel" && active.some(function(o){ return o!==b && o.startMin<b.endMin && b.startMin<o.endMin; });
+      });
       i=j;
     }
   }

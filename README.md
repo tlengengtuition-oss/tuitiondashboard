@@ -186,6 +186,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: cancelled lessons don't count as clashes (`v29`)
+
+A clash now needs two *active* lessons to overlap. A cancelled lesson isn't happening, so
+overlapping it (on either side) no longer flags red or shows the ⚠. Overlapping blocks still
+render side-by-side; only the red warning is suppressed when a cancelled lesson is involved.
+
 ### 2026-07-23 — Calendar: "Today" label on the week column (`v28`)
 
 Small touch: the week view now shows a gold **TODAY** label above the highlighted current-day
