@@ -186,6 +186,11 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: "Today" label on the week column (`v28`)
+
+Small touch: the week view now shows a gold **TODAY** label above the highlighted current-day
+column. Every header cell reserves the same slot so only today's fills — the row stays aligned.
+
 ### 2026-07-23 — Calendar: prefetch adjacent months (`v27`)
 
 Follow-on to the month cache. Before, a month was only fetched when you first navigated to

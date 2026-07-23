@@ -179,7 +179,7 @@
     var headCells="";
     for(var d=0; d<7; d++){
       var date=addDays(ws,d), isT=iso(date)===today;
-      headCells+='<div class="cal-day-h'+(isT?" today":"")+'">'+DAY[d]+'<b>'+date.getDate()+'</b></div>';
+      headCells+='<div class="cal-day-h'+(isT?" today":"")+'"><span class="cal-dtag">'+(isT?"Today":"")+'</span>'+DAY[d]+'<b>'+date.getDate()+'</b></div>';
     }
     var gutter="";
     for(var h=0; h<hours; h++)
