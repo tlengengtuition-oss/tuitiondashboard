@@ -186,6 +186,22 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: logged weeks show only real lessons (`v32`)
+
+Supersedes v31's approach with a simpler rule that matches the actual workflow. Projections
+("not logged" blocks) exist only to preview periods you *haven't* logged yet. So: **once a
+week has been logged from the template (any lesson with a `slot_id`), the calendar shows only
+real lessons for that week — no projections at all.**
+
+That fully resolves the postpone edge case, including cross-week: a logged week never
+projects, so postponing within it leaves no phantom; and the week you move a lesson *into*
+keeps its own recurring session because that's a real logged row, not a projection. Week-level
+(not month-level) so "Log this week" only suppresses that week — the rest of the month still
+projects for planning.
+
+Rare remaining edge: postponing the *only* lesson out of a week makes that week look unlogged
+again (it then projects). With multiple students per week — the normal case — it can't happen.
+
 ### 2026-07-23 — Calendar: postponed lessons no longer leave a phantom slot (`v31`)
 
 Bug: the calendar decided "not logged" by matching `student | date | start_time`. Postponing a

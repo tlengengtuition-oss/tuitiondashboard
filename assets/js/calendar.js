@@ -108,25 +108,33 @@
 
   // ---- blocks: real lessons + projected slot occurrences across a date range ----
   function weekKey(dateISO){ return iso(mondayOf(new Date(dateISO+"T00:00:00"))); }
+  // Weeks that have been logged from the template (any lesson carrying a slot_id).
+  // Workflow: you log a week/month first, so once a week is logged every session is a real
+  // row — the calendar trusts those and shows NO "not logged" projections for that week.
+  // That's what makes postponing safe: a moved lesson just relocates, no phantom reappears.
+  function loggedWeeks(){
+    var s={};
+    Object.keys(lessonCache).forEach(function(m){
+      lessonCache[m].forEach(function(l){ if(l.slot_id) s[weekKey(l.lesson_date)]=1; });
+    });
+    return s;
+  }
   function buildBlocks(range){
-    var blocks=[], seen={}, claimed={}, lessons=lessonsForRange(range);
+    var blocks=[], seen={}, logged=loggedWeeks(), lessons=lessonsForRange(range);
     lessons.forEach(function(l){
       seen[l.student_id+"|"+l.lesson_date+"|"+hhmm(l.start_time)]=1;
-      // A lesson claims its recurring slot's occurrence for that whole week — so a postponed
-      // lesson (which keeps slot_id but changes date/time) doesn't leave a phantom
-      // "not logged" block at the slot's original time.
-      if(l.slot_id) claimed[l.slot_id+"|"+weekKey(l.lesson_date)]=1;
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", amount:l.amount,
         kind:"lesson", state:st, postponed:!!l.postponed });
     });
     for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
-      var di=iso(d), wd=(d.getDay()+6)%7;
+      var di=iso(d);
+      if(logged[weekKey(di)]) continue;   // logged week → real lessons only, no projections
+      var wd=(d.getDay()+6)%7;
       slots.forEach(function(s){
         if(s.weekday!==wd) return;
-        if(claimed[s.id+"|"+weekKey(di)]) return;                    // a lesson already covers this slot this week
-        if(seen[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return; // fallback: one-off lesson at this exact time
+        if(seen[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return; // one-off at this exact time
         blocks.push({ id:"slot-"+s.id+"-"+di, dateISO:di, day:wd, startMin:toMin(s.start_time), endMin:toMin(s.end_time),
           name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"", kind:"proj", state:"proj" });
       });
