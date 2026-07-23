@@ -186,6 +186,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: split the legend by clickable vs reference (`v44`)
+
+The status filters (Paid/Unpaid/Scheduled/Not logged/Cancelled — clickable to show/hide) stay
+in the top bar with the Week/Month toggle. The **non-clickable symbol keys** (Clash, ✦ One-off,
+↻ Postponed) moved to a small caption line **below the calendar** — so it's clear which items
+are controls and which are just a key. The caption also shows on mobile, where the top legend
+is hidden.
+
 ### 2026-07-23 — Calendar: legend keys for postponed + one-off lessons (`v43`)
 
 - Added a **↻ Postponed** key to the legend (the ↻ marker on postponed lessons was previously
