@@ -155,7 +155,42 @@ window.TL = (function () {
     } catch (e) { /* non-fatal */ }
   }
 
+  // Singapore postal-code → address via OneMap (public gov API, CORS-open, no key needed).
+  // Best-effort convenience: returns { address } or { error }; callers degrade to manual entry.
+  function titleCase(s) {
+    return String(s || "").toLowerCase().replace(/\b([a-z])/g, function (m, c) { return c.toUpperCase(); });
+  }
+  async function postalLookup(code) {
+    code = String(code || "").replace(/\D/g, "");
+    if (code.length !== 6) return { error: "Enter a 6-digit postal code." };
+    try {
+      var r = await fetch("https://www.onemap.gov.sg/api/common/elastic/search?searchVal=" +
+        code + "&returnGeom=N&getAddrDetails=Y&pageNum=1");
+      var d = await r.json();
+      var res = (d.results || [])[0];
+      if (!res || !res.ADDRESS || res.ADDRESS.indexOf("NIL") > -1) return { error: "No address found for " + code + "." };
+      return { address: titleCase(res.ADDRESS) };
+    } catch (e) { return { error: "Couldn't reach the address lookup." }; }
+  }
+
+  // Wire a "postal code → Find" control that APPENDS the found address to a location field.
+  function wirePostal(postalId, btnId, msgId, locId) {
+    var btn = document.getElementById(btnId); if (!btn) return;
+    async function run() {
+      var msg = document.getElementById(msgId), loc = document.getElementById(locId), pin = document.getElementById(postalId);
+      msg.textContent = "Looking up…"; msg.className = "postal-msg";
+      var r = await postalLookup(pin.value);
+      if (r.error) { msg.textContent = r.error; msg.className = "postal-msg err"; return; }
+      var cur = (loc.value || "").trim();
+      loc.value = cur ? cur + ", " + r.address : r.address;   // append; you add the unit number
+      pin.value = ""; msg.textContent = "Added ✓"; msg.className = "postal-msg ok"; loc.focus();
+    }
+    btn.addEventListener("click", run);
+    var pin = document.getElementById(postalId);
+    if (pin) pin.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); run(); } });
+  }
+
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell,
            sgd: sgd, hoursBetween: hoursBetween, amount: amount,
-           promotePastLessons: promotePastLessons };
+           promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal };
 })();

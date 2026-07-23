@@ -298,6 +298,7 @@
     $("e-cancel").addEventListener("click",closeEdit);
     $("e-modal").addEventListener("click",function(e){if(e.target===$("e-modal"))closeEdit();});
     $("e-save").addEventListener("click",saveEdit);
+    TL.wirePostal("e-postal","e-postal-btn","e-postal-msg","e-location");
     $("l-save").addEventListener("click",saveLesson);
     $("l-toggle").addEventListener("click",toggleLesson);
     $("l-del").addEventListener("click",deleteLesson);

@@ -186,7 +186,22 @@ db/
 
 A running log of Raphael's changes, newest first.
 
-### 2026-07-23 — Student location, shown on the calendar (`v39`) — NEEDS MIGRATION
+### 2026-07-23 — Postal-code → address lookup on the location field (`v40`)
+
+On the student add/edit form and the profile edit, a **Postal code** box + **Find & add
+address** button next to Location. It looks the code up via **OneMap** (Singapore's gov map API)
+and **appends** the address to whatever's in Location — so you keep the building name and add
+the unit number yourself. No key/backend: OneMap's search is CORS-open and works client-side
+(verified in-browser). Best-effort — if it's blocked or finds nothing, you just type the address
+manually (the field is still free text). No migration (uses the existing `location` column).
+
+- `app.js`: `postalLookup(code)` (6-digit → title-cased address, `{address}`/`{error}`) and
+  `wirePostal(...)`, both shared by the two forms.
+- Note: OneMap now nags for an API token but still returns data token-less; if that path ever
+  closes, the proper fix is a token via a Supabase Edge Function (tokens expire every 3 days),
+  or just keep typing addresses by hand.
+
+### 2026-07-23 — Student location, shown on the calendar (`v39`) — migration DONE (run 2026-07-23)
 
 Each student gets a **location** (where you teach them — Home, a centre, Online). It's on the
 Students add/edit form and the Profile, and appears on the calendar: a dim `◍ <location>` line

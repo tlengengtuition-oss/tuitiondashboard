@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Students · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=39">
+<link rel="stylesheet" href="assets/css/app.css?v=40">
 <style>
   a.slink{color:var(--navy);font-weight:700;text-decoration:none}
   a.slink:hover{text-decoration:underline}
@@ -70,6 +70,11 @@
       <div class="field">
         <label for="m-location">Location <span class="muted">(shown on the calendar)</span></label>
         <input id="m-location" type="text" placeholder="e.g. Home, Bishan tuition centre, Online">
+        <div class="postal-row">
+          <input id="m-postal" type="text" inputmode="numeric" maxlength="6" placeholder="Postal code">
+          <button type="button" class="btn" id="m-postal-btn">Find &amp; add address</button>
+          <span class="postal-msg" id="m-postal-msg"></span>
+        </div>
       </div>
       <div class="field">
         <label for="m-recipient">Message recipient <span class="muted">(e.g. parent's name — used in WhatsApp messages)</span></label>
@@ -108,9 +113,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=39"></script>
-<script src="assets/js/supabase.js?v=39"></script>
-<script src="assets/js/app.js?v=39"></script>
-<script src="assets/js/students.js?v=39"></script>
+<script src="assets/js/config.js?v=40"></script>
+<script src="assets/js/supabase.js?v=40"></script>
+<script src="assets/js/app.js?v=40"></script>
+<script src="assets/js/students.js?v=40"></script>
 </body>
 </html>
