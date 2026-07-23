@@ -186,6 +186,21 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Student location, shown on the calendar (`v39`) — NEEDS MIGRATION
+
+Each student gets a **location** (where you teach them — Home, a centre, Online). It's on the
+Students add/edit form and the Profile, and appears on the calendar: a dim `◍ <location>` line
+on each event block and a row in the details popover, so you can glance at the week and know
+where to go.
+
+- `db/migration_student_location.sql` — `alter table students add column location text`.
+  Additive/backward-compatible.
+- Wired through `students.js`, `student.js` (profile display + edit), and `calendar.js`
+  (loaded into a `locById` map, shown on blocks + popover, for real and projected lessons).
+
+**Deploy order:** run the migration in Supabase FIRST — the students query and calendar now
+`select` `location`, so without the column those pages throw "column does not exist".
+
 ### 2026-07-23 — Calendar: event text wraps instead of truncating (`v38`)
 
 Week-view blocks truncated the name/subject to an ellipsis ("Gra…"). They now wrap onto new

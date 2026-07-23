@@ -11,7 +11,7 @@
   var HOUR_PX = 46, MIN_HR = 6;
 
   var userId = null, anchor = null, mode = "week";
-  var students = [], slots = [], nameById = {}, loadedStatic = false;
+  var students = [], slots = [], nameById = {}, locById = {}, loadedStatic = false;
   var lessonCache = {}, pending = {}, lastBlocks = [], hidden = {};
 
   function pad(n){ return (n<10?"0":"")+n; }
@@ -57,11 +57,11 @@
   // ---- data ----
   async function loadStatic(){
     var r=await Promise.all([
-      window.sb.from("students").select("id,name,active"),
+      window.sb.from("students").select("id,name,location,active"),
       window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true)
     ]);
     students=r[0].error?[]:(r[0].data||[]);
-    nameById={}; students.forEach(function(s){ nameById[s.id]=s.name; });
+    nameById={}; locById={}; students.forEach(function(s){ nameById[s.id]=s.name; locById[s.id]=s.location||""; });
     slots=r[1].error?[]:(r[1].data||[]);
     loadedStatic=true;
   }
@@ -128,7 +128,7 @@
     lessons.forEach(function(l){
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
-        name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", amount:l.amount,
+        name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", location:locById[l.student_id]||"", amount:l.amount,
         kind:"lesson", state:st, postponed:!!l.postponed });
     });
     for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
@@ -138,7 +138,7 @@
         if(claimed.occ[s.id+"|"+di]) return;                                 // this occurrence is logged
         if(claimed.time[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return; // one-off / pre-backfill fallback
         blocks.push({ id:"slot-"+s.id+"-"+di, dateISO:di, day:wd, startMin:toMin(s.start_time), endMin:toMin(s.end_time),
-          name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"", kind:"proj", state:"proj" });
+          name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"", location:locById[s.student_id]||"", kind:"proj", state:"proj" });
       });
     }
     return blocks.filter(function(b){ return !hidden[b.state]; });   // legend toggles
@@ -191,7 +191,8 @@
     return '<div class="'+cls.join(" ")+'" style="'+style+'" data-ev="'+esc(String(b.id))+'">'+
       '<span class="ce-t">'+hhmm2(b.startMin)+(b.clash?'<span class="ce-warn">⚠</span>':'')+'</span>'+
       '<span class="ce-n">'+esc(b.name)+(b.postponed?' ↻':'')+'</span>'+
-      (sub?'<span class="ce-s">'+esc(sub)+'</span>':'')+'</div>';
+      (sub?'<span class="ce-s">'+esc(sub)+'</span>':'')+
+      (b.location?'<span class="ce-loc">◍ '+esc(b.location)+'</span>':'')+'</div>';
   }
   function renderWeek(range){
     var ws=range.start, blocks=buildBlocks(range);
@@ -283,6 +284,7 @@
     pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>'+esc(b.name)+'</h4>'+
       '<div class="cp-row">'+esc(when)+'</div>'+
       (sub?'<div class="cp-row"><b>'+esc(sub)+'</b></div>':'')+
+      (b.location?'<div class="cp-row">◍ <b>'+esc(b.location)+'</b></div>':'')+
       (b.kind==="lesson"&&b.amount!=null?'<div class="cp-row">Amount <b>'+TL.sgd(b.amount)+'</b></div>':'')+
       (b.clash?'<div class="cp-row" style="color:var(--owed);font-weight:700">⚠ Overlaps another lesson</div>':'')+
       '<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>'+
@@ -347,7 +349,7 @@
   if (window.__CAL_TEST__) {
     window.CAL = { seed:function(s,sl,l,a,m){
       students=s; slots=sl; loadedStatic=true; anchor=a; mode=m||"week";
-      nameById={}; s.forEach(function(x){ nameById[x.id]=x.name; });
+      nameById={}; locById={}; s.forEach(function(x){ nameById[x.id]=x.name; locById[x.id]=x.location||""; });
       lessonCache={}; (l||[]).forEach(function(x){ var k=x.lesson_date.slice(0,7); (lessonCache[k]=lessonCache[k]||[]).push(x); });
       var w=$("seg-week"), mo=$("seg-month");
       if(w) w.classList.toggle("on",mode==="week"); if(mo) mo.classList.toggle("on",mode==="month");

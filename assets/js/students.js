@@ -13,11 +13,11 @@
       editingId=st.id;
       $("m-title").textContent="Edit student";$("m-save").textContent="Save changes";
       $("m-name").value=st.name||"";
-      $("m-level").value=st.level||"";$("m-contact").value=st.contact||"";$("m-recipient").value=st.recipient_name||"";$("m-notes").value=st.notes||"";
+      $("m-level").value=st.level||"";$("m-contact").value=st.contact||"";$("m-location").value=st.location||"";$("m-recipient").value=st.recipient_name||"";$("m-notes").value=st.notes||"";
     }else{
       editingId=null;
       $("m-title").textContent="Add student";$("m-save").textContent="Save student";
-      ["m-name","m-level","m-contact","m-recipient","m-notes"].forEach(function(id){$(id).value="";});
+      ["m-name","m-level","m-contact","m-location","m-recipient","m-notes"].forEach(function(id){$(id).value="";});
     }
     $("m-name").focus();
   }
@@ -26,6 +26,7 @@
     if(!name){msg.textContent="Give the student a name.";msg.className="msg err";return;}
     var fields={name:name,
       level:$("m-level").value.trim()||null,contact:$("m-contact").value.trim()||null,
+      location:$("m-location").value.trim()||null,
       recipient_name:$("m-recipient").value.trim()||null,
       notes:$("m-notes").value.trim()||null};
     $("m-save").disabled=true;
@@ -162,7 +163,7 @@
     }else{$("disc-title").style.display="none";$("disc-card").style.display="none";}
   }
   async function load(){
-    var res=await window.sb.from("students").select("id,name,kind,level,contact,notes,active,recipient_name").order("name");
+    var res=await window.sb.from("students").select("id,name,kind,level,contact,location,notes,active,recipient_name").order("name");
     if(res.error){$("s-count").textContent="Couldn't load students: "+res.error.message;return;}
     students=res.data||[];
     fillStuFilters();
