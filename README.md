@@ -186,6 +186,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: gold circle on today's date (`v37`)
+
+Today's date now sits in a filled **gold circle** (white number), week + month, like
+Google/Apple — but gold rather than red, since red is reserved for "owed/unpaid" here and a red
+ring would read as an alert. The circle replaces the old "TODAY" text label (the circle is the
+signal); a faint cream column/cell tint stays.
+
 ### 2026-07-23 — Calendar: only real lessons clash (`v36`)
 
 A clash now requires two **real** lessons to overlap. Projected ("not logged") blocks are only
