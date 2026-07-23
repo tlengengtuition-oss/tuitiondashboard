@@ -145,8 +145,11 @@
   }
 
   // Within one day: cluster overlaps, give each a lane, and flag genuine double-bookings.
-  // A clash needs two *active* lessons to overlap — a cancelled lesson isn't happening,
-  // so overlapping it (either side) is not a clash.
+  // A clash needs two *real* lessons to overlap. A cancelled lesson isn't happening, and a
+  // projected ("not logged") block is only a preview of the template — neither is a real
+  // booking, so overlapping either is not a clash. The clash appears once you actually log
+  // the second lesson (it becomes real).
+  function isReal(b){ return b.state!=="cancel" && b.state!=="proj"; }
   function laneAssign(day){
     day.sort(function(a,b){ return a.startMin-b.startMin || a.endMin-b.endMin; });
     var i=0;
@@ -159,10 +162,10 @@
         for(var k=0;k<laneEnds.length;k++){ if(b.startMin>=laneEnds[k]){ b.lane=k; laneEnds[k]=b.endMin; placed=true; break; } }
         if(!placed){ b.lane=laneEnds.length; laneEnds.push(b.endMin); }
       });
-      var active=cluster.filter(function(b){ return b.state!=="cancel"; });
+      var real=cluster.filter(isReal);
       cluster.forEach(function(b){
         b.lanes=laneEnds.length;
-        b.clash = b.state!=="cancel" && active.some(function(o){ return o!==b && o.startMin<b.endMin && b.startMin<o.endMin; });
+        b.clash = isReal(b) && real.some(function(o){ return o!==b && o.startMin<b.endMin && b.startMin<o.endMin; });
       });
       i=j;
     }

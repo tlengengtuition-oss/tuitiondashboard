@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: only real lessons clash (`v36`)
+
+A clash now requires two **real** lessons to overlap. Projected ("not logged") blocks are only
+a preview of the template, so they never flag red — not against each other, not against a real
+lesson. (Cancelled was already excluded.) A clash means an actual double-booking; the warning
+appears the moment you *log* the second lesson, when it becomes real. This also clears the
+July-19-type artifact where an unpaid lesson flagged against a phantom projection left over from
+a pre-migration `slot_date`.
+
 ### 2026-07-23 — Fix: a lesson later today showed as unpaid, not scheduled (`v35`)
 
 Status was decided by a **date-only** comparison (`date > todayISO() ? "scheduled" : "done"`),
