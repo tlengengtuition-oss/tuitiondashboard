@@ -186,6 +186,13 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: event text wraps instead of truncating (`v38`)
+
+Week-view blocks truncated the name/subject to an ellipsis ("Gra…"). They now wrap onto new
+lines — time, bold name, then subject · level, each on its own line — so long names/subjects
+are fully readable within the block. Tiny blocks still compact (time + name, subject hidden).
+Month chips keep their single-line style (the grid is dense; click for full detail).
+
 ### 2026-07-23 — Calendar: gold circle on today's date (`v37`)
 
 Today's date now sits in a filled **gold circle** (white number), week + month, like
