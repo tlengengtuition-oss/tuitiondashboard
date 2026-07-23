@@ -186,6 +186,35 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — slot_date: precise per-occurrence "not logged" (`v34`) — NEEDS MIGRATION
+
+The endgame for the postpone/projection edge cases. Adds a `slot_date` column to `lessons`:
+the recurring occurrence a lesson fulfils, fixed at generation and never moved by postpone
+(vs `lesson_date`, which is when it actually happens). One-off lessons have `slot_date = NULL`.
+
+The calendar now projects a slot on a date **iff no lesson claims that exact occurrence**
+(`slot_id | slot_date`) — replacing the week+month heuristic entirely. This is precise, so it
+resolves *every* case: postpone within/across weeks, the single-lesson-week edge, and month
+boundaries. Verified across all four in the harness.
+
+- `db/migration_slot_date.sql` — adds the column + backfills existing generated lessons
+  (`slot_date = lesson_date`). Additive and backward-compatible: the current live app ignores
+  the column, so adding it breaks nothing.
+- `ledger.js` generate (week/month/range) now stamps `slot_date = di` on new lessons.
+  `saveLesson` needs no change — it doesn't touch `slot_date`, so postpone/edit preserve it and
+  manual adds leave it NULL.
+- `calendar.js` selects `slot_date`; keeps the exact-time match as a fallback for one-offs and
+  any pre-backfill rows.
+
+**Deploy order (mandatory):** run the migration in Supabase FIRST, then load/deploy this code.
+The code `select`s `slot_date`, so without the column every calendar/ledger load throws
+"column does not exist". Our local dev also hits the live DB, so don't open the new calendar
+locally until the migration is run.
+
+Still open (separate, higher-risk): the Ledger's "Log this month" double-count-on-re-log. It
+could now dedup by `(slot_id, slot_date)` too, but that touches money logic and needs a careful
+two-range fetch — left for its own change.
+
 ### 2026-07-23 — Calendar: fix projections on month-boundary weeks (`v33`)
 
 The v32 "logged week → no projections" rule was too coarse at month boundaries: the last week

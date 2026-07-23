@@ -73,7 +73,7 @@
     var p=key.split("-"), y=+p[0], m=+p[1]-1;
     var first=iso(new Date(y,m,1)), last=iso(new Date(y,m+1,0));
     pending[key]=window.sb.from("lessons")
-      .select("id,slot_id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed")
+      .select("id,slot_id,slot_date,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed")
       .gte("lesson_date",first).lte("lesson_date",last)
       .then(function(ls){ lessonCache[key]=ls.error?[]:(ls.data||[]); delete pending[key]; });
     return pending[key];
@@ -107,38 +107,36 @@
   function prefetchAdjacent(){ neighborMonths().forEach(function(k){ fetchMonth(k); }); }  // fire-and-forget
 
   // ---- blocks: real lessons + projected slot occurrences across a date range ----
-  function weekKey(dateISO){ return iso(mondayOf(new Date(dateISO+"T00:00:00"))); }
-  // A logged period is keyed by week AND month, so a week straddling a month boundary
-  // (e.g. the last week of July also holding Aug 1–2) is "logged" only for the month whose
-  // lessons it actually contains — the other month's days still project if unlogged.
-  function periodKey(dateISO){ return weekKey(dateISO)+"|"+dateISO.slice(0,7); }
-  // Periods logged from the template (any lesson carrying a slot_id). Workflow: you log a
-  // week/month first, so once a period is logged every session is a real row — the calendar
-  // trusts those and shows NO "not logged" projections there. That's what makes postponing
-  // safe: a moved lesson just relocates, no phantom reappears.
-  function loggedPeriods(){
-    var s={};
+  // Every slot occurrence a lesson fulfils, keyed slot_id|slot_date. Because slot_date is
+  // fixed at generation and never moves, a postponed lesson still claims its ORIGINAL
+  // occurrence — so no phantom "not logged" appears, on any day or month boundary.
+  // Built from the whole cache, so a lesson postponed into another (cached) month still
+  // claims its occurrence back here. Falls back to the exact time for one-off lessons and
+  // any pre-backfill rows that lack slot_date.
+  function loggedOccurrences(){
+    var occ={}, time={};
     Object.keys(lessonCache).forEach(function(m){
-      lessonCache[m].forEach(function(l){ if(l.slot_id) s[periodKey(l.lesson_date)]=1; });
+      lessonCache[m].forEach(function(l){
+        if(l.slot_id && l.slot_date) occ[l.slot_id+"|"+l.slot_date]=1;
+        time[l.student_id+"|"+l.lesson_date+"|"+hhmm(l.start_time)]=1;
+      });
     });
-    return s;
+    return { occ:occ, time:time };
   }
   function buildBlocks(range){
-    var blocks=[], seen={}, logged=loggedPeriods(), lessons=lessonsForRange(range);
+    var blocks=[], claimed=loggedOccurrences(), lessons=lessonsForRange(range);
     lessons.forEach(function(l){
-      seen[l.student_id+"|"+l.lesson_date+"|"+hhmm(l.start_time)]=1;
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", amount:l.amount,
         kind:"lesson", state:st, postponed:!!l.postponed });
     });
     for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
-      var di=iso(d);
-      if(logged[periodKey(di)]) continue;   // logged period → real lessons only, no projections
-      var wd=(d.getDay()+6)%7;
+      var di=iso(d), wd=(d.getDay()+6)%7;
       slots.forEach(function(s){
         if(s.weekday!==wd) return;
-        if(seen[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return; // one-off at this exact time
+        if(claimed.occ[s.id+"|"+di]) return;                                 // this occurrence is logged
+        if(claimed.time[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return; // one-off / pre-backfill fallback
         blocks.push({ id:"slot-"+s.id+"-"+di, dateISO:di, day:wd, startMin:toMin(s.start_time), endMin:toMin(s.end_time),
           name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"", kind:"proj", state:"proj" });
       });
