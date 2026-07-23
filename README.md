@@ -186,6 +186,19 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: fix projections on month-boundary weeks (`v33`)
+
+The v32 "logged week → no projections" rule was too coarse at month boundaries: the last week
+of July also holds Aug 1–2, so July's lessons marked the whole week logged and Aug 1–2 wouldn't
+project even though August is unlogged. Now "logged" is keyed by **week + month**, so a
+straddling week counts as logged only for the month whose lessons it actually holds — the other
+month's days still project if unlogged.
+
+Deeper still on the wishlist (needs a shared-DB migration, so it's your friend's call): tag each
+generated lesson with the **occurrence date it fulfils** (`occurrence_date`). That makes "is this
+slot-occurrence logged?" a precise per-day fact — immune to both postpone and month boundaries —
+and would also fix the Ledger's double-count-on-re-log. Not built yet.
+
 ### 2026-07-23 — Calendar: logged weeks show only real lessons (`v32`)
 
 Supersedes v31's approach with a simpler rule that matches the actual workflow. Projections

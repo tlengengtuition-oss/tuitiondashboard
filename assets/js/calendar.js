@@ -108,19 +108,23 @@
 
   // ---- blocks: real lessons + projected slot occurrences across a date range ----
   function weekKey(dateISO){ return iso(mondayOf(new Date(dateISO+"T00:00:00"))); }
-  // Weeks that have been logged from the template (any lesson carrying a slot_id).
-  // Workflow: you log a week/month first, so once a week is logged every session is a real
-  // row — the calendar trusts those and shows NO "not logged" projections for that week.
-  // That's what makes postponing safe: a moved lesson just relocates, no phantom reappears.
-  function loggedWeeks(){
+  // A logged period is keyed by week AND month, so a week straddling a month boundary
+  // (e.g. the last week of July also holding Aug 1–2) is "logged" only for the month whose
+  // lessons it actually contains — the other month's days still project if unlogged.
+  function periodKey(dateISO){ return weekKey(dateISO)+"|"+dateISO.slice(0,7); }
+  // Periods logged from the template (any lesson carrying a slot_id). Workflow: you log a
+  // week/month first, so once a period is logged every session is a real row — the calendar
+  // trusts those and shows NO "not logged" projections there. That's what makes postponing
+  // safe: a moved lesson just relocates, no phantom reappears.
+  function loggedPeriods(){
     var s={};
     Object.keys(lessonCache).forEach(function(m){
-      lessonCache[m].forEach(function(l){ if(l.slot_id) s[weekKey(l.lesson_date)]=1; });
+      lessonCache[m].forEach(function(l){ if(l.slot_id) s[periodKey(l.lesson_date)]=1; });
     });
     return s;
   }
   function buildBlocks(range){
-    var blocks=[], seen={}, logged=loggedWeeks(), lessons=lessonsForRange(range);
+    var blocks=[], seen={}, logged=loggedPeriods(), lessons=lessonsForRange(range);
     lessons.forEach(function(l){
       seen[l.student_id+"|"+l.lesson_date+"|"+hhmm(l.start_time)]=1;
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
@@ -130,7 +134,7 @@
     });
     for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
       var di=iso(d);
-      if(logged[weekKey(di)]) continue;   // logged week → real lessons only, no projections
+      if(logged[periodKey(di)]) continue;   // logged period → real lessons only, no projections
       var wd=(d.getDay()+6)%7;
       slots.forEach(function(s){
         if(s.weekday!==wd) return;
