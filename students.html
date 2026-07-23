@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Students · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=41">
+<link rel="stylesheet" href="assets/css/app.css?v=42">
 <style>
   a.slink{color:var(--navy);font-weight:700;text-decoration:none}
   a.slink:hover{text-decoration:underline}
@@ -68,13 +68,12 @@
         <input id="m-contact" type="text" placeholder="e.g. +65 8123 4567">
       </div>
       <div class="field">
-        <label for="m-location">Location <span class="muted">(shown on the calendar)</span></label>
-        <input id="m-location" type="text" placeholder="e.g. Home, Bishan tuition centre, Online">
-        <div class="postal-row">
-          <input id="m-postal" type="text" inputmode="numeric" maxlength="6" placeholder="Postal code">
-          <button type="button" class="btn postal-find" id="m-postal-btn" title="Find &amp; add address" aria-label="Find &amp; add address"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/></svg></button>
-          <span class="postal-msg" id="m-postal-msg"></span>
+        <label for="m-location">Location <span class="muted">(shown on the calendar — type a postal code and tap search to expand it)</span></label>
+        <div class="loc-wrap">
+          <input id="m-location" type="text" placeholder="e.g. Home, or a 6-digit postal code">
+          <button type="button" class="loc-find" id="m-postal-btn" title="Expand postal code to address" aria-label="Expand postal code to address"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/></svg></button>
         </div>
+        <span class="postal-msg" id="m-postal-msg"></span>
       </div>
       <div class="field">
         <label for="m-recipient">Message recipient <span class="muted">(e.g. parent's name — used in WhatsApp messages)</span></label>
@@ -113,9 +112,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=41"></script>
-<script src="assets/js/supabase.js?v=41"></script>
-<script src="assets/js/app.js?v=41"></script>
-<script src="assets/js/students.js?v=41"></script>
+<script src="assets/js/config.js?v=42"></script>
+<script src="assets/js/supabase.js?v=42"></script>
+<script src="assets/js/app.js?v=42"></script>
+<script src="assets/js/students.js?v=42"></script>
 </body>
 </html>

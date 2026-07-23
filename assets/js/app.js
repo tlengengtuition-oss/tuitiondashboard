@@ -173,21 +173,22 @@ window.TL = (function () {
     } catch (e) { return { error: "Couldn't reach the address lookup." }; }
   }
 
-  // Wire a "postal code → Find" control that APPENDS the found address to a location field.
-  function wirePostal(postalId, btnId, msgId, locId) {
+  // Wire the in-field search icon: find the 6-digit postal code typed into the location bar
+  // and expand it in place to the full address (keeping any name you typed before it).
+  function wirePostal(btnId, locId, msgId) {
     var btn = document.getElementById(btnId); if (!btn) return;
     async function run() {
-      var msg = document.getElementById(msgId), loc = document.getElementById(locId), pin = document.getElementById(postalId);
-      msg.textContent = "Looking up…"; msg.className = "postal-msg";
-      var r = await postalLookup(pin.value);
-      if (r.error) { msg.textContent = r.error; msg.className = "postal-msg err"; return; }
-      var cur = (loc.value || "").trim();
-      loc.value = cur ? cur + ", " + r.address : r.address;   // append; you add the unit number
-      pin.value = ""; msg.textContent = "Added ✓"; msg.className = "postal-msg ok"; loc.focus();
+      var loc = document.getElementById(locId), msg = document.getElementById(msgId);
+      function say(t, cls) { if (msg) { msg.textContent = t || ""; msg.className = "postal-msg" + (cls ? " " + cls : ""); } }
+      var val = loc.value || "", m = val.match(/(\d{6})/);
+      if (!m) { say("Type a 6-digit postal code in the box, then tap search.", "err"); return; }
+      say("Looking up…");
+      var r = await postalLookup(m[1]);
+      if (r.error) { say(r.error, "err"); return; }
+      loc.value = val.replace(m[1], r.address).replace(/\s+/g, " ").trim();  // postal → address, in place
+      say("Expanded ✓ — add the unit number", "ok"); loc.focus();
     }
     btn.addEventListener("click", run);
-    var pin = document.getElementById(postalId);
-    if (pin) pin.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); run(); } });
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell,

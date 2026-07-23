@@ -179,7 +179,7 @@
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});
     $("m-save").addEventListener("click",save);
-    TL.wirePostal("m-postal","m-postal-btn","m-postal-msg","m-location");
+    TL.wirePostal("m-postal-btn","m-location","m-postal-msg");
     $("m-name").addEventListener("keydown",function(e){if(e.key==="Enter")save();});
     $("mg-cancel").addEventListener("click",function(){openMerge(false);});
     $("merge-modal").addEventListener("click",function(e){if(e.target===$("merge-modal"))openMerge(false);});

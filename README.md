@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Postal lookup moves inside the location bar (`v42`)
+
+Dropped the separate postal input. The magnifying glass now sits **inside the Location field**;
+you type a 6-digit postal code right in the bar and tap it, and it **expands the postal to the
+full address in place** — keeping any building name you typed before it (so "Bishan tuition
+centre 579837" → "Bishan tuition centre 9 Bishan Place … 579837"), then you add the unit number.
+`wirePostal` now finds the `\d{6}` in the field and replaces it via `postalLookup`. (Fixed an
+`all:unset` ordering bug that had knocked the icon out of the input.)
+
 ### 2026-07-23 — Postal lookup as a magnifying-glass icon; location truncates on calendar (`v41`)
 
 - The "Find & add address" button is now a **magnifying-glass icon** (inline SVG, icon-only,

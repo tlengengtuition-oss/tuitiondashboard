@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Student · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=41">
+<link rel="stylesheet" href="assets/css/app.css?v=42">
 <style>
   /* borderless header meta strip */
   .phead{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline;margin:2px 2px 10px}
@@ -80,12 +80,12 @@
       <div class="field"><label for="e-name">Name</label><input id="e-name" type="text"></div>
       <div class="field"><label for="e-level">Level</label><input id="e-level" type="text" placeholder="e.g. Sec 3 G3"></div>
       <div class="field"><label for="e-contact">Contact <span class="muted">(for reminders)</span></label><input id="e-contact" type="text" placeholder="e.g. +65 8123 4567"></div>
-      <div class="field"><label for="e-location">Location <span class="muted">(shown on the calendar)</span></label><input id="e-location" type="text" placeholder="e.g. Home, Bishan tuition centre, Online">
-        <div class="postal-row">
-          <input id="e-postal" type="text" inputmode="numeric" maxlength="6" placeholder="Postal code">
-          <button type="button" class="btn postal-find" id="e-postal-btn" title="Find &amp; add address" aria-label="Find &amp; add address"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/></svg></button>
-          <span class="postal-msg" id="e-postal-msg"></span>
+      <div class="field"><label for="e-location">Location <span class="muted">(shown on the calendar — type a postal code and tap search to expand it)</span></label>
+        <div class="loc-wrap">
+          <input id="e-location" type="text" placeholder="e.g. Home, or a 6-digit postal code">
+          <button type="button" class="loc-find" id="e-postal-btn" title="Expand postal code to address" aria-label="Expand postal code to address"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/></svg></button>
         </div>
+        <span class="postal-msg" id="e-postal-msg"></span>
       </div>
       <div class="field"><label for="e-recipient">Message recipient <span class="muted">(e.g. parent's name)</span></label><input id="e-recipient" type="text" placeholder="leave blank to address the student"></div>
       <div class="field"><label for="e-notes">Notes</label><input id="e-notes" type="text" placeholder="optional"></div>
@@ -172,9 +172,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=41"></script>
-<script src="assets/js/supabase.js?v=41"></script>
-<script src="assets/js/app.js?v=41"></script>
-<script src="assets/js/student.js?v=41"></script>
+<script src="assets/js/config.js?v=42"></script>
+<script src="assets/js/supabase.js?v=42"></script>
+<script src="assets/js/app.js?v=42"></script>
+<script src="assets/js/student.js?v=42"></script>
 </body>
 </html>
