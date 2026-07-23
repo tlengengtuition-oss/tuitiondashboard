@@ -186,6 +186,21 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: postponed lessons no longer leave a phantom slot (`v31`)
+
+Bug: the calendar decided "not logged" by matching `student | date | start_time`. Postponing a
+lesson changes its date/time, so it stopped matching its recurring slot — and a phantom
+"not logged" block reappeared at the slot's original time, alongside the real postponed lesson.
+
+Fix: a lesson now **claims its slot's occurrence for the whole week** via `slot_id` (which
+postpone preserves). So the projected block is suppressed wherever in that week the lesson
+now sits. Added `slot_id` to the calendar's lessons query; deduped projected slots by
+`(slot_id, week-Monday)` with the exact time-match kept as a fallback for one-offs.
+
+Edge: postponing *across* weeks is inherently ambiguous (the lesson claims its new week); the
+common same-week postpone is fully fixed. The Ledger's "Log this month" generator has the same
+time-based key and could adopt slot_id dedup too — separate change, not touched here.
+
 ### 2026-07-23 — Calendar: legend items filter the view (`v30`)
 
 The legend is now interactive — click **Paid / Unpaid / Scheduled / Not logged / Cancelled**

@@ -73,7 +73,7 @@
     var p=key.split("-"), y=+p[0], m=+p[1]-1;
     var first=iso(new Date(y,m,1)), last=iso(new Date(y,m+1,0));
     pending[key]=window.sb.from("lessons")
-      .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed")
+      .select("id,slot_id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed")
       .gte("lesson_date",first).lte("lesson_date",last)
       .then(function(ls){ lessonCache[key]=ls.error?[]:(ls.data||[]); delete pending[key]; });
     return pending[key];
@@ -107,10 +107,15 @@
   function prefetchAdjacent(){ neighborMonths().forEach(function(k){ fetchMonth(k); }); }  // fire-and-forget
 
   // ---- blocks: real lessons + projected slot occurrences across a date range ----
+  function weekKey(dateISO){ return iso(mondayOf(new Date(dateISO+"T00:00:00"))); }
   function buildBlocks(range){
-    var blocks=[], seen={}, lessons=lessonsForRange(range);
+    var blocks=[], seen={}, claimed={}, lessons=lessonsForRange(range);
     lessons.forEach(function(l){
       seen[l.student_id+"|"+l.lesson_date+"|"+hhmm(l.start_time)]=1;
+      // A lesson claims its recurring slot's occurrence for that whole week — so a postponed
+      // lesson (which keeps slot_id but changes date/time) doesn't leave a phantom
+      // "not logged" block at the slot's original time.
+      if(l.slot_id) claimed[l.slot_id+"|"+weekKey(l.lesson_date)]=1;
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", amount:l.amount,
@@ -120,7 +125,8 @@
       var di=iso(d), wd=(d.getDay()+6)%7;
       slots.forEach(function(s){
         if(s.weekday!==wd) return;
-        if(seen[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return;
+        if(claimed[s.id+"|"+weekKey(di)]) return;                    // a lesson already covers this slot this week
+        if(seen[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return; // fallback: one-off lesson at this exact time
         blocks.push({ id:"slot-"+s.id+"-"+di, dateISO:di, day:wd, startMin:toMin(s.start_time), endMin:toMin(s.end_time),
           name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"", kind:"proj", state:"proj" });
       });
@@ -334,6 +340,7 @@
       if(w) w.classList.toggle("on",mode==="week"); if(mo) mo.classList.toggle("on",mode==="month");
     }, render:render, ensureData:ensureData, initLegend:initLegend,
        go:function(a,m){ anchor=a; if(m) mode=m; },
+       blocks:function(){ return buildBlocks(visibleRange()); },
        cachedMonths:function(){ return Object.keys(lessonCache); } };
   } else {
     TL.requireAuth("calendar", init);
