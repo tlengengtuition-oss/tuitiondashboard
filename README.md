@@ -186,6 +186,25 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-23 — Calendar: prefetch adjacent months (`v27`)
+
+Follow-on to the month cache. Before, a month was only fetched when you first navigated to
+it — so the *first* ‹ / › into a new month waited on one query. Now, after painting the
+current view, the calendar **warms the neighbouring months in the background** (one step
+back and forward, week or month), so paging is instant in both directions from the first
+navigation on.
+
+- `fetchMonth` is now deduped (a cached month no-ops; a month a prefetch and a visible load
+  request at the same time shares one query) — no double fetches.
+- `prefetchAdjacent()` fires after each render, fire-and-forget; each navigation re-warms
+  ±1 from the new position, so continuous paging stays ahead of you.
+- Cache still grows unbounded across a session, but a month is tiny — no eviction needed at
+  this scale.
+
+Verified with a mock-Supabase query counter: after the first load, the visible months for
+both the next and previous step are already cached, so navigation does zero render-blocking
+fetches.
+
 ### 2026-07-22 — Calendar: month view + faster loads (`v26`)
 
 Two things on the Calendar: a **month view** and a fix for slow loading.

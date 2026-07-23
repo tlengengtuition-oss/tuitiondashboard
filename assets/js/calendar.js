@@ -12,7 +12,7 @@
 
   var userId = null, anchor = null, mode = "week";
   var students = [], slots = [], nameById = {}, loadedStatic = false;
-  var lessonCache = {}, lastBlocks = [];
+  var lessonCache = {}, pending = {}, lastBlocks = [];
 
   function pad(n){ return (n<10?"0":"")+n; }
   function iso(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
@@ -28,16 +28,17 @@
   var MONF=["January","February","March","April","May","June","July","August","September","October","November","December"];
   var DAY=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
-  // ---- what span is on screen ----
-  function visibleRange(){
-    if(mode==="month"){
-      var first=new Date(anchor.getFullYear(),anchor.getMonth(),1);
-      var last=new Date(anchor.getFullYear(),anchor.getMonth()+1,0);
+  // ---- what span a given anchor+mode covers ----
+  function rangeFor(a, m){
+    if(m==="month"){
+      var first=new Date(a.getFullYear(),a.getMonth(),1);
+      var last=new Date(a.getFullYear(),a.getMonth()+1,0);
       return { start:mondayOf(first), end:addDays(mondayOf(last),6) };
     }
-    var ws=mondayOf(anchor);
+    var ws=mondayOf(a);
     return { start:ws, end:addDays(ws,6) };
   }
+  function visibleRange(){ return rangeFor(anchor, mode); }
   function monthsIn(range){
     var out=[], d=new Date(range.start.getFullYear(),range.start.getMonth(),1),
         endM=new Date(range.end.getFullYear(),range.end.getMonth(),1);
@@ -64,13 +65,18 @@
     slots=r[1].error?[]:(r[1].data||[]);
     loadedStatic=true;
   }
-  async function fetchMonth(key){
+  // Returns a promise; no-ops if the month is already cached, and dedupes a month
+  // that a background prefetch and a visible load ask for at the same time.
+  function fetchMonth(key){
+    if(key in lessonCache) return Promise.resolve();
+    if(pending[key]) return pending[key];
     var p=key.split("-"), y=+p[0], m=+p[1]-1;
     var first=iso(new Date(y,m,1)), last=iso(new Date(y,m+1,0));
-    var ls=await window.sb.from("lessons")
+    pending[key]=window.sb.from("lessons")
       .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed")
-      .gte("lesson_date",first).lte("lesson_date",last);
-    lessonCache[key]=ls.error?[]:(ls.data||[]);
+      .gte("lesson_date",first).lte("lesson_date",last)
+      .then(function(ls){ lessonCache[key]=ls.error?[]:(ls.data||[]); delete pending[key]; });
+    return pending[key];
   }
   function lessonsForRange(range){
     var s=iso(range.start), e=iso(range.end), out=[];
@@ -79,16 +85,26 @@
     });
     return out;
   }
-  // Load only what's missing (static once, uncached months), all in parallel, then paint.
+  // Load what the visible range needs (fetchMonth no-ops on cached months), paint,
+  // then warm the neighbouring months in the background so ‹ / › are instant too.
   async function ensureData(){
-    var range=visibleRange();
-    var need=monthsIn(range).filter(function(k){ return !(k in lessonCache); });
     var jobs=[];
     if(!loadedStatic) jobs.push(loadStatic());
-    need.forEach(function(k){ jobs.push(fetchMonth(k)); });
-    if(jobs.length) await Promise.all(jobs);   // cached range → no network, instant
+    monthsIn(visibleRange()).forEach(function(k){ jobs.push(fetchMonth(k)); });
+    await Promise.all(jobs);
     render();
+    prefetchAdjacent();
   }
+  // The months touched by one step back and one step forward (week or month).
+  function neighborMonths(){
+    var out={};
+    [-1,1].forEach(function(dir){
+      var a2 = mode==="month" ? new Date(anchor.getFullYear(),anchor.getMonth()+dir,1) : addDays(anchor,dir*7);
+      monthsIn(rangeFor(a2,mode)).forEach(function(k){ out[k]=1; });
+    });
+    return Object.keys(out);
+  }
+  function prefetchAdjacent(){ neighborMonths().forEach(function(k){ fetchMonth(k); }); }  // fire-and-forget
 
   // ---- blocks: real lessons + projected slot occurrences across a date range ----
   function buildBlocks(range){
@@ -294,7 +310,9 @@
       lessonCache={}; (l||[]).forEach(function(x){ var k=x.lesson_date.slice(0,7); (lessonCache[k]=lessonCache[k]||[]).push(x); });
       var w=$("seg-week"), mo=$("seg-month");
       if(w) w.classList.toggle("on",mode==="week"); if(mo) mo.classList.toggle("on",mode==="month");
-    }, render:render };
+    }, render:render, ensureData:ensureData,
+       go:function(a,m){ anchor=a; if(m) mode=m; },
+       cachedMonths:function(){ return Object.keys(lessonCache); } };
   } else {
     TL.requireAuth("calendar", init);
   }
