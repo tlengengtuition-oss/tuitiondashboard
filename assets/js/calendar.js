@@ -456,6 +456,9 @@
     $("seg-week").addEventListener("click", function(){ setMode("week"); });
     $("seg-month").addEventListener("click", function(){ setMode("month"); });
     initLegend();
+    // Clicks inside the popover (buttons, date/time fields) shouldn't bubble to the
+    // document listener below, which closes it on any outside click.
+    $("cal-pop").addEventListener("click", function(e){ e.stopPropagation(); });
     document.addEventListener("click", hidePopover);
     window.addEventListener("resize", hidePopover);
     if(window.TL && TL.promotePastLessons) TL.promotePastLessons();
