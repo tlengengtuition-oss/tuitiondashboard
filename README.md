@@ -186,6 +186,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-24 — Calendar: same-household overlaps aren't a clash (`v46`)
+
+Two lessons from the **same household** at the same time are an intentional group (e.g.
+siblings), not a double-booking — so they no longer flag red. Clash now = overlapping a real
+lesson from a *different* household. Household is derived from the normalised phone number, same
+as the Ledger (`hhKey`, matching `ledger.js`); the calendar now loads `contact` for this. No
+migration.
+
+Note: if two siblings overlap AND an unrelated student also overlaps that time, all three still
+flag — because the unrelated one is a genuine conflict. Students with no phone number on file are
+treated as a clash (can't confirm household without a number).
+
 ### 2026-07-23 — Calendar: export to .ics (Google/Apple Calendar) (`v45`)
 
 An **Export .ics** button on the Calendar that downloads your lessons as a standard iCalendar

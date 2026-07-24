@@ -11,7 +11,7 @@
   var HOUR_PX = 46, MIN_HR = 6;
 
   var userId = null, anchor = null, mode = "week";
-  var students = [], slots = [], nameById = {}, locById = {}, loadedStatic = false;
+  var students = [], slots = [], nameById = {}, locById = {}, hhById = {}, loadedStatic = false;
   var lessonCache = {}, pending = {}, lastBlocks = [], hidden = {};
 
   function pad(n){ return (n<10?"0":"")+n; }
@@ -23,6 +23,8 @@
   function mondayOf(date){ var d=new Date(date); d.setHours(0,0,0,0); d.setDate(d.getDate()-((d.getDay()+6)%7)); return d; }
   function addDays(d,n){ var x=new Date(d); x.setDate(x.getDate()+n); return x; }
   function dayIdx(dateISO){ var d=new Date(dateISO+"T00:00:00"); return (d.getDay()+6)%7; }
+  // Household key = normalised phone (matches ledger.js): same number → same household.
+  function hhKey(c){ var d=String(c||"").replace(/\D/g,""); if(d.length===10&&d.slice(0,2)==="65") d=d.slice(2); return d||null; }
 
   var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   var MONF=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -57,11 +59,12 @@
   // ---- data ----
   async function loadStatic(){
     var r=await Promise.all([
-      window.sb.from("students").select("id,name,location,active"),
+      window.sb.from("students").select("id,name,location,contact,active"),
       window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true)
     ]);
     students=r[0].error?[]:(r[0].data||[]);
-    nameById={}; locById={}; students.forEach(function(s){ nameById[s.id]=s.name; locById[s.id]=s.location||""; });
+    nameById={}; locById={}; hhById={};
+    students.forEach(function(s){ nameById[s.id]=s.name; locById[s.id]=s.location||""; hhById[s.id]=hhKey(s.contact); });
     slots=r[1].error?[]:(r[1].data||[]);
     loadedStatic=true;
   }
@@ -129,7 +132,7 @@
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", location:locById[l.student_id]||"", amount:l.amount,
-        kind:"lesson", state:st, postponed:!!l.postponed, adhoc:!l.slot_id });
+        kind:"lesson", state:st, postponed:!!l.postponed, adhoc:!l.slot_id, hh:hhById[l.student_id]||null });
     });
     for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
       var di=iso(d), wd=(d.getDay()+6)%7;
@@ -165,7 +168,11 @@
       var real=cluster.filter(isReal);
       cluster.forEach(function(b){
         b.lanes=laneEnds.length;
-        b.clash = isReal(b) && real.some(function(o){ return o!==b && o.startMin<b.endMin && b.startMin<o.endMin; });
+        // Clash = overlaps another real lesson from a DIFFERENT household. Same household at
+        // the same time is an intentional group (e.g. siblings), so no clash.
+        b.clash = isReal(b) && real.some(function(o){
+          return o!==b && o.startMin<b.endMin && b.startMin<o.endMin && !(b.hh && o.hh && b.hh===o.hh);
+        });
       });
       i=j;
     }
@@ -393,7 +400,7 @@
   if (window.__CAL_TEST__) {
     window.CAL = { seed:function(s,sl,l,a,m){
       students=s; slots=sl; loadedStatic=true; anchor=a; mode=m||"week";
-      nameById={}; locById={}; s.forEach(function(x){ nameById[x.id]=x.name; locById[x.id]=x.location||""; });
+      nameById={}; locById={}; hhById={}; s.forEach(function(x){ nameById[x.id]=x.name; locById[x.id]=x.location||""; hhById[x.id]=hhKey(x.contact); });
       lessonCache={}; (l||[]).forEach(function(x){ var k=x.lesson_date.slice(0,7); (lessonCache[k]=lessonCache[k]||[]).push(x); });
       var w=$("seg-week"), mo=$("seg-month");
       if(w) w.classList.toggle("on",mode==="week"); if(mo) mo.classList.toggle("on",mode==="month");
