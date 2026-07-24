@@ -186,6 +186,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-24 — Remove the Export .ics button (`v48`)
+
+Dropped the "Export .ics" button (and its code) now that real Google Calendar sync exists — the
+download was a stepping stone and just clutter next to Connect. (The Planner still has its own
+recurring-slots ICS export.)
+
 ### 2026-07-24 — Google Calendar sync (OAuth, one-way) (`v47`) — NEEDS MIGRATION + GOOGLE SETUP
 
 A **Connect Google Calendar** button on the Calendar that pushes your lessons into your Google
