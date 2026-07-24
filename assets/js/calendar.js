@@ -277,10 +277,29 @@
     });
   }
 
-  // ---- popover (read-only) ----
+  // ---- popover: view + direct actions (postpone / cancel / restore / delete) ----
+  // Acts straight on the same "lessons" row the Ledger reads/writes, so a change
+  // made here shows up there (and vice versa) the next time either page loads data.
+  function statusFor(dateISO,endHM){ return new Date(dateISO+"T"+(endHM||"23:59")+":00").getTime()>Date.now() ? "scheduled" : "done"; }
   function findBlock(id){ return lastBlocks.filter(function(b){ return String(b.id)===String(id); })[0]; }
+  var popNode=null;
+  function positionPopover(node){
+    var pop=$("cal-pop");
+    var r=node.getBoundingClientRect(), pw=Math.max(260,pop.offsetWidth), ph=pop.offsetHeight;
+    var left=Math.min(r.left, window.innerWidth-pw-10);
+    var top=r.bottom+8; if(top+ph>window.innerHeight-10) top=Math.max(10, r.top-ph-8);
+    pop.style.left=Math.max(10,left)+"px"; pop.style.top=top+"px";
+  }
+  function actionButtons(b){
+    if(b.kind!=="lesson") return "";  // projected ("not logged") block — nothing to act on yet
+    var toggle=b.state==="cancel"
+      ? '<button class="cp-btn" id="cp-restore">Restore</button>'
+      : '<button class="cp-btn warn" id="cp-cancel">Cancel</button>';
+    return '<div class="cp-btns"><button class="cp-btn" id="cp-postpone">Postpone</button>'+toggle+'<button class="cp-btn danger" id="cp-delete">Delete</button></div>';
+  }
   function showPopover(node){
     var b=findBlock(node.dataset.ev); if(!b) return;
+    popNode=node;
     var pop=$("cal-pop");
     var label={paid:["Paid","rgba(14,124,123,.14)","#0b5b5a"], unpaid:["Unpaid","rgba(179,64,47,.12)","#8a2f22"],
       sched:["Scheduled","rgba(26,42,79,.10)","var(--navy)"], cancel:["Cancelled","#f3f0e8","var(--muted)"],
@@ -297,15 +316,61 @@
       '<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>'+
       (b.adhoc?' <span class="cp-tag" style="background:rgba(26,42,79,.10);color:var(--navy)">✦ One-off</span>':'')+
       (b.postponed?' <span class="cp-tag" style="background:rgba(200,146,42,.18);color:#8a5f14">Postponed</span>':'')+
-      '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Log in Ledger →":"Open in Ledger →")+'</a>';
+      actionButtons(b)+
+      '<a class="cp-act" href="ledger.html">'+(b.kind==="proj"?"Log in Ledger →":"Edit in Ledger →")+'</a>';
     pop.style.display="block";
-    var r=node.getBoundingClientRect(), pw=260, ph=pop.offsetHeight;
-    var left=Math.min(r.left, window.innerWidth-pw-10);
-    var top=r.bottom+8; if(top+ph>window.innerHeight-10) top=Math.max(10, r.top-ph-8);
-    pop.style.left=Math.max(10,left)+"px"; pop.style.top=top+"px";
+    positionPopover(node);
     $("cp-x").addEventListener("click", hidePopover);
+    var cancelBtn=$("cp-cancel"); if(cancelBtn) cancelBtn.addEventListener("click", function(){ doCancel(b.id); });
+    var restoreBtn=$("cp-restore"); if(restoreBtn) restoreBtn.addEventListener("click", function(){ doRestore(b); });
+    var deleteBtn=$("cp-delete"); if(deleteBtn) deleteBtn.addEventListener("click", function(){ doDelete(b.id); });
+    var postponeBtn=$("cp-postpone"); if(postponeBtn) postponeBtn.addEventListener("click", function(){ showPostponeForm(b); });
   }
-  function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; }
+  function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; popNode=null; }
+  // After any write, the visible range (and whichever month a lesson may have moved
+  // into/out of) needs fresh data — simplest correct fix is to drop the whole cache.
+  function refreshAfterMutation(){ hidePopover(); lessonCache={}; ensureData(); }
+  async function doCancel(id){
+    if(!confirm("Mark this lesson as cancelled? It won't count toward income or pending."))return;
+    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null}).eq("id",id);
+    if(res.error){alert("Couldn't cancel: "+res.error.message);return;}
+    refreshAfterMutation();
+  }
+  async function doRestore(b){
+    var res=await window.sb.from("lessons").update({status:statusFor(b.dateISO,hhmm2(b.endMin))}).eq("id",b.id);
+    if(res.error){alert("Couldn't restore: "+res.error.message);return;}
+    refreshAfterMutation();
+  }
+  async function doDelete(id){
+    if(!confirm("Delete this lesson permanently? (Use Cancel instead if you just want to void it.)"))return;
+    var res=await window.sb.from("lessons").delete().eq("id",id);
+    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    refreshAfterMutation();
+  }
+  function showPostponeForm(b){
+    var pop=$("cal-pop");
+    pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>Postpone '+esc(b.name)+'</h4>'+
+      '<div class="cp-field"><label for="cp-pdate">New date</label><input type="date" id="cp-pdate" value="'+b.dateISO+'"></div>'+
+      '<div class="cp-row2">'+
+        '<div class="cp-field"><label for="cp-pstart">Start</label><input type="time" id="cp-pstart" value="'+hhmm2(b.startMin)+'"></div>'+
+        '<div class="cp-field"><label for="cp-pend">End</label><input type="time" id="cp-pend" value="'+hhmm2(b.endMin)+'"></div>'+
+      '</div>'+
+      '<div class="msg" id="cp-pmsg"></div>'+
+      '<div class="cp-btns"><button class="cp-btn primary" id="cp-psave">Save</button><button class="cp-btn" id="cp-pback">Back</button></div>';
+    pop.style.display="block";
+    if(popNode) positionPopover(popNode);
+    $("cp-x").addEventListener("click", hidePopover);
+    $("cp-pback").addEventListener("click", function(){ if(popNode) showPopover(popNode); });
+    $("cp-psave").addEventListener("click", function(){ savePostpone(b); });
+  }
+  async function savePostpone(b){
+    var date=$("cp-pdate").value, start=$("cp-pstart").value, end=$("cp-pend").value, msg=$("cp-pmsg");
+    if(!date||!start||!end){msg.textContent="Pick a date, start and end time.";msg.className="msg err";return;}
+    if(end<=start){msg.textContent="End time must be after start time.";msg.className="msg err";return;}
+    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,status:statusFor(date,end),postponed:true}).eq("id",b.id);
+    if(res.error){msg.textContent="Couldn't postpone: "+res.error.message;msg.className="msg err";return;}
+    refreshAfterMutation();
+  }
 
   // ---- export to .ics (one-time; import into Google/Apple Calendar) ----
   function icsEsc(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); }
