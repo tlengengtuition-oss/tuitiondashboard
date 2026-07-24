@@ -1,4 +1,4 @@
-/* v46 */
+/* v47 */
 /* =====================================================================
    T-Leng Tuition Dashboard — house style
    navy / gold / cream / teal · Georgia headings · sans body
@@ -190,6 +190,8 @@ a{color:inherit}
 .mark:hover{background:rgba(14,124,123,.09)}
 .mark.lite{color:var(--muted);border-color:var(--line)}
 .mark.lite:hover{color:var(--teal);border-color:var(--teal);background:rgba(14,124,123,.06)}
+.mark.del{color:var(--owed);border-color:var(--owed)}
+.mark.del:hover{background:rgba(179,64,47,.09)}
 
 /* ---------- dashboard ---------- */
 .grid2{display:grid;grid-template-columns:1.7fr 1fr;gap:16px;align-items:start}

@@ -108,7 +108,8 @@
       var age=ageTag(daysSince(rows[0].lesson_date));
       var inner=rows.map(function(l){var d=daysSince(l.lesson_date);return '<div class="lrow"><input type="checkbox" class="lchk" data-lsel="'+l.id+'"'+(selectedLessons[l.id]?" checked":"")+'><span class="lwhen">'+prettyDate(l.lesson_date)+(d>=14?' <span class="agedot" title="'+d+' days unpaid">•</span>':"")+"</span><span>"+(l.subject?esc(l.subject):'<span class="muted">lesson</span>')+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
       var selBtn=selIds.length?'<button class="mark" data-paysel="'+selIds.join(",")+'">Mark '+selIds.length+' selected paid</button>':"";
-      return '<div class="card group"><div class="group-head"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select to bill together"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+      var delBtn=selIds.length?'<button class="mark del" data-delsel="'+selIds.join(",")+'">Delete '+selIds.length+' selected</button>':"";
+      return '<div class="card group"><div class="group-head"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select to bill together"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button>'+selBtn+delBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }
     // group owing students by household
     var byHH={}; ids.forEach(function(id){var h=householdBy[id];if(h)(byHH[h]=byHH[h]||[]).push(id);});
@@ -132,6 +133,7 @@
     $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",function(){if(confirm("Mark all these lessons as paid?"))markPaid(b.dataset.payall.split(","));});});
     $("outstanding").querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",function(){if(confirm("Mark all lessons for this household as paid?"))markPaid(b.dataset.hhpayall.split(","));});});
     $("outstanding").querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",function(){var ids=b.dataset.paysel.split(",");if(confirm("Mark "+ids.length+" selected lesson(s) as paid?")){ids.forEach(function(id){delete selectedLessons[id];});markPaid(ids);}});});
+    $("outstanding").querySelectorAll("[data-delsel]").forEach(function(b){b.addEventListener("click",function(){var ids=b.dataset.delsel.split(",");if(confirm("Delete "+ids.length+" selected lesson(s) permanently? This cannot be undone.")){ids.forEach(function(id){delete selectedLessons[id];});deleteLessons(ids);}});});
     $("outstanding").querySelectorAll("[data-lsel]").forEach(function(cb){
       cb.addEventListener("change",function(){
         if(cb.checked)selectedLessons[cb.dataset.lsel]=1; else delete selectedLessons[cb.dataset.lsel];
@@ -380,6 +382,11 @@
   async function deleteLesson(id){
     if(!confirm("Delete this lesson permanently? (Use Cancel instead if you just want to void it.)"))return;
     var res=await window.sb.from("lessons").delete().eq("id",id);
+    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    load();
+  }
+  async function deleteLessons(ids){
+    var res=await window.sb.from("lessons").delete().in("id",ids);
     if(res.error){alert("Couldn't delete: "+res.error.message);return;}
     load();
   }
