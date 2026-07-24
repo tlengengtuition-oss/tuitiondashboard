@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-24 — Google sync: choose which calendar (`v49`)
+
+Sync no longer hardcodes the primary calendar. When connected, a field lets you paste a
+**calendar ID** (e.g. your "Tuition" calendar) and syncs there instead. Stored in `localStorage`
+(`tl_gcal_calendar`, default `primary`). Changing it **moves** what's already synced — deletes
+the events from the old calendar, clears their ids, then re-syncs into the new one (no orphans /
+duplicates). Uses the same `calendar.events` scope, so no re-consent needed to write to a
+secondary calendar.
+
 ### 2026-07-24 — Remove the Export .ics button (`v48`)
 
 Dropped the "Export .ics" button (and its code) now that real Google Calendar sync exists — the

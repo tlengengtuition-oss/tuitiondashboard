@@ -4,12 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=48">
+<link rel="stylesheet" href="assets/css/app.css?v=49">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
   .cal-nav .btn{padding:7px 12px}
   .btn-gcal{border-color:var(--teal);color:var(--teal)}
+  .gcal-target{display:inline-flex;align-items:center;gap:6px}
+  .gcal-target input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;width:230px;background:#fffdf8;color:var(--ink)}
+  .gcal-target .btn{padding:7px 11px;font-size:13px}
   .gcal-status{font-size:12px;color:var(--muted)}
   .gcal-status.err{color:var(--owed)} .gcal-status.ok{color:var(--teal)}
   .cal-range{min-width:150px;text-align:center;font-weight:700;font-size:14.5px;color:var(--navy)}
@@ -121,6 +124,10 @@
       <button class="btn" id="cal-next" title="Next week">&rsaquo;</button>
       <button class="btn" id="cal-today">Today</button>
       <button class="btn btn-gcal" id="gcal-btn" style="display:none" title="Sync your lessons into your Google Calendar">Connect Google Calendar</button>
+      <span class="gcal-target" id="gcal-target" style="display:none">
+        <input id="gcal-cal" type="text" placeholder="main calendar" title="Paste your Tuition calendar's ID, or leave blank for your main calendar">
+        <button class="btn" id="gcal-cal-save">Use this calendar</button>
+      </span>
       <span class="gcal-status" id="gcal-status"></span>
     </div>
     <div class="cal-right">
@@ -150,9 +157,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=48"></script>
-<script src="assets/js/supabase.js?v=48"></script>
-<script src="assets/js/app.js?v=48"></script>
-<script src="assets/js/calendar.js?v=48"></script>
+<script src="assets/js/config.js?v=49"></script>
+<script src="assets/js/supabase.js?v=49"></script>
+<script src="assets/js/app.js?v=49"></script>
+<script src="assets/js/calendar.js?v=49"></script>
 </body>
 </html>
