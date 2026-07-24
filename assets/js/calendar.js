@@ -349,6 +349,87 @@
     setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
   }
 
+  // ---- Google Calendar sync (client-side OAuth via Google Identity Services) ----
+  var GCLIENT=(window.TLENG_CONFIG||{}).GOOGLE_CLIENT_ID||"";
+  var GSCOPE="https://www.googleapis.com/auth/calendar.events", GTZ="Asia/Singapore";
+  var gToken=null, gTokenClient=null;
+
+  function gcalConfigured(){ return !!GCLIENT; }
+  function gcalConnected(){ try{ return localStorage.getItem("tl_gcal_connected")==="1"; }catch(e){ return false; } }
+  function gStatus(t,cls){ var el=$("gcal-status"); if(el){ el.textContent=t||""; el.className="gcal-status"+(cls?" "+cls:""); } }
+  function gBtnLabel(){ var b=$("gcal-btn"); if(b) b.textContent=gcalConnected()?"↻ Sync to Google":"Connect Google Calendar"; }
+
+  function whenGoogleReady(cb){
+    if(window.google && google.accounts && google.accounts.oauth2){ cb(); return; }
+    var n=0, t=setInterval(function(){ n++; if(window.google&&google.accounts&&google.accounts.oauth2){ clearInterval(t); cb(); } else if(n>40){ clearInterval(t); } },200);
+  }
+  function initGcal(){
+    if(!gcalConfigured() || !$("gcal-btn")) return;
+    $("gcal-btn").style.display="";
+    whenGoogleReady(function(){
+      gTokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:GCLIENT, scope:GSCOPE,
+        callback:function(resp){
+          if(resp && resp.access_token){ gToken=resp.access_token; try{localStorage.setItem("tl_gcal_connected","1");}catch(e){} gBtnLabel(); runSync(); }
+          else { gStatus("Couldn't connect to Google.","err"); }
+        }
+      });
+      gBtnLabel();
+      if(gcalConnected()) gTokenClient.requestAccessToken({prompt:""});   // silent re-auth + sync on load
+    });
+  }
+  function connectGcal(){
+    if(!gTokenClient){ gStatus("Google isn't ready yet — try again in a second.","err"); return; }
+    gTokenClient.requestAccessToken({ prompt: gToken?"":"consent" });
+  }
+
+  function gEvent(l){
+    var summary=[nameById[l.student_id]||"Lesson", l.subject].filter(Boolean).join(" · ");
+    var d=[]; if(l.level)d.push("Level: "+l.level); if(l.amount!=null)d.push("Amount: S$"+l.amount);
+    d.push(l.status==="scheduled"?"Scheduled":(l.paid?"Paid":"Unpaid"));
+    if(l.postponed)d.push("Postponed"); if(!l.slot_id)d.push("One-off");
+    var e={ summary:summary, description:d.join("\n"),
+      start:{ dateTime:l.lesson_date+"T"+hhmm(l.start_time)+":00", timeZone:GTZ },
+      end:{ dateTime:l.lesson_date+"T"+hhmm(l.end_time)+":00", timeZone:GTZ } };
+    var loc=locById[l.student_id]; if(loc) e.location=loc;
+    return e;
+  }
+  async function gapi(method, path, body){
+    var res=await fetch("https://www.googleapis.com/calendar/v3"+path, {
+      method:method, headers:{ "Authorization":"Bearer "+gToken, "Content-Type":"application/json" },
+      body: body?JSON.stringify(body):undefined });
+    if(res.status===401){ gToken=null; var err=new Error("expired"); err.code=401; throw err; }
+    if(!res.ok && res.status!==410) throw new Error("Google API "+res.status);   // 410 = already gone
+    return (res.status===204||res.status===410) ? null : res.json();
+  }
+  // Push lessons in a rolling window to the user's primary Google Calendar:
+  // create if new (store the event id), update if already synced, delete if now cancelled.
+  async function runSync(){
+    if(!gToken) return;
+    gStatus("Syncing…");
+    var from=new Date(); from.setMonth(from.getMonth()-2);
+    var to=new Date(); to.setMonth(to.getMonth()+6);
+    var ls=await window.sb.from("lessons")
+      .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id,gcal_event_id")
+      .gte("lesson_date", iso(from)).lte("lesson_date", iso(to));
+    if(ls.error){ gStatus("Couldn't read lessons: "+ls.error.message,"err"); return; }
+    var rows=ls.data||[], made=0, upd=0, del=0, fail=0;
+    for(var i=0;i<rows.length;i++){
+      var l=rows[i];
+      try{
+        if(l.status==="cancelled"){
+          if(l.gcal_event_id){ await gapi("DELETE","/calendars/primary/events/"+encodeURIComponent(l.gcal_event_id)); await window.sb.from("lessons").update({gcal_event_id:null}).eq("id",l.id); del++; }
+        } else if(l.gcal_event_id){
+          await gapi("PUT","/calendars/primary/events/"+encodeURIComponent(l.gcal_event_id), gEvent(l)); upd++;
+        } else {
+          var ev=await gapi("POST","/calendars/primary/events", gEvent(l));
+          if(ev && ev.id){ await window.sb.from("lessons").update({gcal_event_id:ev.id}).eq("id",l.id); made++; }
+        }
+      }catch(e){ if(e && e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } fail++; }
+    }
+    gStatus("Synced ✓ "+made+" new, "+upd+" updated"+(del?", "+del+" removed":"")+(fail?" · "+fail+" failed":""), "ok");
+  }
+
   // ---- nav / mode ----
   function setMode(m){
     mode=m;
@@ -388,6 +469,8 @@
     $("cal-next").addEventListener("click", function(){ shiftRange(1); });
     $("cal-today").addEventListener("click", goToday);
     if($("cal-export")) $("cal-export").addEventListener("click", exportICS);
+    if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
+    initGcal();
     $("seg-week").addEventListener("click", function(){ setMode("week"); });
     $("seg-month").addEventListener("click", function(){ setMode("month"); });
     initLegend();

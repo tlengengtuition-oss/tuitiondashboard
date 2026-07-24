@@ -8,5 +8,7 @@
 // ---------------------------------------------------------------------
 window.TLENG_CONFIG = {
   SUPABASE_URL:      "https://rnjvswkejbrhbaytutai.supabase.co",
-  SUPABASE_ANON_KEY: "sb_publishable_IKUtlGhnwJT0Hld5A8cglw_0iF6Y5J9"
+  SUPABASE_ANON_KEY: "sb_publishable_IKUtlGhnwJT0Hld5A8cglw_0iF6Y5J9",
+  // Google OAuth client ID for Calendar sync (public, safe to commit — like the anon key).
+  GOOGLE_CLIENT_ID:  "560106211240-ip7sv5rrpc71f6jenmod34e13i94rdjg.apps.googleusercontent.com"
 };

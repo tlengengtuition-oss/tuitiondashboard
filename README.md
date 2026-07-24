@@ -186,6 +186,28 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-24 — Google Calendar sync (OAuth, one-way) (`v47`) — NEEDS MIGRATION + GOOGLE SETUP
+
+A **Connect Google Calendar** button on the Calendar that pushes your lessons into your Google
+Calendar. Client-side OAuth via Google Identity Services (no backend, no client secret) + direct
+Calendar API calls.
+
+- **Connect** → Google consent popup (`calendar.events` scope) → syncs. Reconnects silently on
+  later page loads and re-syncs, so opening the app keeps Google up to date. One-way (app→Google).
+- **Sync** creates an event per lesson (rolling window: ~2 months back to ~6 months ahead),
+  updates it on change, deletes it when the lesson is cancelled. Stores the Google event id in
+  `lessons.gcal_event_id` so it doesn't duplicate.
+- `db/migration_gcal.sql` — adds `gcal_event_id text` to `lessons`. **Run it before using Connect**
+  (the sync query selects that column).
+- `GOOGLE_CLIENT_ID` added to `config.js` (public, safe — like the anon key). A separate OAuth
+  client from the "Continue with Google" login, in the same Google Cloud project.
+- Setup needed once: a Google Cloud OAuth client (Web app) with `calendar.events` scope and the
+  app origins as authorized JS origins; the tutor's Gmail added as a test user (unverified app →
+  "Advanced → proceed" on first connect).
+
+Snapshot-vs-live note: this syncs when you open/use the app (client-side), not via a 24/7 server.
+The always-on version would be a Supabase Edge Function — not needed for one tutor.
+
 ### 2026-07-24 — Calendar: same-household overlaps aren't a clash (`v46`)
 
 Two lessons from the **same household** at the same time are an intentional group (e.g.
