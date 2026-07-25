@@ -623,17 +623,30 @@
   // ---------- invoice ----------
   function invoiceHTML(d, qrUrl){
     var combined=!!d.combined;
-    var rows=d.lessons.map(function(l){
+    function lrow(l){
       var desc=(l.subject?esc(l.subject):"Lesson")+(l.level?' <span style="color:#6b7280">· '+esc(l.level)+'</span>':"");
-      return "<tr><td>"+prettyDate(l.lesson_date)+"</td>"+
-        (combined?"<td>"+esc(l._who||"")+"</td>":"")+
-        "<td>"+desc+'</td><td class="r">'+TL.sgd(l.amount)+"</td></tr>";
-    }).join("");
+      return "<tr><td>"+prettyDate(l.lesson_date)+"</td><td>"+desc+'</td><td class="r">'+TL.sgd(l.amount)+"</td></tr>";
+    }
+    var rows;
+    if(combined){
+      // Group each student's lessons together with their own subtotal, rather than interleaving.
+      var order=[], byWho={};
+      d.lessons.forEach(function(l){ var w=l._who||"—"; if(!byWho[w]){byWho[w]=[];order.push(w);} byWho[w].push(l); });
+      rows=order.map(function(w){
+        var sub=Math.round(byWho[w].reduce(function(t,l){return t+(Number(l.amount)||0);},0)*100)/100;
+        return '<tr><td colspan="3" style="background:#faf6ec;font-weight:700;color:#1A2A4F;padding:9px 8px 6px">'+esc(w)+'</td></tr>'+
+          byWho[w].map(lrow).join("")+
+          '<tr><td colspan="2" class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">Subtotal · '+esc(w)+'</td>'+
+          '<td class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">'+TL.sgd(sub)+'</td></tr>';
+      }).join("");
+    } else {
+      rows=d.lessons.map(lrow).join("");
+    }
     return '<div class="invoice">'+
       '<div class="inv-head"><div class="inv-biz">'+esc(d.biz)+'<small>Invoice</small></div>'+
         '<div class="inv-meta"><b>'+esc(d.invoiceNo)+'</b><br>'+d.dateStr+'</div></div>'+
       '<div class="inv-to"><span class="lbl">Bill to</span><br><b>'+esc(d.student)+'</b></div>'+
-      '<table class="inv-table"><thead><tr><th>Date</th>'+(combined?"<th>Student</th>":"")+'<th>Description</th><th class="r">Amount</th></tr></thead>'+
+      '<table class="inv-table"><thead><tr><th>Date</th><th>Description</th><th class="r">Amount</th></tr></thead>'+
         '<tbody>'+rows+'</tbody></table>'+
       '<div class="inv-total"><span>'+(d.paid?"Total paid":"Total due")+'</span><span>'+TL.sgd(d.total)+'</span></div>'+
       (d.paid
