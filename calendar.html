@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=50">
+<link rel="stylesheet" href="assets/css/app.css?v=51">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -21,7 +21,9 @@
   .cal-legend{display:flex;align-items:center;gap:13px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
   .cal-legend .leg-key,.cal-keys .leg-key{display:inline-flex;align-items:center;gap:5px}
   .cal-legend .leg-sym,.cal-keys .leg-sym{color:var(--navy);font-weight:800;font-size:12.5px}
-  .cal-keys{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:10px;padding:0 2px;font-size:11.5px;color:var(--muted)}
+  .cal-foot{display:flex;justify-content:space-between;align-items:center;gap:14px 20px;flex-wrap:wrap;margin-top:10px;padding:0 2px}
+  .cal-keys{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+  .cal-gsync{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
   .cal-legend .leg{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
   .cal-legend .leg:hover{color:var(--ink)}
   .cal-legend .leg.off{opacity:.4;text-decoration:line-through}
@@ -123,12 +125,6 @@
       <span class="cal-range" id="cal-range">—</span>
       <button class="btn" id="cal-next" title="Next week">&rsaquo;</button>
       <button class="btn" id="cal-today">Today</button>
-      <button class="btn btn-gcal" id="gcal-btn" style="display:none" title="Sync your lessons into your Google Calendar">Connect Google Calendar</button>
-      <span class="gcal-target" id="gcal-target" style="display:none">
-        <label class="gcal-lbl">to</label>
-        <select id="gcal-cal" title="Which Google calendar to sync your lessons into"><option value="primary">Main calendar</option></select>
-      </span>
-      <span class="gcal-status" id="gcal-status"></span>
     </div>
     <div class="cal-right">
       <div class="seg" id="cal-seg">
@@ -147,19 +143,29 @@
   <div class="card cal-card">
     <div class="cal" id="cal"><div class="cal-empty">Loading…</div></div>
   </div>
-  <div class="cal-keys">
-    <span class="leg-key"><i class="cal-sw sw-clash"></i>Clash</span>
-    <span class="leg-key"><b class="leg-sym">✦</b>One-off</span>
-    <span class="leg-key"><b class="leg-sym">↻</b>Postponed</span>
+  <div class="cal-foot">
+    <div class="cal-keys">
+      <span class="leg-key"><i class="cal-sw sw-clash"></i>Clash</span>
+      <span class="leg-key"><b class="leg-sym">✦</b>One-off</span>
+      <span class="leg-key"><b class="leg-sym">↻</b>Postponed</span>
+    </div>
+    <div class="cal-gsync">
+      <span class="gcal-status" id="gcal-status"></span>
+      <button class="btn btn-gcal" id="gcal-btn" style="display:none" title="Sync your lessons into your Google Calendar">Connect Google Calendar</button>
+      <span class="gcal-target" id="gcal-target" style="display:none">
+        <label class="gcal-lbl">Sync into</label>
+        <select id="gcal-cal" title="Which Google calendar to sync your lessons into"><option value="">Choose a calendar…</option></select>
+      </span>
+    </div>
   </div>
   <div id="cal-pop" class="cal-pop" style="display:none"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=50"></script>
-<script src="assets/js/supabase.js?v=50"></script>
-<script src="assets/js/app.js?v=50"></script>
-<script src="assets/js/calendar.js?v=50"></script>
+<script src="assets/js/config.js?v=51"></script>
+<script src="assets/js/supabase.js?v=51"></script>
+<script src="assets/js/app.js?v=51"></script>
+<script src="assets/js/calendar.js?v=51"></script>
 </body>
 </html>

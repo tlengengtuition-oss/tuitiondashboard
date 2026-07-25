@@ -186,6 +186,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-25 — Google sync: connect → choose → sync, moved to a footer (`v51`)
+
+UX pass on the sync controls.
+
+- **Flow:** connecting no longer auto-syncs. You Connect, then the dropdown shows "Choose a
+  calendar…" and you must pick one; picking is what starts the sync. A `tl_gcal_chosen` flag gates
+  this — once chosen, later page loads silently reconnect and re-sync (and a "↻ Sync now" button
+  appears). The connect button is hidden in the "connected but not chosen" state so the dropdown
+  is the obvious next step.
+- **Layout:** moved Connect / calendar dropdown / status out of the crowded top bar into a footer
+  under the calendar — keys on the left, Google controls on the right (`.cal-foot`).
+
 ### 2026-07-25 — Google sync: pick calendar from a dropdown (`v50`)
 
 Replaced the paste-a-calendar-ID field with a **dropdown** of the user's own calendars. Adds the

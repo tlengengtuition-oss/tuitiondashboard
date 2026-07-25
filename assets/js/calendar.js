@@ -315,14 +315,19 @@
   function gcalConfigured(){ return !!GCLIENT; }
   function gcalConnected(){ try{ return localStorage.getItem("tl_gcal_connected")==="1"; }catch(e){ return false; } }
   function gcalListGranted(){ try{ return localStorage.getItem("tl_gcal_list")==="1"; }catch(e){ return false; } }
+  function gcalChosen(){ try{ return localStorage.getItem("tl_gcal_chosen")==="1"; }catch(e){ return false; } }
   function gcalTarget(){ try{ return localStorage.getItem("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
   function calPath(suffix){ return "/calendars/"+encodeURIComponent(gcalTarget())+suffix; }   // which Google calendar to sync into
   function gStatus(t,cls){ var el=$("gcal-status"); if(el){ el.textContent=t||""; el.className="gcal-status"+(cls?" "+cls:""); } }
-  function gBtnLabel(){ var b=$("gcal-btn"); if(b) b.textContent=gcalConnected()?"↻ Sync to Google":"Connect Google Calendar"; }
   function updateGcalUI(){
-    gBtnLabel();
-    var row=$("gcal-target"); if(row) row.style.display=gcalConnected()?"":"none";
-    var inp=$("gcal-cal"); if(inp && document.activeElement!==inp){ var t=gcalTarget(); inp.value=(t==="primary"?"":t); }
+    var conn=gcalConnected(), chosen=gcalChosen();
+    var btn=$("gcal-btn"), row=$("gcal-target");
+    if(btn){
+      if(!conn){ btn.textContent="Connect Google Calendar"; btn.style.display=""; }
+      else if(chosen){ btn.textContent="↻ Sync now"; btn.style.display=""; }
+      else { btn.style.display="none"; }   // connected but no calendar picked yet → the dropdown is the next step
+    }
+    if(row) row.style.display=conn?"":"none";
   }
 
   function whenGoogleReady(cb){
@@ -336,7 +341,12 @@
       gTokenClient=google.accounts.oauth2.initTokenClient({
         client_id:GCLIENT, scope:GSCOPE,
         callback:function(resp){
-          if(resp && resp.access_token){ gToken=resp.access_token; try{localStorage.setItem("tl_gcal_connected","1");}catch(e){} updateGcalUI(); populateCalendars(); runSync(); }
+          if(resp && resp.access_token){
+            gToken=resp.access_token; try{localStorage.setItem("tl_gcal_connected","1");}catch(e){}
+            updateGcalUI(); populateCalendars();
+            if(gcalChosen()) runSync();                                 // already set up → keep in sync
+            else gStatus("Connected — now choose which calendar to sync into.","ok");   // wait for a pick
+          }
           else { gStatus("Couldn't connect to Google.","err"); }
         }
       });
@@ -360,11 +370,13 @@
       try{ localStorage.setItem("tl_gcal_list","1"); }catch(e){}
       var d=await res.json();
       var items=(d.items||[]).filter(function(c){ return c.accessRole==="owner"||c.accessRole==="writer"; });
-      sel.innerHTML=items.map(function(c){
+      var opts=items.map(function(c){
         var val=c.primary?"primary":c.id, label=c.primary?"Main calendar":(c.summary||c.id);
         return '<option value="'+esc(val)+'">'+esc(label)+'</option>';
-      }).join("") || '<option value="primary">Main calendar</option>';
-      sel.value=gcalTarget();
+      });
+      if(!gcalChosen()) opts.unshift('<option value="">Choose a calendar…</option>');   // force a deliberate pick
+      sel.innerHTML=opts.join("");
+      sel.value=gcalChosen()?gcalTarget():"";
     }catch(e){}
   }
 
@@ -418,17 +430,20 @@
   // from the OLD calendar and clears their ids, sets the new target, then re-syncs (recreates
   // them in the new calendar). Prevents orphans/duplicates.
   async function setGcalTarget(raw){
-    var newT=(raw||"").trim()||"primary", oldT=gcalTarget();
+    var newT=(raw||"").trim()||"primary", oldT=gcalTarget(), first=!gcalChosen();
     if(!gToken){ gStatus("Connect to Google first.","err"); return; }
-    if(newT===oldT){ gStatus("Already syncing to that calendar.","ok"); return; }
-    gStatus("Moving your lessons to the new calendar…");
-    var ls=await window.sb.from("lessons").select("id,gcal_event_id").not("gcal_event_id","is",null);
-    var rows=ls.error?[]:(ls.data||[]);
-    for(var i=0;i<rows.length;i++){
-      try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(rows[i].gcal_event_id)); }catch(e){}
-      await window.sb.from("lessons").update({gcal_event_id:null}).eq("id",rows[i].id);
+    // Changing calendars after already syncing: move what's synced — delete from the old
+    // calendar, clear the ids — so the re-sync recreates them in the new one (no orphans).
+    if(!first && newT!==oldT){
+      var ls=await window.sb.from("lessons").select("id,gcal_event_id").not("gcal_event_id","is",null);
+      var rows=ls.error?[]:(ls.data||[]);
+      if(rows.length) gStatus("Moving your lessons to the new calendar…");
+      for(var i=0;i<rows.length;i++){
+        try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(rows[i].gcal_event_id)); }catch(e){}
+        await window.sb.from("lessons").update({gcal_event_id:null}).eq("id",rows[i].id);
+      }
     }
-    try{ localStorage.setItem("tl_gcal_calendar", newT); }catch(e){}
+    try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
     updateGcalUI();
     runSync();
   }
@@ -472,7 +487,7 @@
     $("cal-next").addEventListener("click", function(){ shiftRange(1); });
     $("cal-today").addEventListener("click", goToday);
     if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
-    if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ setGcalTarget(this.value); });
+    if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ if(this.value) setGcalTarget(this.value); });
     initGcal();
     $("seg-week").addEventListener("click", function(){ setMode("week"); });
     $("seg-month").addEventListener("click", function(){ setMode("month"); });
