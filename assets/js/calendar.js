@@ -319,23 +319,27 @@
   function gcalTarget(){ try{ return localStorage.getItem("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
   function gStatus(t,cls){ var el=$("gcal-status"); if(el){ el.textContent=t||""; el.className="gcal-status"+(cls?" "+cls:""); } }
   function gcalCals(){ try{ return JSON.parse(localStorage.getItem("tl_gcal_cals")||"[]")||[]; }catch(e){ return []; } }
+  // The Connect button and the calendar dropdown are mutually exclusive:
+  //  - no calendars loaded yet → show "Connect Google Calendar", hide the dropdown
+  //  - calendars loaded, none chosen → hide the button, the dropdown is the next step
+  //  - a calendar is chosen → show "↻ Sync now" alongside the dropdown
   function updateGcalUI(){
-    var conn=gcalConnected(), chosen=gcalChosen(), hasCals=gcalCals().length>0;
+    var chosen=gcalChosen(), hasCals=gcalCals().length>0;
     var btn=$("gcal-btn"), row=$("gcal-target");
+    if(hasCals) fillDropdownFromCache();
+    if(row) row.style.display=hasCals?"":"none";
     if(btn){
       var lbl=btn.querySelector(".glabel");
       function setLabel(t){ if(lbl) lbl.textContent=t; else btn.textContent=t; }
-      if(conn && chosen){                       // set up → the button is "Sync now"
+      if(!hasCals){                             // nothing to pick → the Google connect button
+        setLabel("Connect Google Calendar"); btn.classList.remove("synced"); btn.style.display="";
+      } else if(chosen){                        // set up → the button is "Sync now"
         setLabel("↻ Sync now"); btn.classList.add("synced"); btn.style.display="";
-      } else if(conn && hasCals){               // connected, calendars loaded → the dropdown is the action; no button
+      } else {                                  // calendars loaded, pick one → the dropdown is the action, no button
         btn.style.display="none";
         if($("gcal-status") && !$("gcal-status").textContent) gStatus("Choose a calendar to sync your lessons into.");
-      } else {                                  // not connected, or list not loaded yet → the Google connect button
-        setLabel("Connect Google Calendar"); btn.classList.remove("synced"); btn.style.display="";
       }
     }
-    if(row) row.style.display=conn?"":"none";
-    if(conn) fillDropdownFromCache();   // show remembered calendars even before a live token
   }
   // Render the dropdown from a list of {v,l} items, selecting the chosen target.
   function fillDropdown(items){
