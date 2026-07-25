@@ -322,9 +322,10 @@
     var conn=gcalConnected(), chosen=gcalChosen();
     var btn=$("gcal-btn"), row=$("gcal-target");
     if(btn){
-      if(!conn){ btn.textContent="Connect Google Calendar"; btn.style.display=""; }
-      else if(chosen){ btn.textContent="↻ Sync now"; btn.style.display=""; }
-      else { btn.style.display="none"; }   // connected but no calendar picked yet → the dropdown is the next step
+      // Always keep an actionable button: "Sync now" once a calendar is chosen, otherwise a
+      // (re)connect that loads the calendar list so a pick is possible.
+      btn.textContent=(conn&&chosen)?"↻ Sync now":"Connect Google Calendar";
+      btn.style.display="";
     }
     if(row) row.style.display=conn?"":"none";
     if(conn) fillDropdownFromCache();   // show remembered calendars even before a live token
