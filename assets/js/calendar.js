@@ -310,7 +310,8 @@
   // ---- Google Calendar sync (client-side OAuth via Google Identity Services) ----
   var GCLIENT=(window.TLENG_CONFIG||{}).GOOGLE_CLIENT_ID||"";
   var GSCOPE="https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly", GTZ="Asia/Singapore";
-  var gToken=null, gTokenClient=null, gUserInit=false;
+  var gToken=null, gTokenExp=0, gTokenClient=null, gUserInit=false;
+  function gTokenValid(){ return !!gToken && Date.now()<gTokenExp; }   // reuse an unexpired token, no fresh Google popup
 
   function gcalConfigured(){ return !!GCLIENT; }
   function gcalConnected(){ try{ return localStorage.getItem("tl_gcal_connected")==="1"; }catch(e){ return false; } }
@@ -322,7 +323,7 @@
   // A connection attempt failed — drop back to the Connect step (clear the loaded list so the
   // dropdown gives way to the Connect button). Keep the chosen calendar so reconnect resumes it.
   function gcalFail(msg){
-    gToken=null;
+    gToken=null; gTokenExp=0;
     try{ localStorage.removeItem("tl_gcal_connected"); localStorage.removeItem("tl_gcal_list"); localStorage.removeItem("tl_gcal_cals"); }catch(e){}
     updateGcalUI();
     gStatus(msg||"Couldn't connect to Google — click Connect to try again.","err");
@@ -375,7 +376,9 @@
         client_id:GCLIENT, scope:GSCOPE,
         callback:function(resp){
           if(resp && resp.access_token){
-            gToken=resp.access_token; try{localStorage.setItem("tl_gcal_connected","1");}catch(e){}
+            gToken=resp.access_token;
+            gTokenExp=Date.now()+(((+resp.expires_in||3600)*1000)-60000);   // reuse until ~1min before expiry
+            try{localStorage.setItem("tl_gcal_connected","1");}catch(e){}
             updateGcalUI(); populateCalendars();
             if(gUserInit){                                              // only sync on a deliberate click, not silent load
               gUserInit=false;
@@ -395,10 +398,17 @@
   }
   function connectGcal(){
     if(!gTokenClient){ gStatus("Google isn't ready yet — try again in a second.","err"); return; }
-    gUserInit=true;   // this is a deliberate click → sync (or prompt to choose) after the token
-    // Force the consent screen until the calendar-list permission is granted (e.g. after adding
-    // the scope); once confirmed, later clicks just sync silently.
-    var needConsent = !gToken || !gcalListGranted();
+    // Token still good? Just act — no fresh Google popup on every click.
+    if(gTokenValid()){
+      if(gcalChosen()) syncNow();
+      else if(gcalCals().length) gStatus("Choose a calendar to sync your lessons into.");
+      else populateCalendars();
+      return;
+    }
+    gUserInit=true;   // deliberate click → sync (or prompt to choose) once the token arrives
+    // Force the consent screen only until the calendar-list permission is granted; after that,
+    // an expired token refreshes silently where the browser allows it.
+    var needConsent = !gcalListGranted();
     gTokenClient.requestAccessToken({ prompt: needConsent?"consent":"" });
   }
   // Fill the calendar dropdown with the user's own+writable calendars.
@@ -445,7 +455,7 @@
     var res=await fetch("https://www.googleapis.com/calendar/v3"+path, {
       method:method, headers:{ "Authorization":"Bearer "+gToken, "Content-Type":"application/json" },
       body: body?JSON.stringify(body):undefined });
-    if(res.status===401){ gToken=null; var err=new Error("expired"); err.code=401; throw err; }
+    if(res.status===401){ gToken=null; gTokenExp=0; var err=new Error("expired"); err.code=401; throw err; }
     if(!res.ok && res.status!==410) throw new Error("Google API "+res.status);   // 410 = already gone
     return (res.status===204||res.status===410) ? null : res.json();
   }
