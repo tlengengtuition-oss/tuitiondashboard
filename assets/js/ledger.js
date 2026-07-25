@@ -644,7 +644,7 @@
         return '<tr><td colspan="3" style="background:#faf6ec;padding:9px 8px 6px"><span style="font-weight:700;color:#1A2A4F">'+esc(w)+'</span>'+
             (sl?' <span style="color:#6b7280;font-size:12px">— '+esc(sl)+'</span>':'')+'</td></tr>'+
           grp.map(lrow).join("")+
-          '<tr><td colspan="2" class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">Subtotal · '+esc(w)+(rn?' · '+rn:'')+'</td>'+
+          '<tr><td colspan="2" class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">Subtotal'+(rn?' · '+rn:'')+'</td>'+
           '<td class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">'+TL.sgd(sub)+'</td></tr>';
       }).join("");
     } else {
