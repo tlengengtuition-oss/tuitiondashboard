@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-25 — Google sync: "Sync now" covers current + future logged months (`v53`)
+
+Follow-on to v52. Instead of syncing only the *viewed* month, **Sync now** (and picking a
+calendar) rebuilds **every month from the current one through the last month that has a lesson**
+(capped at +6 months). So lessons logged for future months sync without navigating to each; past
+months are still never touched. `syncMonth(when)` now returns counts and throws on 401;
+`syncNow()` finds the range (max future `lesson_date`, capped) and loops it, reporting one
+aggregate status (e.g. "Synced ✓ 34 lessons across 3 months").
+
 ### 2026-07-25 — Google sync: month-replace instead of per-lesson diff (`v52`)
 
 Reworked the sync to **rebuild one month wholesale** instead of diffing every lesson across a

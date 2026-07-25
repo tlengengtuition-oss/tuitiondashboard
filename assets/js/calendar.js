@@ -345,7 +345,7 @@
             updateGcalUI(); populateCalendars();
             if(gUserInit){                                              // only sync on a deliberate click, not silent load
               gUserInit=false;
-              if(gcalChosen()) syncMonth();
+              if(gcalChosen()) syncNow();
               else gStatus("Connected — now choose which calendar to sync into.","ok");
             }
           }
@@ -425,27 +425,42 @@
     } while(page);
     return ids;
   }
-  // Rebuild ONE month wholesale: delete every app event in that month on the target calendar,
-  // then recreate from the current (non-cancelled) lessons. Other months are left untouched.
+  // Rebuild ONE month wholesale on the target calendar: delete every app event in that month,
+  // recreate from current non-cancelled lessons. Returns counts; throws on 401 so the caller stops.
   async function syncMonth(when){
-    if(!gToken) return;
-    if(!loadedStatic) await loadStatic();
-    var cal=gcalTarget(), w=monthWindow(when||anchor||new Date());
+    var cal=gcalTarget(), w=monthWindow(when);
     gStatus("Syncing "+w.label+"…");
-    var ids;
-    try{ ids=await listAppEvents(cal, w.tmin, w.tmax); }
-    catch(e){ if(e&&e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } gStatus("Couldn't read the calendar.","err"); return; }
-    for(var i=0;i<ids.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ids[i])); }catch(e){} }
+    var ids=await listAppEvents(cal, w.tmin, w.tmax);
+    for(var i=0;i<ids.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ids[i])); }catch(e){ if(e&&e.code===401) throw e; } }
     var ls=await window.sb.from("lessons")
       .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id")
       .gte("lesson_date", w.firstISO).lte("lesson_date", w.lastISO);
-    if(ls.error){ gStatus("Couldn't read lessons: "+ls.error.message,"err"); return; }
+    if(ls.error) return { made:0, fail:1 };
     var rows=(ls.data||[]).filter(function(l){ return l.status!=="cancelled"; }), made=0, fail=0;
     for(var j=0;j<rows.length;j++){
       try{ await gapi("POST","/calendars/"+encodeURIComponent(cal)+"/events", gEvent(rows[j])); made++; }
-      catch(e){ if(e&&e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } fail++; }
+      catch(e){ if(e&&e.code===401) throw e; fail++; }
     }
-    gStatus("Synced "+w.label+" ✓ "+made+" lesson"+(made===1?"":"s")+(fail?" · "+fail+" failed":""), "ok");
+    return { made:made, fail:fail };
+  }
+  // Sync the current month through the last month that has a lesson (capped +6mo) — so lessons
+  // you've logged for future months go too, while past months are left untouched.
+  async function syncNow(){
+    if(!gToken) return;
+    if(!loadedStatic) await loadStatic();
+    var now=new Date(), fromM=new Date(now.getFullYear(), now.getMonth(), 1);
+    var q=await window.sb.from("lessons").select("lesson_date").gte("lesson_date", iso(fromM)).order("lesson_date",{ascending:false}).limit(1);
+    var lastISO=(!q.error && q.data && q.data[0] && q.data[0].lesson_date) || iso(fromM);
+    var lastM=new Date(+lastISO.slice(0,4), (+lastISO.slice(5,7))-1, 1);
+    var capM=new Date(now.getFullYear(), now.getMonth()+6, 1);
+    if(lastM>capM) lastM=capM;
+    var made=0, fail=0, months=0;
+    try{
+      for(var cur=new Date(fromM); cur<=lastM; cur=new Date(cur.getFullYear(), cur.getMonth()+1, 1)){
+        var r=await syncMonth(new Date(cur)); made+=r.made; fail+=r.fail; months++;
+      }
+    }catch(e){ if(e&&e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } gStatus("Sync hit an error — try again.","err"); return; }
+    gStatus("Synced ✓ "+made+" lesson"+(made===1?"":"s")+" across "+months+" month"+(months===1?"":"s")+(fail?" · "+fail+" failed":""), "ok");
   }
   // Switch which calendar we sync into: wipe ALL our events off the old calendar, then rebuild
   // the current month on the new one.
@@ -458,7 +473,7 @@
     }
     try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
     updateGcalUI();
-    syncMonth();
+    syncNow();
   }
 
   // ---- nav / mode ----
