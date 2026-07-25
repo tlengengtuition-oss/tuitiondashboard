@@ -493,13 +493,14 @@
     var lastM=new Date(+lastISO.slice(0,4), (+lastISO.slice(5,7))-1, 1);
     var capM=new Date(now.getFullYear(), now.getMonth()+6, 1);
     if(lastM>capM) lastM=capM;
-    var made=0, fail=0, months=0;
+    var made=0, fail=0, months=0, t0=Date.now();
     try{
       for(var cur=new Date(fromM); cur<=lastM; cur=new Date(cur.getFullYear(), cur.getMonth()+1, 1)){
         var r=await syncMonth(new Date(cur)); made+=r.made; fail+=r.fail; months++;
       }
     }catch(e){ if(e&&e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } gStatus("Sync hit an error — try again.","err"); return; }
-    gStatus("Synced ✓ "+made+" lesson"+(made===1?"":"s")+" across "+months+" month"+(months===1?"":"s")+(fail?" · "+fail+" failed":""), "ok");
+    var secs=Math.max(1, Math.round((Date.now()-t0)/1000));
+    gStatus("Synced ✓ "+made+" lesson"+(made===1?"":"s")+" across "+months+" month"+(months===1?"":"s")+" in "+secs+"s"+(fail?" · "+fail+" failed":""), "ok");
   }
   // Switch which calendar we sync into: wipe ALL our events off the old calendar, then rebuild
   // the current month on the new one.
