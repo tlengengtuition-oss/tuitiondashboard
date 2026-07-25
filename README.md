@@ -186,6 +186,22 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-25 — Invoice history / income record + transaction screenshots (`v66`)
+
+Turned the invoices flow into a tax/claims-ready income record.
+- **Accurate paid date + proof at mark-paid.** Every "Mark paid" trigger in the Ledger now opens
+  a **Record payment** modal capturing the *actual* payment date (default today, editable to match
+  the transaction) and an optional **transaction screenshot**. `doMarkPaid` marks the lessons on
+  that date, settles/creates the invoice, and uploads the screenshot to it.
+- **Invoice creation dated to payment.** `createPaidInvoice`/`syncInvoiceOnPaid` take a paid date
+  (sets `issued_date` + `paid_date`) and return the invoice id so proof can attach. Paying without
+  an invoice still auto-generates a paid one (pre-existing behaviour), now with the right date.
+- **Invoices page = income record.** Added a paid-date range filter (+ "This year"), a running
+  **income total** for the range, **CSV export** (paid date, student, invoice no., total, proof
+  y/n), and a **Proof** column to attach/view/remove the screenshot per invoice.
+- **Storage.** New private `receipts` bucket (per-tutor folder RLS) + `invoices.proof_path` column.
+  Run `db/migration_invoice_proof.sql` and `db/migration_receipts_bucket.sql`.
+
 ### 2026-07-25 — Google sync: diff-based reconcile + one-off/postponed symbols (`v62`)
 
 Replaced the wholesale month-replace with a **diff/reconcile** (the app stays source of truth).

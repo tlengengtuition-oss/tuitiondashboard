@@ -1,7 +1,7 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedStudents = {}, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [];
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedStudents = {}, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -128,10 +128,10 @@
       }
       return studentCard(id);
     }).join("");
-    $("outstanding").querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){markPaid([b.dataset.pay]);});});
-    $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",function(){if(confirm("Mark all these lessons as paid?"))markPaid(b.dataset.payall.split(","));});});
-    $("outstanding").querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",function(){if(confirm("Mark all lessons for this household as paid?"))markPaid(b.dataset.hhpayall.split(","));});});
-    $("outstanding").querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",function(){var ids=b.dataset.paysel.split(",");if(confirm("Mark "+ids.length+" selected lesson(s) as paid?")){ids.forEach(function(id){delete selectedLessons[id];});markPaid(ids);}});});
+    $("outstanding").querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){openPayModal([b.dataset.pay]);});});
+    $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",function(){openPayModal(b.dataset.payall.split(","));});});
+    $("outstanding").querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",function(){openPayModal(b.dataset.hhpayall.split(","));});});
+    $("outstanding").querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",function(){openPayModal(b.dataset.paysel.split(","));});});
     $("outstanding").querySelectorAll("[data-lsel]").forEach(function(cb){
       cb.addEventListener("change",function(){
         if(cb.checked)selectedLessons[cb.dataset.lsel]=1; else delete selectedLessons[cb.dataset.lsel];
@@ -422,36 +422,41 @@
   // ---- keep invoices in step with payments ----
   // Reuse: if an unpaid invoice already covers these lessons, mark THAT paid.
   // Create: otherwise generate a paid receipt so it can be sent to the parent.
-  async function createPaidInvoice(rows){
-    if(!profile)return;
+  // Create a paid-receipt invoice for these lessons, dated to the actual payment date.
+  // Returns the new invoice id (or null) so a screenshot can be attached to it.
+  async function createPaidInvoice(rows, paidDate){
+    if(!profile)return null;
+    var pd=paidDate||todayISO();
     var byStu={};rows.forEach(function(l){(byStu[l.student_id]=byStu[l.student_id]||[]).push(l);});
     var stuIds=Object.keys(byStu),single=stuIds.length===1;
     var names=stuIds.map(function(id){return nameById[id]||"Student";});
     var billTo=single?names[0]:(names.length===2?names[0]+" & "+names[1]:names.join(", "));
-    var now=new Date();
+    var now=new Date(), pdate=new Date(pd+"T00:00:00");
     var total=Math.round(rows.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var slug=single?((names[0]||"").replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase()||"STUDENT")
                    :(names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP");
     var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
     var sorted=rows.slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!single)sorted=sorted.map(function(l){return Object.assign({_who:nameById[l.student_id]||"—"},l);});
-    var dstr=now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"});
+    var dstr=pdate.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"});
     var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,dateStr:dstr,paidStr:dstr,
       student:billTo,lessons:sorted,total:total,combined:!single,paid:true,
       payTo:profile.paynow_id?PayNow.normalize(profile.paynow_type,profile.paynow_id):""};
     var html=invoiceHTML(data,"");   // paid receipt — no QR needed
-    return window.sb.from("invoices").insert({
+    var ins=await window.sb.from("invoices").insert({
       tutor_id:userId,student_id:single?stuIds[0]:null,invoice_no:invoiceNo,
-      issued_date:iso(now),total:total,status:"paid",paid_date:todayISO(),
-      data:{html:html,title:"Invoice_"+slug+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate()),
+      issued_date:pd,total:total,status:"paid",paid_date:pd,
+      data:{html:html,title:"Invoice_"+slug+"_"+pd,
         students:single?null:stuIds,name:single?null:billTo,lesson_ids:rows.map(function(l){return l.id;})}
-    });
+    }).select("id").single();
+    return ins.error?null:(ins.data&&ins.data.id);
   }
-  async function syncInvoiceOnPaid(ids){
+  // Settle/create the invoice covering these lessons; returns its id so proof can attach.
+  async function syncInvoiceOnPaid(ids, paidDate){
     var rows=allLessons.filter(function(l){return ids.indexOf(l.id)>-1;});
-    if(!rows.length)return;
+    if(!rows.length)return null;
     var q=await window.sb.from("invoices").select("id,data,status");
-    if(q.error)return;
+    if(q.error)return null;
     var match=null;
     (q.data||[]).forEach(function(v){
       if(match)return;
@@ -460,23 +465,51 @@
       if(lids.some(function(x){return ids.indexOf(x)>-1;}))match=v;
     });
     if(match){
-      if(match.status==="paid")return;              // already settled — nothing to do
-      var lids=match.data.lesson_ids;
-      var chk=await window.sb.from("lessons").select("id,paid").in("id",lids);
+      if(match.status==="paid")return match.id;     // already settled
+      var chk=await window.sb.from("lessons").select("id,paid").in("id",match.data.lesson_ids);
       var got=chk.data||[];
       // only settle the invoice once every lesson on it is paid
       if(got.length&&got.every(function(l){return l.paid;}))
-        await window.sb.from("invoices").update({status:"paid",paid_date:todayISO()}).eq("id",match.id);
-      return;                       // an invoice exists — never duplicate it
+        await window.sb.from("invoices").update({status:"paid",paid_date:paidDate||todayISO()}).eq("id",match.id);
+      return match.id;              // an invoice exists — never duplicate it
     }
-    await createPaidInvoice(rows);
+    return await createPaidInvoice(rows, paidDate);
   }
-  async function markPaid(ids){
-    var res=await window.sb.from("lessons").update({paid:true,paid_date:todayISO()}).in("id",ids);
-    if(res.error){alert("Couldn't update: "+res.error.message);return;}
-    try{ await syncInvoiceOnPaid(ids); }
-    catch(e){ console.warn("Invoice sync skipped:",e); }   // payment still stands
-    load();
+  // Core: mark lessons paid on the given date, settle the invoice, attach the screenshot.
+  async function doMarkPaid(ids, paidDate, file){
+    var res=await window.sb.from("lessons").update({paid:true,paid_date:paidDate}).in("id",ids);
+    if(res.error){alert("Couldn't update: "+res.error.message);return false;}
+    var invId=null;
+    try{ invId=await syncInvoiceOnPaid(ids, paidDate); }
+    catch(e){ console.warn("Invoice sync skipped:",e); }        // payment still stands
+    if(file && invId){
+      try{
+        var safe=file.name.replace(/[^A-Za-z0-9._-]/g,"_");
+        var path=userId+"/"+invId+"_"+Date.now()+"_"+safe;
+        var up=await window.sb.storage.from("receipts").upload(path,file,{upsert:false});
+        if(!up.error) await window.sb.from("invoices").update({proof_path:path}).eq("id",invId);
+      }catch(e){ console.warn("Screenshot upload skipped:",e); }  // payment still stands
+    }
+    return true;
+  }
+  // Every "mark paid" trigger opens this modal to capture the real date + optional screenshot.
+  function openPayModal(ids){
+    payIds=(ids||[]).slice();
+    if(!payIds.length)return;
+    $("pay-date").value=todayISO(); $("pay-shot").value=""; $("pay-msg").textContent="";
+    $("pay-sub").textContent="Marking "+payIds.length+" lesson"+(payIds.length===1?"":"s")+" as paid.";
+    $("pay-save").disabled=false;
+    $("pay-modal").classList.add("on");
+  }
+  function closePay(){ $("pay-modal").classList.remove("on"); payIds=[]; }
+  async function confirmPay(){
+    if(!payIds.length){closePay();return;}
+    var date=$("pay-date").value||todayISO(), file=$("pay-shot").files[0]||null, ids=payIds.slice();
+    $("pay-save").disabled=true; $("pay-msg").textContent=file?"Saving + uploading…":"Saving…";
+    ids.forEach(function(id){delete selectedLessons[id];});
+    var ok=await doMarkPaid(ids, date, file);
+    if(ok){ closePay(); load(); }
+    else { $("pay-save").disabled=false; $("pay-msg").textContent=""; }
   }
 
   function studentOptions(){
@@ -848,6 +881,9 @@
     on("m-cancel","click",function(){openAdd(false);});
     on("modal","click",function(e){if(e.target===$("modal"))openAdd(false);});
     on("m-save","click",saveLesson);
+    on("pay-cancel","click",closePay);
+    on("pay-modal","click",function(e){if(e.target===$("pay-modal"))closePay();});
+    on("pay-save","click",confirmPay);
     on("m-student","change",prefillFromSlot);
     ["m-rate","m-split","m-start","m-end"].forEach(function(id){on(id,"input",recalcCost);});
     on("inv-close","click",function(){$("inv-backdrop").classList.remove("on");});

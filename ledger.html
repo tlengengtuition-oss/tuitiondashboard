@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=65">
+<link rel="stylesheet" href="assets/css/app.css?v=66">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -131,6 +131,21 @@
     </div>
   </div>
 
+  <!-- record-payment modal (actual date + optional transaction screenshot) -->
+  <div class="modal-backdrop" id="pay-modal">
+    <div class="modal card">
+      <h2>Record payment</h2>
+      <p class="muted" id="pay-sub" style="font-size:13.5px;margin-bottom:14px"></p>
+      <div class="field"><label for="pay-date">Payment date <span class="muted">(match your transaction)</span></label><input id="pay-date" type="date"></div>
+      <div class="field"><label for="pay-shot">Transaction screenshot <span class="muted">(optional)</span></label><input id="pay-shot" type="file" accept="image/*"></div>
+      <div class="msg" id="pay-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="pay-cancel">Cancel</button>
+        <button class="btn btn-primary" id="pay-save">Mark paid</button>
+      </div>
+    </div>
+  </div>
+
   <!-- custom range modal -->
   <div class="modal-backdrop" id="cr-modal">
     <div class="modal card">
@@ -164,10 +179,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=65"></script>
-<script src="assets/js/supabase.js?v=65"></script>
-<script src="assets/js/app.js?v=65"></script>
-<script src="assets/js/paynow.js?v=65"></script>
-<script src="assets/js/ledger.js?v=65"></script>
+<script src="assets/js/config.js?v=66"></script>
+<script src="assets/js/supabase.js?v=66"></script>
+<script src="assets/js/app.js?v=66"></script>
+<script src="assets/js/paynow.js?v=66"></script>
+<script src="assets/js/ledger.js?v=66"></script>
 </body>
 </html>
