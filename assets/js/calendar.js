@@ -418,6 +418,7 @@
         .map(function(c){ return { v:c.primary?"primary":c.id, l:c.primary?"Main calendar":(c.summary||c.id) }; });
       try{ localStorage.setItem("tl_gcal_cals", JSON.stringify(items)); }catch(e){}   // remember for next load
       fillDropdown(items);
+      updateGcalUI();   // list just arrived → re-render so the Connect button gives way to the picker
     }catch(e){}
   }
 
