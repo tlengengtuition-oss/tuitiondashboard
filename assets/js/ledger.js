@@ -1,7 +1,7 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedStudents = {}, selectedLessons = {}, lastUnpaid = [], householdBy = {};
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedStudents = {}, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [];
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -282,20 +282,23 @@
     if($("rec-clear"))$("rec-clear").style.display=anyFilter?"":"none";
     var table=$("month-table"),empty=$("month-empty"),body=$("month-body");
     monthById={};rows.forEach(function(l){monthById[l.id]=l;});
+    var allIds={};allLessons.forEach(function(l){allIds[l.id]=1;});
+    Object.keys(selectedRecords).forEach(function(id){if(!allIds[id])delete selectedRecords[id];});
     if(!rows.length){
       table.style.display="none";empty.style.display="block";
       empty.innerHTML="<h3>"+(anyFilter?"No lessons match these filters":"No lessons in "+periodLabel())+"</h3>";
-      $("month-hint").textContent="";return;
+      $("month-hint").textContent="";lastRecordRows=[];updateRecSelBar();return;
     }
     empty.style.display="none";table.style.display="table";
     rows.sort(function(a,b){return b.lesson_date.localeCompare(a.lesson_date);});
+    lastRecordRows=rows;
     $("month-hint").textContent=rows.length+" lessons";
     // Anchor the "Today" jump. Rows run newest-first, so when today has no lessons
     // the divider goes in front of the first older row — i.e. where today would sit.
     var today=todayISO();
     var todayInView=period.mode==="all"||today.slice(0,7)===period.y+"-"+pad(period.m+1);
     var hasToday=rows.some(function(l){return l.lesson_date===today;});
-    var divider='<tr class="today-div" id="rec-today"><td colspan="7">Today · '+recDate(today)+'</td></tr>';
+    var divider='<tr class="today-div" id="rec-today"><td colspan="8">Today · '+recDate(today)+'</td></tr>';
     var placed=false;
     body.innerHTML=rows.map(function(l){
       var lead="";
@@ -310,7 +313,7 @@
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
-      return lead+'<tr'+attrs+'><td data-label="Date">'+recDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
+      return lead+'<tr'+attrs+'><td data-label=""><input type="checkbox" class="lchk" data-rsel="'+l.id+'"'+(selectedRecords[l.id]?" checked":"")+'></td><td data-label="Date">'+recDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
         '<td class="acts"><button class="tact" data-edit="'+l.id+'">Postpone / edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("")
       // every row is newer than today (or filters hid it) — today belongs at the bottom
@@ -319,6 +322,32 @@
     body.querySelectorAll("[data-cancel]").forEach(function(b){b.addEventListener("click",function(){cancelLesson(b.dataset.cancel);});});
     body.querySelectorAll("[data-restore]").forEach(function(b){b.addEventListener("click",function(){restoreLesson(monthById[b.dataset.restore]);});});
     body.querySelectorAll("[data-delete]").forEach(function(b){b.addEventListener("click",function(){deleteLesson(b.dataset.delete);});});
+    body.querySelectorAll("[data-rsel]").forEach(function(cb){
+      cb.addEventListener("change",function(){
+        if(cb.checked)selectedRecords[cb.dataset.rsel]=1; else delete selectedRecords[cb.dataset.rsel];
+        updateRecSelBar();
+      });
+    });
+    updateRecSelBar();
+  }
+  function updateRecSelBar(){
+    var n=Object.keys(selectedRecords).length;
+    var btn=$("rec-delsel-btn");
+    if(btn){btn.style.display=n?"":"none";btn.textContent="Delete "+n+" selected";}
+    var all=$("rec-selall");
+    if(all)all.checked=lastRecordRows.length>0&&lastRecordRows.every(function(l){return selectedRecords[l.id];});
+  }
+  function toggleSelectAllRecords(){
+    var checked=$("rec-selall").checked;
+    lastRecordRows.forEach(function(l){if(checked)selectedRecords[l.id]=1; else delete selectedRecords[l.id];});
+    renderRecords();
+  }
+  function deleteSelectedRecords(){
+    var ids=Object.keys(selectedRecords);
+    if(!ids.length)return;
+    if(!confirm("Delete "+ids.length+" selected lesson(s) permanently? This cannot be undone."))return;
+    selectedRecords={};
+    deleteLessons(ids);
   }
   function shiftMonth(d){period.mode="month";var dt=new Date(period.y,period.m+d,1);period.y=dt.getFullYear();period.m=dt.getMonth();renderRecords();}
   function toggleAll(){period.mode=period.mode==="all"?"month":"all";if(period.mode==="month"){period.y=new Date().getFullYear();period.m=new Date().getMonth();}renderRecords();}
@@ -380,6 +409,11 @@
   async function deleteLesson(id){
     if(!confirm("Delete this lesson permanently? (Use Cancel instead if you just want to void it.)"))return;
     var res=await window.sb.from("lessons").delete().eq("id",id);
+    if(res.error){alert("Couldn't delete: "+res.error.message);return;}
+    load();
+  }
+  async function deleteLessons(ids){
+    var res=await window.sb.from("lessons").delete().in("id",ids);
     if(res.error){alert("Couldn't delete: "+res.error.message);return;}
     load();
   }
@@ -829,6 +863,8 @@
     on("rec-search","input",renderRecords);
     ["rec-student","rec-subject","rec-level","rec-status"].forEach(function(id){on(id,"change",renderRecords);});
     on("rec-clear","click",clearRecFilters);
+    on("rec-selall","change",toggleSelectAllRecords);
+    on("rec-delsel-btn","click",deleteSelectedRecords);
     on("seg-out","click",function(){setLedgerMode("out");});
     on("seg-rec","click",function(){setLedgerMode("rec");});
     var savedMode="out";
