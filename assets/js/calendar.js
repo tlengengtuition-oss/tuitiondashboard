@@ -318,17 +318,21 @@
   function gcalChosen(){ try{ return localStorage.getItem("tl_gcal_chosen")==="1"; }catch(e){ return false; } }
   function gcalTarget(){ try{ return localStorage.getItem("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
   function gStatus(t,cls){ var el=$("gcal-status"); if(el){ el.textContent=t||""; el.className="gcal-status"+(cls?" "+cls:""); } }
+  function gcalCals(){ try{ return JSON.parse(localStorage.getItem("tl_gcal_cals")||"[]")||[]; }catch(e){ return []; } }
   function updateGcalUI(){
-    var conn=gcalConnected(), chosen=gcalChosen();
+    var conn=gcalConnected(), chosen=gcalChosen(), hasCals=gcalCals().length>0;
     var btn=$("gcal-btn"), row=$("gcal-target");
     if(btn){
-      // Always keep an actionable button: "Sync now" once a calendar is chosen, otherwise a
-      // (re)connect (with the Google mark) that loads the calendar list so a pick is possible.
-      var synced=conn&&chosen, lbl=btn.querySelector(".glabel");
-      if(lbl) lbl.textContent=synced?"↻ Sync now":"Connect Google Calendar";
-      else btn.textContent=synced?"↻ Sync now":"Connect Google Calendar";
-      btn.classList.toggle("synced", synced);
-      btn.style.display="";
+      var lbl=btn.querySelector(".glabel");
+      function setLabel(t){ if(lbl) lbl.textContent=t; else btn.textContent=t; }
+      if(conn && chosen){                       // set up → the button is "Sync now"
+        setLabel("↻ Sync now"); btn.classList.add("synced"); btn.style.display="";
+      } else if(conn && hasCals){               // connected, calendars loaded → the dropdown is the action; no button
+        btn.style.display="none";
+        if($("gcal-status") && !$("gcal-status").textContent) gStatus("Choose a calendar to sync your lessons into.");
+      } else {                                  // not connected, or list not loaded yet → the Google connect button
+        setLabel("Connect Google Calendar"); btn.classList.remove("synced"); btn.style.display="";
+      }
     }
     if(row) row.style.display=conn?"":"none";
     if(conn) fillDropdownFromCache();   // show remembered calendars even before a live token
@@ -343,7 +347,7 @@
   }
   // On load we have no live token yet — fill from the cached list so the picker isn't empty.
   function fillDropdownFromCache(){
-    var items=[]; try{ items=JSON.parse(localStorage.getItem("tl_gcal_cals")||"[]")||[]; }catch(e){}
+    var items=gcalCals();
     if(items.length) fillDropdown(items);
   }
 
