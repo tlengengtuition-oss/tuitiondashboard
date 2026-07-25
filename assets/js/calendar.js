@@ -319,6 +319,14 @@
   function gcalTarget(){ try{ return localStorage.getItem("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
   function gStatus(t,cls){ var el=$("gcal-status"); if(el){ el.textContent=t||""; el.className="gcal-status"+(cls?" "+cls:""); } }
   function gcalCals(){ try{ return JSON.parse(localStorage.getItem("tl_gcal_cals")||"[]")||[]; }catch(e){ return []; } }
+  // A connection attempt failed — drop back to the Connect step (clear the loaded list so the
+  // dropdown gives way to the Connect button). Keep the chosen calendar so reconnect resumes it.
+  function gcalFail(msg){
+    gToken=null;
+    try{ localStorage.removeItem("tl_gcal_connected"); localStorage.removeItem("tl_gcal_list"); localStorage.removeItem("tl_gcal_cals"); }catch(e){}
+    updateGcalUI();
+    gStatus(msg||"Couldn't connect to Google — click Connect to try again.","err");
+  }
   // The Connect button and the calendar dropdown are mutually exclusive:
   //  - no calendars loaded yet → show "Connect Google Calendar", hide the dropdown
   //  - calendars loaded, none chosen → hide the button, the dropdown is the next step
@@ -375,7 +383,10 @@
               else gStatus("Connected — now choose which calendar to sync into.","ok");
             }
           }
-          else { gStatus("Couldn't connect to Google.","err"); }
+          else if(gUserInit){ gUserInit=false; gcalFail(); }           // deliberate attempt that returned no token → restart
+        },
+        error_callback:function(){                                     // popup closed / blocked / consent denied
+          if(gUserInit){ gUserInit=false; gcalFail(); }                // only reset on a deliberate click, not a silent load
         }
       });
       updateGcalUI();
@@ -395,11 +406,11 @@
     var sel=$("gcal-cal"); if(!sel || !gToken) return;
     try{
       var res=await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", { headers:{ Authorization:"Bearer "+gToken } });
-      if(res.status===403){                                   // calendar-list permission not granted
-        try{ localStorage.removeItem("tl_gcal_list"); }catch(e){}
-        gStatus("Google needs permission to see your calendar list — click Connect to grant it.","err");
+      if(res.status===403){                                   // calendar-list permission not granted → restart
+        gcalFail("Google needs permission to see your calendars — click Connect to grant it.");
         return;
       }
+      if(res.status===401){ gcalFail("Google session expired — click Connect to reconnect."); return; }
       if(!res.ok){ return; }
       try{ localStorage.setItem("tl_gcal_list","1"); }catch(e){}
       var d=await res.json();
