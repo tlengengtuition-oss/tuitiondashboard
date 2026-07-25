@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-25 — Google sync: calendar picker survives reloads (`v54`)
+
+The calendar dropdown was empty after every reload — the "connected" flag persisted but the list
+of calendars was only fetched with a live token and never cached, so there was nothing to pick.
+Now the list is cached (`tl_gcal_cals`) and the dropdown is refilled from cache on load (before
+any token exists). `populateCalendars` caches on success and, on a 403, clears the list flag and
+tells the user to reconnect to grant the calendar-list scope. `setGcalTarget` no longer dead-ends
+when re-picking without a live token — it remembers the choice, connects, then syncs to it.
+
 ### 2026-07-25 — Google sync: "Sync now" covers current + future logged months (`v53`)
 
 Follow-on to v52. Instead of syncing only the *viewed* month, **Sync now** (and picking a
