@@ -327,6 +327,20 @@
       else { btn.style.display="none"; }   // connected but no calendar picked yet → the dropdown is the next step
     }
     if(row) row.style.display=conn?"":"none";
+    if(conn) fillDropdownFromCache();   // show remembered calendars even before a live token
+  }
+  // Render the dropdown from a list of {v,l} items, selecting the chosen target.
+  function fillDropdown(items){
+    var sel=$("gcal-cal"); if(!sel) return;
+    var opts=(items||[]).map(function(c){ return '<option value="'+esc(c.v)+'">'+esc(c.l)+'</option>'; });
+    if(!gcalChosen()) opts.unshift('<option value="">Choose a calendar…</option>');
+    sel.innerHTML=opts.join("") || '<option value="">Choose a calendar…</option>';
+    sel.value=gcalChosen()?gcalTarget():"";
+  }
+  // On load we have no live token yet — fill from the cached list so the picker isn't empty.
+  function fillDropdownFromCache(){
+    var items=[]; try{ items=JSON.parse(localStorage.getItem("tl_gcal_cals")||"[]")||[]; }catch(e){}
+    if(items.length) fillDropdown(items);
   }
 
   function whenGoogleReady(cb){
@@ -369,17 +383,18 @@
     var sel=$("gcal-cal"); if(!sel || !gToken) return;
     try{
       var res=await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", { headers:{ Authorization:"Bearer "+gToken } });
-      if(!res.ok){ return; }   // scope not granted yet — leave the default option
+      if(res.status===403){                                   // calendar-list permission not granted
+        try{ localStorage.removeItem("tl_gcal_list"); }catch(e){}
+        gStatus("Google needs permission to see your calendar list — click Connect to grant it.","err");
+        return;
+      }
+      if(!res.ok){ return; }
       try{ localStorage.setItem("tl_gcal_list","1"); }catch(e){}
       var d=await res.json();
-      var items=(d.items||[]).filter(function(c){ return c.accessRole==="owner"||c.accessRole==="writer"; });
-      var opts=items.map(function(c){
-        var val=c.primary?"primary":c.id, label=c.primary?"Main calendar":(c.summary||c.id);
-        return '<option value="'+esc(val)+'">'+esc(label)+'</option>';
-      });
-      if(!gcalChosen()) opts.unshift('<option value="">Choose a calendar…</option>');   // force a deliberate pick
-      sel.innerHTML=opts.join("");
-      sel.value=gcalChosen()?gcalTarget():"";
+      var items=(d.items||[]).filter(function(c){ return c.accessRole==="owner"||c.accessRole==="writer"; })
+        .map(function(c){ return { v:c.primary?"primary":c.id, l:c.primary?"Main calendar":(c.summary||c.id) }; });
+      try{ localStorage.setItem("tl_gcal_cals", JSON.stringify(items)); }catch(e){}   // remember for next load
+      fillDropdown(items);
     }catch(e){}
   }
 
@@ -465,8 +480,15 @@
   // Switch which calendar we sync into: wipe ALL our events off the old calendar, then rebuild
   // the current month on the new one.
   async function setGcalTarget(raw){
-    var newT=(raw||"").trim()||"primary", oldT=gcalTarget(), first=!gcalChosen();
-    if(!gToken){ gStatus("Connect to Google first.","err"); return; }
+    if(!(raw||"").trim()) return;                             // "Choose a calendar…" placeholder — ignore
+    var newT=(raw||"").trim(), oldT=gcalTarget(), first=!gcalChosen();
+    if(!gToken){
+      // No live token this session — remember the choice, then get a token and sync to it.
+      try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
+      updateGcalUI(); gStatus("Connecting to Google…");
+      connectGcal();                                          // gUserInit=true → syncNow() to the chosen calendar after the token
+      return;
+    }
     if(!first && newT!==oldT){
       gStatus("Moving to the new calendar…");
       try{ var ids=await listAppEvents(oldT); for(var i=0;i<ids.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(ids[i])); }catch(e){} } }catch(e){}
