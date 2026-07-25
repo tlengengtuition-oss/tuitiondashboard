@@ -186,6 +186,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-25 — Google sync: diff-based reconcile + one-off/postponed symbols (`v62`)
+
+Replaced the wholesale month-replace with a **diff/reconcile** (the app stays source of truth).
+Each event is stamped with its `tlLessonId` in `extendedProperties`; each sync lists the month's
+app events, matches them to current lessons, and only acts on differences: create missing, **update
+drift (including Google-side edits, compared via a fingerprint of title/time/location/description)**,
+skip unchanged (zero API calls), delete orphans/duplicates/legacy-untagged. Re-syncing an unchanged
+month now costs one list call instead of 2×N writes. Status reports the breakdown + elapsed time
+(e.g. "Synced ✓ 34 lessons in 4s · 2 added, 1 updated" or "already up to date"). Event titles now
+carry the ↻ (postponed) and ✦ (one-off) symbols, matching the in-app calendar; the description
+spells them out too. `listAppEvents` returns full event objects; `setGcalTarget` updated for that.
+
 ### 2026-07-25 — Google sync: calendar picker survives reloads (`v54`)
 
 The calendar dropdown was empty after every reload — the "connected" flag persisted but the list

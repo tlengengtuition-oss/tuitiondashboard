@@ -423,17 +423,23 @@
   }
 
   function gEvent(l){
-    var summary=[nameById[l.student_id]||"Lesson", l.subject].filter(Boolean).join(" · ");
+    var sym=(l.postponed?"↻":"")+(!l.slot_id?"✦":"");     // ↻ postponed, ✦ one-off — same keys as the app
+    var summary=(sym?sym+" ":"")+[nameById[l.student_id]||"Lesson", l.subject].filter(Boolean).join(" · ");
     var d=[]; if(l.level)d.push("Level: "+l.level); if(l.amount!=null)d.push("Amount: S$"+l.amount);
     d.push(l.status==="scheduled"?"Scheduled":(l.paid?"Paid":"Unpaid"));
-    if(l.postponed)d.push("Postponed"); if(!l.slot_id)d.push("One-off");
+    if(l.postponed)d.push("Postponed (↻)"); if(!l.slot_id)d.push("One-off (✦)");
     var e={ summary:summary, description:d.join("\n"),
       start:{ dateTime:l.lesson_date+"T"+hhmm(l.start_time)+":00", timeZone:GTZ },
       end:{ dateTime:l.lesson_date+"T"+hhmm(l.end_time)+":00", timeZone:GTZ },
       reminders:{ useDefault:false },                      // no notification spam on re-create
-      extendedProperties:{ private:{ tlengSync:"1" } } };  // tag so month-replace can find our events
+      extendedProperties:{ private:{ tlengSync:"1", tlLessonId:String(l.id) } } };  // tag + which lesson it mirrors
     var loc=locById[l.student_id]; if(loc) e.location=loc;
     return e;
+  }
+  // Comparable fingerprint of the fields we sync — used to detect drift (incl. Google-side edits).
+  function gFP(x){
+    return [ x.summary||"", ((x.start&&x.start.dateTime)||"").slice(0,19),
+      ((x.end&&x.end.dateTime)||"").slice(0,19), x.location||"", x.description||"" ].join("|");
   }
   async function gapi(method, path, body){
     var res=await fetch("https://www.googleapis.com/calendar/v3"+path, {
@@ -450,37 +456,48 @@
     return { firstISO:y+"-"+pad(m+1)+"-01", lastISO:y+"-"+pad(m+1)+"-"+pad(lastDay),
       tmin:y+"-"+pad(m+1)+"-01T00:00:00+08:00", tmax:ny+"-"+pad(nm+1)+"-01T00:00:00+08:00", label:MONF[m]+" "+y };
   }
-  // All app-created event ids on a calendar (optionally within a time window), following pages.
+  // All app-created events on a calendar (optionally within a time window), following pages.
   async function listAppEvents(cal, tmin, tmax){
-    var ids=[], page=null;
+    var out=[], page=null;
     do{
       var q="/calendars/"+encodeURIComponent(cal)+"/events?privateExtendedProperty="+encodeURIComponent("tlengSync=1")+"&maxResults=250&singleEvents=true";
       if(tmin) q+="&timeMin="+encodeURIComponent(tmin);
       if(tmax) q+="&timeMax="+encodeURIComponent(tmax);
       if(page) q+="&pageToken="+encodeURIComponent(page);
       var d=await gapi("GET", q);
-      (d && d.items || []).forEach(function(e){ if(e.id) ids.push(e.id); });
+      (d && d.items || []).forEach(function(e){ if(e.id) out.push(e); });
       page = d && d.nextPageToken;
     } while(page);
-    return ids;
+    return out;
   }
-  // Rebuild ONE month wholesale on the target calendar: delete every app event in that month,
-  // recreate from current non-cancelled lessons. Returns counts; throws on 401 so the caller stops.
+  function evLessonId(ev){ try{ return ev.extendedProperties.private.tlLessonId||""; }catch(e){ return ""; } }
+  // Reconcile ONE month on the target calendar against the ledger (app is source of truth):
+  // create missing lessons, update any that drifted (incl. Google-side edits), delete orphans.
+  // Returns counts; throws on 401 so the caller stops.
   async function syncMonth(when){
     var cal=gcalTarget(), w=monthWindow(when);
     gStatus("Syncing "+w.label+"…");
-    var ids=await listAppEvents(cal, w.tmin, w.tmax);
-    for(var i=0;i<ids.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ids[i])); }catch(e){ if(e&&e.code===401) throw e; } }
+    var events=await listAppEvents(cal, w.tmin, w.tmax);
+    var byLesson={}, extra=[];                              // extra = duplicates or legacy events (no lesson id)
+    events.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else extra.push(ev); });
     var ls=await window.sb.from("lessons")
       .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id")
       .gte("lesson_date", w.firstISO).lte("lesson_date", w.lastISO);
-    if(ls.error) return { made:0, fail:1 };
-    var rows=(ls.data||[]).filter(function(l){ return l.status!=="cancelled"; }), made=0, fail=0;
-    for(var j=0;j<rows.length;j++){
-      try{ await gapi("POST","/calendars/"+encodeURIComponent(cal)+"/events", gEvent(rows[j])); made++; }
-      catch(e){ if(e&&e.code===401) throw e; fail++; }
+    if(ls.error) return { created:0, updated:0, deleted:0, skipped:0, fail:1 };
+    var rows=(ls.data||[]).filter(function(l){ return l.status!=="cancelled"; });
+    var created=0, updated=0, deleted=0, skipped=0, fail=0, keep={};
+    for(var i=0;i<rows.length;i++){
+      var l=rows[i], want=gEvent(l), ev=byLesson[String(l.id)]; keep[String(l.id)]=1;
+      try{
+        if(!ev){ await gapi("POST","/calendars/"+encodeURIComponent(cal)+"/events", want); created++; }
+        else if(gFP(ev)!==gFP(want)){ await gapi("PUT","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ev.id), want); updated++; }
+        else skipped++;
+      }catch(e){ if(e&&e.code===401) throw e; fail++; }
     }
-    return { made:made, fail:fail };
+    var toDel=extra.slice();                                // orphans: lesson gone/cancelled, plus dups/legacy
+    Object.keys(byLesson).forEach(function(lid){ if(!keep[lid]) toDel.push(byLesson[lid]); });
+    for(var k=0;k<toDel.length;k++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(toDel[k].id)); deleted++; }catch(e){ if(e&&e.code===401) throw e; } }
+    return { created:created, updated:updated, deleted:deleted, skipped:skipped, fail:fail };
   }
   // Sync the current month through the last month that has a lesson (capped +6mo) — so lessons
   // you've logged for future months go too, while past months are left untouched.
@@ -493,14 +510,17 @@
     var lastM=new Date(+lastISO.slice(0,4), (+lastISO.slice(5,7))-1, 1);
     var capM=new Date(now.getFullYear(), now.getMonth()+6, 1);
     if(lastM>capM) lastM=capM;
-    var made=0, fail=0, months=0, t0=Date.now();
+    var created=0, updated=0, deleted=0, skipped=0, fail=0, months=0, t0=Date.now();
     try{
       for(var cur=new Date(fromM); cur<=lastM; cur=new Date(cur.getFullYear(), cur.getMonth()+1, 1)){
-        var r=await syncMonth(new Date(cur)); made+=r.made; fail+=r.fail; months++;
+        var r=await syncMonth(new Date(cur));
+        created+=r.created; updated+=r.updated; deleted+=r.deleted; skipped+=r.skipped; fail+=r.fail; months++;
       }
     }catch(e){ if(e&&e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } gStatus("Sync hit an error — try again.","err"); return; }
-    var secs=Math.max(1, Math.round((Date.now()-t0)/1000));
-    gStatus("Synced ✓ "+made+" lesson"+(made===1?"":"s")+" across "+months+" month"+(months===1?"":"s")+" in "+secs+"s"+(fail?" · "+fail+" failed":""), "ok");
+    var secs=Math.max(1, Math.round((Date.now()-t0)/1000)), total=created+updated+skipped;
+    var parts=[]; if(created)parts.push(created+" added"); if(updated)parts.push(updated+" updated"); if(deleted)parts.push(deleted+" removed");
+    var detail=parts.length?parts.join(", "):"already up to date";
+    gStatus("Synced ✓ "+total+" lesson"+(total===1?"":"s")+" in "+secs+"s · "+detail+(fail?" · "+fail+" failed":""), "ok");
   }
   // Switch which calendar we sync into: wipe ALL our events off the old calendar, then rebuild
   // the current month on the new one.
@@ -516,7 +536,7 @@
     }
     if(!first && newT!==oldT){
       gStatus("Moving to the new calendar…");
-      try{ var ids=await listAppEvents(oldT); for(var i=0;i<ids.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(ids[i])); }catch(e){} } }catch(e){}
+      try{ var evs=await listAppEvents(oldT); for(var i=0;i<evs.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(evs[i].id)); }catch(e){} } }catch(e){}
     }
     try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
     updateGcalUI();
