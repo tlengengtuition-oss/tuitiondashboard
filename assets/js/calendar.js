@@ -323,8 +323,11 @@
     var btn=$("gcal-btn"), row=$("gcal-target");
     if(btn){
       // Always keep an actionable button: "Sync now" once a calendar is chosen, otherwise a
-      // (re)connect that loads the calendar list so a pick is possible.
-      btn.textContent=(conn&&chosen)?"↻ Sync now":"Connect Google Calendar";
+      // (re)connect (with the Google mark) that loads the calendar list so a pick is possible.
+      var synced=conn&&chosen, lbl=btn.querySelector(".glabel");
+      if(lbl) lbl.textContent=synced?"↻ Sync now":"Connect Google Calendar";
+      else btn.textContent=synced?"↻ Sync now":"Connect Google Calendar";
+      btn.classList.toggle("synced", synced);
       btn.style.display="";
     }
     if(row) row.style.display=conn?"":"none";
