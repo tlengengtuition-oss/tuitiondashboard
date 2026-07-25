@@ -186,6 +186,23 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-25 — Google sync: month-replace instead of per-lesson diff (`v52`)
+
+Reworked the sync to **rebuild one month wholesale** instead of diffing every lesson across a
+rolling window. Each sync targets the **currently-viewed month** (`anchor`'s month): it deletes
+all the app's events in that month on the target calendar, then recreates them from the current
+non-cancelled lessons. Other months are left untouched — so past months stop being re-churned
+every sync.
+
+- Events are tagged with `extendedProperties.private.tlengSync=1` (found via
+  `privateExtendedProperty` on list) and created with reminders off, so delete+recreate causes no
+  notification spam. `gcal_event_id` is no longer used (column harmless).
+- Sync is now a **deliberate action** — the "↻ Sync now" button and picking a calendar trigger it;
+  silent page-load reconnect no longer auto-syncs (avoids churning the month on every open).
+- Switching calendars wipes *all* app events off the old calendar, then rebuilds the current month
+  on the new one.
+- To sync a different month, view it and hit Sync now.
+
 ### 2026-07-25 — Google sync: connect → choose → sync, moved to a footer (`v51`)
 
 UX pass on the sync controls.
