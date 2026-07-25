@@ -399,17 +399,20 @@
   //  - a calendar is chosen → show "↻ Sync now" alongside the dropdown
   function updateGcalUI(){
     var chosen=gcalChosen(), hasCals=gcalCals().length>0;
-    var btn=$("gcal-btn"), row=$("gcal-target");
+    var btn=$("gcal-btn"), row=$("gsync-row"), brand=$("gsync-brand"), sel=$("gcal-cal");
     if(hasCals) fillDropdownFromCache();
-    if(row) row.style.display=hasCals?"":"none";
+    // Brand chip + picker show only once we have calendars; the bordered pill only then too.
+    if(brand) brand.classList.toggle("gcal-hide", !hasCals);
+    if(sel) sel.classList.toggle("gcal-hide", !hasCals);
+    if(row) row.classList.toggle("bare", !hasCals);
     if(btn){
       var lbl=btn.querySelector(".glabel");
       function setLabel(t){ if(lbl) lbl.textContent=t; else btn.textContent=t; }
-      if(!hasCals){                             // nothing to pick → the Google connect button
-        setLabel("Connect Google Calendar"); btn.classList.remove("synced"); btn.style.display="";
-      } else if(chosen){                        // set up → the button is "Sync now"
-        setLabel("↻ Sync now"); btn.classList.add("synced"); btn.style.display="";
-      } else {                                  // calendars loaded, pick one → the dropdown is the action, no button
+      if(!hasCals){                             // nothing to pick → white Google connect button
+        setLabel("Connect Google Calendar"); btn.classList.add("btn-connect"); btn.classList.remove("btn-sync"); btn.style.display="";
+      } else if(chosen){                        // set up → teal "Sync now" inside the pill
+        setLabel("↻ Sync now"); btn.classList.add("btn-sync"); btn.classList.remove("btn-connect"); btn.style.display="";
+      } else {                                  // calendars loaded, pick one → the picker is the action, no button
         btn.style.display="none";
         if($("gcal-status") && !$("gcal-status").textContent) gStatus("Choose a calendar to sync your lessons into.");
       }

@@ -4,20 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=64">
+<link rel="stylesheet" href="assets/css/app.css?v=65">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
   .cal-nav .btn{padding:7px 12px}
-  .btn-gcal{display:inline-flex;align-items:center;gap:9px;background:#fff;border:1px solid #dadce0;color:#3c4043;font-weight:600;padding:8px 14px;border-radius:8px;box-shadow:0 1px 2px rgba(60,64,67,.12)}
-  .btn-gcal:hover{background:#f7f8f8;border-color:#d2d3d6;box-shadow:0 1px 3px rgba(60,64,67,.2)}
+  /* Google-sync control: one cohesive pill (brand + calendar picker + sync), status beneath */
+  .gsync-row{display:inline-flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 12px;box-shadow:0 1px 3px rgba(20,30,60,.05)}
+  .gsync-row.bare{border-color:transparent;background:transparent;box-shadow:none;padding:0}   /* not-connected: just the button */
+  .gsync-cal{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font-size:12.5px;font-weight:600}
+  .gsync-cal svg{width:15px;height:15px;flex:none}
+  .gsync-sel{appearance:none;-webkit-appearance:none;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;font-weight:600;color:var(--navy);background-color:var(--cream);padding:6px 26px 6px 11px;max-width:190px;cursor:pointer;background-repeat:no-repeat;background-position:right 9px center;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%236B7280" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>')}
+  .btn-gcal{border:none;cursor:pointer;font:inherit}
   .btn-gcal .gicon{display:inline-flex;align-items:center;justify-content:center;flex:none}
-  .btn-gcal.synced{background:#fffdf8;border-color:var(--teal);color:var(--teal)}
-  .btn-gcal.synced .gicon{display:none}   /* Sync-now state: drop the Google mark, the ↻ label carries it */
-  .gcal-target{display:inline-flex;align-items:center;gap:6px}
-  .gcal-target .gcal-lbl{font-size:12.5px;color:var(--muted)}
-  .gcal-target select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fffdf8;color:var(--ink);max-width:220px}
-  .gcal-status{font-size:12px;color:var(--muted)}
+  .btn-gcal.btn-connect{display:inline-flex;align-items:center;gap:10px;background:#fff;border:1px solid #dadce0;color:#3c4043;font-weight:600;padding:9px 16px;border-radius:11px;box-shadow:0 1px 2px rgba(60,64,67,.12)}
+  .btn-gcal.btn-connect:hover{background:#f7f8f8;border-color:#d2d3d6}
+  .btn-gcal.btn-sync{display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-weight:700;font-size:13px;padding:8px 15px;border-radius:9px;box-shadow:0 1px 2px rgba(14,124,123,.3)}
+  .btn-gcal.btn-sync:hover{background:#0b6a69}
+  .btn-gcal.btn-sync .gicon{display:none}   /* Sync state: the ↻ label carries it, no Google mark */
+  .gcal-hide{display:none !important}
+  .gcal-status{font-size:12px;color:var(--muted);padding-right:2px}
   .gcal-status.err{color:var(--owed)} .gcal-status.ok{color:var(--teal)}
   .cal-range{min-width:150px;text-align:center;font-weight:700;font-size:14.5px;color:var(--navy)}
   .cal-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
@@ -27,7 +33,7 @@
   .cal-legend .leg-sym,.cal-keys .leg-sym{color:var(--navy);font-weight:800;font-size:12.5px}
   .cal-foot{display:flex;justify-content:space-between;align-items:center;gap:14px 20px;flex-wrap:wrap;margin-top:10px;padding:0 2px}
   .cal-keys{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
-  .cal-gsync{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+  .cal-gsync{display:inline-flex;flex-direction:column;align-items:flex-end;gap:6px;margin-left:auto}
   .cal-legend .leg{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
   .cal-legend .leg:hover{color:var(--ink)}
   .cal-legend .leg.off{opacity:.4;text-decoration:line-through}
@@ -170,12 +176,12 @@
       <span class="leg-key"><b class="leg-sym">↻</b>Postponed</span>
     </div>
     <div class="cal-gsync">
+      <div class="gsync-row bare" id="gsync-row">
+        <span class="gsync-cal gcal-hide" id="gsync-brand" aria-hidden="true"><svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google Calendar</span>
+        <select class="gsync-sel gcal-hide" id="gcal-cal" title="Which Google calendar to sync your lessons into"><option value="">Choose a calendar…</option></select>
+        <button class="btn-gcal btn-connect" id="gcal-btn" style="display:none" title="Sync your lessons into your Google Calendar"><span class="gicon" aria-hidden="true"><svg viewBox="0 0 48 48" width="18" height="18"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span><span class="glabel">Connect Google Calendar</span></button>
+      </div>
       <span class="gcal-status" id="gcal-status"></span>
-      <button class="btn btn-gcal" id="gcal-btn" style="display:none" title="Sync your lessons into your Google Calendar"><span class="gicon" aria-hidden="true"><svg viewBox="0 0 48 48" width="18" height="18"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span><span class="glabel">Connect Google Calendar</span></button>
-      <span class="gcal-target" id="gcal-target" style="display:none">
-        <label class="gcal-lbl">Sync into</label>
-        <select id="gcal-cal" title="Which Google calendar to sync your lessons into"><option value="">Choose a calendar…</option></select>
-      </span>
     </div>
   </div>
   <div id="cal-pop" class="cal-pop" style="display:none"></div>
@@ -183,9 +189,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=64"></script>
-<script src="assets/js/supabase.js?v=64"></script>
-<script src="assets/js/app.js?v=64"></script>
-<script src="assets/js/calendar.js?v=64"></script>
+<script src="assets/js/config.js?v=65"></script>
+<script src="assets/js/supabase.js?v=65"></script>
+<script src="assets/js/app.js?v=65"></script>
+<script src="assets/js/calendar.js?v=65"></script>
 </body>
 </html>
