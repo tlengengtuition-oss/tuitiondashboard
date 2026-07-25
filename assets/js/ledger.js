@@ -623,31 +623,42 @@
   // ---------- invoice ----------
   function invoiceHTML(d, qrUrl){
     var combined=!!d.combined;
+    function durHrs(l){ var s=hm(l.start_time),e=hm(l.end_time); if(!s||!e)return 0;
+      var tm=function(t){var p=t.split(":");return (+p[0])*60+(+p[1]);}; var m=tm(e)-tm(s); return m>0?m/60:0; }
+    function hrsLabel(h){ h=Math.round(h*100)/100; return h===1?"1 hr":(h+" hrs"); }
     function lrow(l){
-      var desc=(l.subject?esc(l.subject):"Lesson")+(l.level?' <span style="color:#6b7280">· '+esc(l.level)+'</span>':"");
-      return "<tr><td>"+prettyDate(l.lesson_date)+"</td><td>"+desc+'</td><td class="r">'+TL.sgd(l.amount)+"</td></tr>";
+      var dur=durHrs(l);
+      return "<tr><td>"+prettyDate(l.lesson_date)+"</td><td>"+(dur?hrsLabel(dur):"Lesson")+'</td><td class="r">'+TL.sgd(l.amount)+"</td></tr>";
     }
+    function subjLevel(ls){ var seen={},out=[]; ls.forEach(function(l){ var s=[l.subject,l.level].filter(Boolean).join(" · "); if(s&&!seen[s]){seen[s]=1;out.push(s);} }); return out.join(", "); }
+    // "N hrs @ $R/hr" from the effective (blended) rate = amount / hours
+    function rateNote(ls){ var hrs=ls.reduce(function(t,l){return t+durHrs(l);},0), amt=ls.reduce(function(t,l){return t+(Number(l.amount)||0);},0);
+      if(!hrs)return ""; return hrsLabel(hrs)+" @ "+TL.sgd(Math.round(amt/hrs*100)/100)+"/hr"; }
     var rows;
     if(combined){
-      // Group each student's lessons together with their own subtotal, rather than interleaving.
+      // Group each student's lessons together with their own subject/level + subtotal (rate/hr).
       var order=[], byWho={};
       d.lessons.forEach(function(l){ var w=l._who||"—"; if(!byWho[w]){byWho[w]=[];order.push(w);} byWho[w].push(l); });
       rows=order.map(function(w){
-        var sub=Math.round(byWho[w].reduce(function(t,l){return t+(Number(l.amount)||0);},0)*100)/100;
-        return '<tr><td colspan="3" style="background:#faf6ec;font-weight:700;color:#1A2A4F;padding:9px 8px 6px">'+esc(w)+'</td></tr>'+
-          byWho[w].map(lrow).join("")+
-          '<tr><td colspan="2" class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">Subtotal · '+esc(w)+'</td>'+
+        var grp=byWho[w], sub=Math.round(grp.reduce(function(t,l){return t+(Number(l.amount)||0);},0)*100)/100, sl=subjLevel(grp), rn=rateNote(grp);
+        return '<tr><td colspan="3" style="background:#faf6ec;padding:9px 8px 6px"><span style="font-weight:700;color:#1A2A4F">'+esc(w)+'</span>'+
+            (sl?' <span style="color:#6b7280;font-size:12px">— '+esc(sl)+'</span>':'')+'</td></tr>'+
+          grp.map(lrow).join("")+
+          '<tr><td colspan="2" class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">Subtotal · '+esc(w)+(rn?' · '+rn:'')+'</td>'+
           '<td class="r" style="color:#6b7280;font-size:12px;border-top:1px solid #eee;padding-bottom:8px">'+TL.sgd(sub)+'</td></tr>';
       }).join("");
     } else {
       rows=d.lessons.map(lrow).join("");
     }
+    var billSL=combined?"":subjLevel(d.lessons), totalRN=combined?"":rateNote(d.lessons);
     return '<div class="invoice">'+
       '<div class="inv-head"><div class="inv-biz">'+esc(d.biz)+'<small>Invoice</small></div>'+
         '<div class="inv-meta"><b>'+esc(d.invoiceNo)+'</b><br>'+d.dateStr+'</div></div>'+
-      '<div class="inv-to"><span class="lbl">Bill to</span><br><b>'+esc(d.student)+'</b></div>'+
-      '<table class="inv-table"><thead><tr><th>Date</th><th>Description</th><th class="r">Amount</th></tr></thead>'+
+      '<div class="inv-to"><span class="lbl">Bill to</span><br><b>'+esc(d.student)+'</b>'+
+        (billSL?'<br><span style="color:#6b7280;font-size:12.5px">'+esc(billSL)+'</span>':'')+'</div>'+
+      '<table class="inv-table"><thead><tr><th>Date</th><th>Duration</th><th class="r">Amount</th></tr></thead>'+
         '<tbody>'+rows+'</tbody></table>'+
+      (totalRN?'<div class="r" style="color:#6b7280;font-size:12px;padding:5px 8px 0">'+esc(totalRN)+'</div>':'')+
       '<div class="inv-total"><span>'+(d.paid?"Total paid":"Total due")+'</span><span>'+TL.sgd(d.total)+'</span></div>'+
       (d.paid
         ? '<div class="inv-pay"><div><div class="pn-h"><span class="pn-dot"></span>Paid</div>'+
