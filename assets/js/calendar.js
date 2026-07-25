@@ -309,11 +309,12 @@
 
   // ---- Google Calendar sync (client-side OAuth via Google Identity Services) ----
   var GCLIENT=(window.TLENG_CONFIG||{}).GOOGLE_CLIENT_ID||"";
-  var GSCOPE="https://www.googleapis.com/auth/calendar.events", GTZ="Asia/Singapore";
+  var GSCOPE="https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly", GTZ="Asia/Singapore";
   var gToken=null, gTokenClient=null;
 
   function gcalConfigured(){ return !!GCLIENT; }
   function gcalConnected(){ try{ return localStorage.getItem("tl_gcal_connected")==="1"; }catch(e){ return false; } }
+  function gcalListGranted(){ try{ return localStorage.getItem("tl_gcal_list")==="1"; }catch(e){ return false; } }
   function gcalTarget(){ try{ return localStorage.getItem("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
   function calPath(suffix){ return "/calendars/"+encodeURIComponent(gcalTarget())+suffix; }   // which Google calendar to sync into
   function gStatus(t,cls){ var el=$("gcal-status"); if(el){ el.textContent=t||""; el.className="gcal-status"+(cls?" "+cls:""); } }
@@ -335,7 +336,7 @@
       gTokenClient=google.accounts.oauth2.initTokenClient({
         client_id:GCLIENT, scope:GSCOPE,
         callback:function(resp){
-          if(resp && resp.access_token){ gToken=resp.access_token; try{localStorage.setItem("tl_gcal_connected","1");}catch(e){} updateGcalUI(); runSync(); }
+          if(resp && resp.access_token){ gToken=resp.access_token; try{localStorage.setItem("tl_gcal_connected","1");}catch(e){} updateGcalUI(); populateCalendars(); runSync(); }
           else { gStatus("Couldn't connect to Google.","err"); }
         }
       });
@@ -345,7 +346,26 @@
   }
   function connectGcal(){
     if(!gTokenClient){ gStatus("Google isn't ready yet — try again in a second.","err"); return; }
-    gTokenClient.requestAccessToken({ prompt: gToken?"":"consent" });
+    // Force the consent screen until the calendar-list permission is granted (e.g. after adding
+    // the scope); once confirmed, later clicks just sync silently.
+    var needConsent = !gToken || !gcalListGranted();
+    gTokenClient.requestAccessToken({ prompt: needConsent?"consent":"" });
+  }
+  // Fill the calendar dropdown with the user's own+writable calendars.
+  async function populateCalendars(){
+    var sel=$("gcal-cal"); if(!sel || !gToken) return;
+    try{
+      var res=await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", { headers:{ Authorization:"Bearer "+gToken } });
+      if(!res.ok){ return; }   // scope not granted yet — leave the default option
+      try{ localStorage.setItem("tl_gcal_list","1"); }catch(e){}
+      var d=await res.json();
+      var items=(d.items||[]).filter(function(c){ return c.accessRole==="owner"||c.accessRole==="writer"; });
+      sel.innerHTML=items.map(function(c){
+        var val=c.primary?"primary":c.id, label=c.primary?"Main calendar":(c.summary||c.id);
+        return '<option value="'+esc(val)+'">'+esc(label)+'</option>';
+      }).join("") || '<option value="primary">Main calendar</option>';
+      sel.value=gcalTarget();
+    }catch(e){}
   }
 
   function gEvent(l){
@@ -452,7 +472,7 @@
     $("cal-next").addEventListener("click", function(){ shiftRange(1); });
     $("cal-today").addEventListener("click", goToday);
     if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
-    if($("gcal-cal-save")) $("gcal-cal-save").addEventListener("click", function(){ setGcalTarget($("gcal-cal").value); });
+    if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ setGcalTarget(this.value); });
     initGcal();
     $("seg-week").addEventListener("click", function(){ setMode("week"); });
     $("seg-month").addEventListener("click", function(){ setMode("month"); });

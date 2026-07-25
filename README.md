@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-25 — Google sync: pick calendar from a dropdown (`v50`)
+
+Replaced the paste-a-calendar-ID field with a **dropdown** of the user's own calendars. Adds the
+`calendar.calendarlist.readonly` scope so the app can read the calendar list (names only) and
+populate the picker after connecting; writable calendars only (owner/writer), primary shown as
+"Main calendar". Picking one calls `setGcalTarget` (moves already-synced events). Needs a
+one-time re-consent for the new read scope — `connectGcal` forces the consent prompt until a
+successful `calendarList` fetch sets `tl_gcal_list`, then later syncs are silent.
+
 ### 2026-07-24 — Google sync: choose which calendar (`v49`)
 
 Sync no longer hardcodes the primary calendar. When connected, a field lets you paste a
