@@ -3,11 +3,13 @@
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
   var DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   var SHORT=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  var userId=null, students=[], allStudents=[], allSlots=[], editingId=null;
+  var userId=null, students=[], allStudents=[], allSlots=[], editingId=null, hhById={};
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function hhmm(t){return t?t.slice(0,5):"";}
   function nameOf(id){for(var i=0;i<allStudents.length;i++)if(allStudents[i].id===id)return allStudents[i].name;return "—";}
+  // Household key = normalised phone (matches ledger.js/calendar.js): same number → same household.
+  function hhKey(c){var d=String(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;}
 
   function studentOptions(){
     $("m-student").innerHTML=students.length?students.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+"</option>";}).join(""):'<option value="">— no students yet —</option>';
@@ -15,58 +17,6 @@
   function clearForm(){
     $("m-subject").value="";$("m-level").value="";$("m-start").value="";$("m-end").value="";$("m-rate").value="";$("m-split").value="1";splitHint();
     $("m-day").value="0";if(students.length)$("m-student").value=students[0].id;
-  }
-  // ---- Calendar export (ICS) ----
-  // One recurring weekly event per slot. Times are written as floating local
-  // times (no timezone suffix) so they land at the same clock time in any calendar.
-  function icsEsc(s){return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");}
-  function fold(line){ // RFC 5545: lines over 75 octets must be folded
-    if(line.length<=74)return line;
-    var out=line.slice(0,74),rest=line.slice(74);
-    while(rest.length){ out+="\r\n "+rest.slice(0,73); rest=rest.slice(73); }
-    return out;
-  }
-  function pad2(n){return String(n).padStart(2,"0");}
-  function nextDateFor(weekday){ // weekday 0=Mon..6=Sun -> next occurrence (incl. today)
-    var d=new Date(); d.setHours(0,0,0,0);
-    var cur=(d.getDay()+6)%7;                 // today as 0=Mon..6=Sun
-    d.setDate(d.getDate()+((weekday-cur)+7)%7);
-    return d;
-  }
-  function stamp(d,hhmmStr){
-    var p=(hhmmStr||"00:00").split(":");
-    return d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+"T"+pad2(p[0])+pad2(p[1])+"00";
-  }
-  function exportICS(){
-    var slots=allSlots.filter(function(s){return s.start_time&&s.end_time;});
-    if(!slots.length){alert("No recurring slots to export yet. Add them on the planner first.");return;}
-    var DAYS=["MO","TU","WE","TH","FR","SA","SU"];
-    var now=new Date();
-    var dtstamp=now.getUTCFullYear()+pad2(now.getUTCMonth()+1)+pad2(now.getUTCDate())+"T"+
-                pad2(now.getUTCHours())+pad2(now.getUTCMinutes())+pad2(now.getUTCSeconds())+"Z";
-    var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//T-Leng Tuition//Planner//EN",
-           "CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:T-Leng Tuition — Timetable"];
-    slots.forEach(function(s){
-      var first=nextDateFor(s.weekday);
-      var title=[nameOf(s.student_id),s.subject].filter(Boolean).join(" · ")||"Lesson";
-      var desc=[s.level?"Level: "+s.level:"", s.rate?"Rate: S$"+s.rate+"/hr":"",
-                (s.split&&s.split>1)?"Split between "+s.split:""].filter(Boolean).join("\n");
-      L.push("BEGIN:VEVENT");
-      L.push("UID:slot-"+s.id+"@tleng");
-      L.push("DTSTAMP:"+dtstamp);
-      L.push("DTSTART:"+stamp(first,hhmm(s.start_time)));
-      L.push("DTEND:"+stamp(first,hhmm(s.end_time)));
-      L.push("RRULE:FREQ=WEEKLY;BYDAY="+DAYS[s.weekday]);
-      L.push(fold("SUMMARY:"+icsEsc(title)));
-      if(desc)L.push(fold("DESCRIPTION:"+icsEsc(desc)));
-      L.push("END:VEVENT");
-    });
-    L.push("END:VCALENDAR");
-    var blob=new Blob([L.join("\r\n")+"\r\n"],{type:"text/calendar;charset=utf-8"});
-    var url=URL.createObjectURL(blob),a=document.createElement("a");
-    a.href=url;a.download="T-Leng-Timetable.ics";
-    document.body.appendChild(a);a.click();a.remove();
-    setTimeout(function(){URL.revokeObjectURL(url);},4000);
   }
 
   function splitHint(){
@@ -118,28 +68,57 @@
     var weekTotal=0;
     $("week").innerHTML=byDay.map(function(arr,d){
       var dayTotal=0;
+      // A clash = two slots with different start times whose ranges overlap, for
+      // different households. Same start time is an intentional split (grouped
+      // below, never a clash); same household back-to-back is assumed intentional too.
+      var clash={};
+      for(var i=0;i<arr.length;i++){
+        for(var j=i+1;j<arr.length;j++){
+          var a=arr[i],b=arr[j];
+          if(a.start_time===b.start_time)continue;
+          if(!(a.start_time<b.end_time&&b.start_time<a.end_time))continue;
+          var ha=hhById[a.student_id],hb=hhById[b.student_id];
+          if(ha&&hb&&ha===hb)continue;
+          clash[a.id]=1;clash[b.id]=1;
+        }
+      }
+      function warnBadge(s){ return clash[s.id]?' <span class="clash-badge" title="Overlaps another lesson">⚠</span>':""; }
       function slotHTML(s){
         var sp=s.split||1;
         var cost=Math.round(TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time))/sp*100)/100;dayTotal+=cost;
-        return '<div class="slot" data-edit="'+s.id+'">'+
+        return '<div class="slot'+(clash[s.id]?" clash":"")+'" data-edit="'+s.id+'">'+
           '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
-          '<div class="t">'+hhmm(s.start_time)+"–"+hhmm(s.end_time)+'</div>'+
+          '<div class="t">'+hhmm(s.start_time)+"–"+hhmm(s.end_time)+warnBadge(s)+'</div>'+
           (s.subject||s.level?'<div class="subj">'+esc([s.subject,s.level].filter(Boolean).join(" · "))+'</div>':"")+
           '<div class="s"><a class="snl" href="student.html?id='+s.student_id+'">'+esc(nameOf(s.student_id))+'</a></div>'+
           '<div class="c">'+TL.sgd(cost)+(sp>1?' <span class="muted" style="font-weight:400">(÷'+sp+')</span>':'')+'</div></div>';
       }
+      // Same-time slots (e.g. two students split one lesson) share one time header
+      // and stack full-width below it, instead of squeezing side by side.
+      function groupItemHTML(s){
+        var sp=s.split||1;
+        var cost=Math.round(TL.amount(s.rate,hhmm(s.start_time),hhmm(s.end_time))/sp*100)/100;dayTotal+=cost;
+        return '<div class="sg-item'+(clash[s.id]?" clash":"")+'" data-edit="'+s.id+'">'+
+          '<button class="x" data-del="'+s.id+'" title="Remove">×</button>'+
+          (s.subject||s.level?'<div class="subj">'+esc([s.subject,s.level].filter(Boolean).join(" · "))+'</div>':"")+
+          '<div class="s"><a class="snl" href="student.html?id='+s.student_id+'">'+esc(nameOf(s.student_id))+'</a>'+warnBadge(s)+'</div>'+
+          '<div class="c">'+TL.sgd(cost)+(sp>1?' <span class="muted" style="font-weight:400">(÷'+sp+')</span>':'')+'</div></div>';
+      }
+      function groupHTML(g){
+        var t=hhmm(g.items[0].start_time)+"–"+hhmm(g.items[0].end_time);
+        return '<div class="slot slot-group"><div class="t">'+t+'</div>'+g.items.map(groupItemHTML).join("")+'</div>';
+      }
       var inner;
       if(!arr.length){ inner='<div class="none">—</div>'; }
       else {
-        // group consecutive slots that start at the same time so they sit side by side
+        // group consecutive slots that start at the same time (a split lesson)
         var groups=[],cur=null;
         arr.forEach(function(s){
           if(cur&&cur.key===s.start_time){cur.items.push(s);}
           else {cur={key:s.start_time,items:[s]};groups.push(cur);}
         });
         inner=groups.map(function(g){
-          var cells=g.items.map(slotHTML).join("");
-          return g.items.length>1?'<div class="slot-row">'+cells+'</div>':cells;
+          return g.items.length>1?groupHTML(g):slotHTML(g.items[0]);
         }).join("");
       }
       weekTotal+=dayTotal;
@@ -155,8 +134,11 @@
   }
 
   async function load(){
-    var st=await window.sb.from("students").select("id,name,active").order("name");
-    if(!st.error){allStudents=st.data||[];students=allStudents.filter(function(s){return s.active!==false;});studentOptions();}
+    var st=await window.sb.from("students").select("id,name,active,contact").order("name");
+    if(!st.error){
+      allStudents=st.data||[];students=allStudents.filter(function(s){return s.active!==false;});studentOptions();
+      hhById={};allStudents.forEach(function(s){hhById[s.id]=hhKey(s.contact);});
+    }
     var res=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split");
     if(res.error){$("p-total").textContent="Couldn't load schedule: "+res.error.message;return;}
     allSlots=res.data||[];fillSubjects(allSlots.map(function(s){return s.subject;}));render();
@@ -190,7 +172,6 @@
   function init(user){
     userId=user.id;
     $("add-btn").addEventListener("click",function(){openModal(true,null);});
-    var ics=$("ics-btn"); if(ics)ics.addEventListener("click",exportICS);
     $("m-cancel").addEventListener("click",function(){openModal(false);});
     $("modal").addEventListener("click",function(e){if(e.target===$("modal"))openModal(false);});
     $("m-save").addEventListener("click",save);

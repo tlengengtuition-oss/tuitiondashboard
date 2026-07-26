@@ -4,24 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Planner · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=51">
+<link rel="stylesheet" href="assets/css/app.css?v=54">
 <style>
   /* make the lesson time the visual anchor of each slot */
   .slot{padding-top:9px}
-  .slot-row{display:flex;gap:6px;align-items:stretch}
-  .slot-row .slot{flex:1;min-width:0}
-  .slot-row .slot .s,.slot-row .slot .subj{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .slot .t{color:var(--navy);font-weight:800;font-size:15px;letter-spacing:.01em;line-height:1.15}
   .slot .subj{color:var(--gold);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
   .slot .s{font-weight:600;font-size:13px;margin:3px 0 0;color:var(--ink)}
   .slot .c{color:var(--teal);font-weight:700;font-size:12.5px;margin-top:2px}
+  /* split lessons: one shared time header, students stacked full-width below —
+     legible at any column width, unlike squeezing two cards side by side */
+  .slot-group>.t{cursor:default;margin-bottom:2px}
+  .slot-group .sg-item{position:relative;padding:6px 24px 6px 0;border-top:1px dashed var(--line)}
+  .slot-group .sg-item:first-of-type{border-top:none;padding-top:0}
+  .slot-group .sg-item .x{top:4px;right:0}
+  /* two different students genuinely double-booked (not an intentional split,
+     not the same household) — flag it like the Calendar's clash warning */
+  .slot.clash,.sg-item.clash{outline:2px solid var(--owed);outline-offset:-2px}
+  .slot.clash{border-color:var(--owed)}
+  .clash-badge{color:var(--owed);font-weight:900;margin-left:4px}
 </style>
 </head>
 <body>
 <div id="view">
   <div class="toolbar">
     <div class="sub week-tot" id="p-total">Loading your schedule…</div>
-    <button class="btn" id="ics-btn" title="Download your timetable as a calendar file">Add to calendar</button>
     <button class="btn btn-gold" id="add-btn">+ Add slot</button>
   </div>
 
@@ -87,9 +94,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=51"></script>
-<script src="assets/js/supabase.js?v=51"></script>
-<script src="assets/js/app.js?v=51"></script>
-<script src="assets/js/planner.js?v=51"></script>
+<script src="assets/js/config.js?v=54"></script>
+<script src="assets/js/supabase.js?v=54"></script>
+<script src="assets/js/app.js?v=54"></script>
+<script src="assets/js/planner.js?v=54"></script>
 </body>
 </html>
