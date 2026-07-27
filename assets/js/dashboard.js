@@ -77,7 +77,9 @@
       var days=Math.round((d-now)/86400000);
       var soon=days<=14;
       var label=[e.assessment_type,e.subject].filter(Boolean).join(" · ")||"exam";
-      return '<div class="exam-row"><div class="ex-main"><div class="ex-name">'+esc(nameById[e.student_id]||"—")+'</div><div class="ex-sub">'+esc(label)+(e.topics?" — "+esc(e.topics):"")+'</div></div>'+
+      var extra=[]; if(e.topics)extra.push(esc(e.topics)); if(e.max_score!=null)extra.push(esc(e.max_score)+" marks");
+      var sub=esc(label)+(extra.length?" — "+extra.join(" · "):"");
+      return '<div class="exam-row"><div class="ex-main"><div class="ex-name">'+esc(nameById[e.student_id]||"—")+'</div><div class="ex-sub">'+sub+'</div></div>'+
         '<div class="days'+(soon?" soon":"")+'"><b>'+days+'</b><small>'+(days===1?"day":"days")+'</small></div></div>';
     }).join("");
   }
@@ -396,7 +398,7 @@
     $("inc-hint").textContent="Collected YTD "+TL.sgd(ytd);
     if(window.Chart)chartObj=drawStacked("incomeChart",MONTHS,collected,pending,upcoming,chartObj);
 
-    var ex=await window.sb.from("exams").select("student_id,exam_date,assessment_type,subject,topics");
+    var ex=await window.sb.from("exams").select("student_id,exam_date,assessment_type,subject,topics,max_score");
     var exams=ex.data||[];
     renderExams(exams,nameById,"teach-exam-list",null);
     renderTeaching(sl.data||[],lessons,nameById,exams);
