@@ -77,7 +77,8 @@
       var days=Math.round((d-now)/86400000);
       var soon=days<=14;
       var label=[e.assessment_type,e.subject].filter(Boolean).join(" · ")||"exam";
-      var extra=[]; if(e.topics)extra.push(esc(e.topics)); if(e.max_score!=null)extra.push(esc(e.max_score)+" marks");
+      var mk=TL.examMarks(e.score,e.max_score);
+      var extra=[]; if(e.topics)extra.push(esc(e.topics)); if(mk)extra.push(mk);
       var sub=esc(label)+(extra.length?" — "+extra.join(" · "):"");
       return '<div class="exam-row"><div class="ex-main"><div class="ex-name">'+esc(nameById[e.student_id]||"—")+'</div><div class="ex-sub">'+sub+'</div></div>'+
         '<div class="days'+(soon?" soon":"")+'"><b>'+days+'</b><small>'+(days===1?"day":"days")+'</small></div></div>';
@@ -120,7 +121,10 @@
       var items=up.slice(0,3).map(function(e){
         var d=new Date(e.exam_date+"T00:00:00"), days=Math.round((d-today)/86400000);
         var lbl=[e.assessment_type,e.subject].filter(Boolean).join(" ")||"Exam";
-        return '<div class="exchip"><span class="ex-l">'+esc(lbl)+'</span><span class="ex-d">'+shortDate(e.exam_date)+' · '+(days<=0?"today":"in "+days+"d")+'</span></div>';
+        var mk=TL.examMarks(e.score,e.max_score);
+        var top=e.topics?'<span class="ex-t" title="'+esc(e.topics)+'">'+esc(e.topics)+'</span>':"";
+        return '<div class="exchip"><span class="ex-l">'+esc(lbl)+(mk?' <span class="ex-m">'+mk+'</span>':'')+'</span>'+
+          '<span class="ex-d">'+shortDate(e.exam_date)+' · '+(days<=0?"today":"in "+days+"d")+'</span>'+top+'</div>';
       }).join("");
       return '<div class="tr-exams"><div class="tr-exh">Upcoming exams</div>'+items+'</div>';
     }

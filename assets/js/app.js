@@ -137,6 +137,15 @@ window.TL = (function () {
     return (m(end) - m(start)) / 60;
   }
   function amount(rate, start, end) { return Math.round(rate * hoursBetween(start, end) * 100) / 100; }
+  // One standard marks token used everywhere: "88/100 · 88%" when scored, "—/100" when only the
+  // total is known (not sat yet), "" when neither. Numbers only, safe to inject.
+  function examMarks(score, max) {
+    var hasMax = max != null && max !== "" && Number(max) > 0;
+    if (score != null && score !== "" && hasMax)
+      return '<b>' + score + '/' + max + '</b> <small class="muted">· ' + Math.round(score / max * 100) + '%</small>';
+    if (hasMax) return '<span class="muted">—/' + max + '</span>';
+    return "";
+  }
 
   // Flip any "scheduled" lesson whose time has passed to "done" (unpaid),
   // so completed lessons show up as owed without needing a background server.
@@ -192,6 +201,6 @@ window.TL = (function () {
   }
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell,
-           sgd: sgd, hoursBetween: hoursBetween, amount: amount,
+           sgd: sgd, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
            promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal };
 })();
