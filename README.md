@@ -186,6 +186,111 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-07-25 — Google sync: diff-based reconcile + one-off/postponed symbols (`v62`)
+
+Replaced the wholesale month-replace with a **diff/reconcile** (the app stays source of truth).
+Each event is stamped with its `tlLessonId` in `extendedProperties`; each sync lists the month's
+app events, matches them to current lessons, and only acts on differences: create missing, **update
+drift (including Google-side edits, compared via a fingerprint of title/time/location/description)**,
+skip unchanged (zero API calls), delete orphans/duplicates/legacy-untagged. Re-syncing an unchanged
+month now costs one list call instead of 2×N writes. Status reports the breakdown + elapsed time
+(e.g. "Synced ✓ 34 lessons in 4s · 2 added, 1 updated" or "already up to date"). Event titles now
+carry the ↻ (postponed) and ✦ (one-off) symbols, matching the in-app calendar; the description
+spells them out too. `listAppEvents` returns full event objects; `setGcalTarget` updated for that.
+
+### 2026-07-25 — Google sync: calendar picker survives reloads (`v54`)
+
+The calendar dropdown was empty after every reload — the "connected" flag persisted but the list
+of calendars was only fetched with a live token and never cached, so there was nothing to pick.
+Now the list is cached (`tl_gcal_cals`) and the dropdown is refilled from cache on load (before
+any token exists). `populateCalendars` caches on success and, on a 403, clears the list flag and
+tells the user to reconnect to grant the calendar-list scope. `setGcalTarget` no longer dead-ends
+when re-picking without a live token — it remembers the choice, connects, then syncs to it.
+
+### 2026-07-25 — Google sync: "Sync now" covers current + future logged months (`v53`)
+
+Follow-on to v52. Instead of syncing only the *viewed* month, **Sync now** (and picking a
+calendar) rebuilds **every month from the current one through the last month that has a lesson**
+(capped at +6 months). So lessons logged for future months sync without navigating to each; past
+months are still never touched. `syncMonth(when)` now returns counts and throws on 401;
+`syncNow()` finds the range (max future `lesson_date`, capped) and loops it, reporting one
+aggregate status (e.g. "Synced ✓ 34 lessons across 3 months").
+
+### 2026-07-25 — Google sync: month-replace instead of per-lesson diff (`v52`)
+
+Reworked the sync to **rebuild one month wholesale** instead of diffing every lesson across a
+rolling window. Each sync targets the **currently-viewed month** (`anchor`'s month): it deletes
+all the app's events in that month on the target calendar, then recreates them from the current
+non-cancelled lessons. Other months are left untouched — so past months stop being re-churned
+every sync.
+
+- Events are tagged with `extendedProperties.private.tlengSync=1` (found via
+  `privateExtendedProperty` on list) and created with reminders off, so delete+recreate causes no
+  notification spam. `gcal_event_id` is no longer used (column harmless).
+- Sync is now a **deliberate action** — the "↻ Sync now" button and picking a calendar trigger it;
+  silent page-load reconnect no longer auto-syncs (avoids churning the month on every open).
+- Switching calendars wipes *all* app events off the old calendar, then rebuilds the current month
+  on the new one.
+- To sync a different month, view it and hit Sync now.
+
+### 2026-07-25 — Google sync: connect → choose → sync, moved to a footer (`v51`)
+
+UX pass on the sync controls.
+
+- **Flow:** connecting no longer auto-syncs. You Connect, then the dropdown shows "Choose a
+  calendar…" and you must pick one; picking is what starts the sync. A `tl_gcal_chosen` flag gates
+  this — once chosen, later page loads silently reconnect and re-sync (and a "↻ Sync now" button
+  appears). The connect button is hidden in the "connected but not chosen" state so the dropdown
+  is the obvious next step.
+- **Layout:** moved Connect / calendar dropdown / status out of the crowded top bar into a footer
+  under the calendar — keys on the left, Google controls on the right (`.cal-foot`).
+
+### 2026-07-25 — Google sync: pick calendar from a dropdown (`v50`)
+
+Replaced the paste-a-calendar-ID field with a **dropdown** of the user's own calendars. Adds the
+`calendar.calendarlist.readonly` scope so the app can read the calendar list (names only) and
+populate the picker after connecting; writable calendars only (owner/writer), primary shown as
+"Main calendar". Picking one calls `setGcalTarget` (moves already-synced events). Needs a
+one-time re-consent for the new read scope — `connectGcal` forces the consent prompt until a
+successful `calendarList` fetch sets `tl_gcal_list`, then later syncs are silent.
+
+### 2026-07-24 — Google sync: choose which calendar (`v49`)
+
+Sync no longer hardcodes the primary calendar. When connected, a field lets you paste a
+**calendar ID** (e.g. your "Tuition" calendar) and syncs there instead. Stored in `localStorage`
+(`tl_gcal_calendar`, default `primary`). Changing it **moves** what's already synced — deletes
+the events from the old calendar, clears their ids, then re-syncs into the new one (no orphans /
+duplicates). Uses the same `calendar.events` scope, so no re-consent needed to write to a
+secondary calendar.
+
+### 2026-07-24 — Remove the Export .ics button (`v48`)
+
+Dropped the "Export .ics" button (and its code) now that real Google Calendar sync exists — the
+download was a stepping stone and just clutter next to Connect. (The Planner still has its own
+recurring-slots ICS export.)
+
+### 2026-07-24 — Google Calendar sync (OAuth, one-way) (`v47`) — NEEDS MIGRATION + GOOGLE SETUP
+
+A **Connect Google Calendar** button on the Calendar that pushes your lessons into your Google
+Calendar. Client-side OAuth via Google Identity Services (no backend, no client secret) + direct
+Calendar API calls.
+
+- **Connect** → Google consent popup (`calendar.events` scope) → syncs. Reconnects silently on
+  later page loads and re-syncs, so opening the app keeps Google up to date. One-way (app→Google).
+- **Sync** creates an event per lesson (rolling window: ~2 months back to ~6 months ahead),
+  updates it on change, deletes it when the lesson is cancelled. Stores the Google event id in
+  `lessons.gcal_event_id` so it doesn't duplicate.
+- `db/migration_gcal.sql` — adds `gcal_event_id text` to `lessons`. **Run it before using Connect**
+  (the sync query selects that column).
+- `GOOGLE_CLIENT_ID` added to `config.js` (public, safe — like the anon key). A separate OAuth
+  client from the "Continue with Google" login, in the same Google Cloud project.
+- Setup needed once: a Google Cloud OAuth client (Web app) with `calendar.events` scope and the
+  app origins as authorized JS origins; the tutor's Gmail added as a test user (unverified app →
+  "Advanced → proceed" on first connect).
+
+Snapshot-vs-live note: this syncs when you open/use the app (client-side), not via a 24/7 server.
+The always-on version would be a Supabase Edge Function — not needed for one tutor.
+
 ### 2026-07-24 — Calendar: same-household overlaps aren't a clash (`v46`)
 
 Two lessons from the **same household** at the same time are an intentional group (e.g.

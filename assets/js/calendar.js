@@ -383,46 +383,253 @@
     refreshAfterMutation();
   }
 
-  // ---- export to .ics (one-time; import into Google/Apple Calendar) ----
-  function icsEsc(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); }
-  function icsFold(line){ var out="", s=line; while(s.length>73){ out+=s.slice(0,73)+"\r\n "; s=s.slice(73); } return out+s; }
-  function icsStamp(dateISO, hhmmv){ return dateISO.replace(/-/g,"")+"T"+hhmmv.replace(":","")+"00"; }
-  // Real logged lessons only (each a dated event), recent past + all future, excluding cancelled.
-  // Floating local time (no TZ) so events keep their clock time. Stable UID per lesson id.
-  async function exportICS(){
-    if(!loadedStatic) await loadStatic();
-    var from=new Date(); from.setMonth(from.getMonth()-2);
+  // ---- Google Calendar sync (client-side OAuth via Google Identity Services) ----
+  var GCLIENT=(window.TLENG_CONFIG||{}).GOOGLE_CLIENT_ID||"";
+  var GSCOPE="https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly", GTZ="Asia/Singapore";
+  var gToken=null, gTokenExp=0, gTokenClient=null, gUserInit=false;
+  function gTokenValid(){ return !!gToken && Date.now()<gTokenExp; }   // reuse an unexpired token, no fresh Google popup
+
+  function gcalConfigured(){ return !!GCLIENT; }
+  function gcalConnected(){ try{ return localStorage.getItem("tl_gcal_connected")==="1"; }catch(e){ return false; } }
+  function gcalListGranted(){ try{ return localStorage.getItem("tl_gcal_list")==="1"; }catch(e){ return false; } }
+  function gcalChosen(){ try{ return localStorage.getItem("tl_gcal_chosen")==="1"; }catch(e){ return false; } }
+  function gcalTarget(){ try{ return localStorage.getItem("tl_gcal_calendar")||"primary"; }catch(e){ return "primary"; } }
+  function gStatus(t,cls){ var el=$("gcal-status"); if(el){ el.textContent=t||""; el.className="gcal-status"+(cls?" "+cls:""); } }
+  function gcalCals(){ try{ return JSON.parse(localStorage.getItem("tl_gcal_cals")||"[]")||[]; }catch(e){ return []; } }
+  // A connection attempt failed — drop back to the Connect step (clear the loaded list so the
+  // dropdown gives way to the Connect button). Keep the chosen calendar so reconnect resumes it.
+  function gcalFail(msg){
+    gToken=null; gTokenExp=0;
+    try{ localStorage.removeItem("tl_gcal_connected"); localStorage.removeItem("tl_gcal_list"); localStorage.removeItem("tl_gcal_cals"); }catch(e){}
+    updateGcalUI();
+    gStatus(msg||"Couldn't connect to Google — click Connect to try again.","err");
+  }
+  // The Connect button and the calendar dropdown are mutually exclusive:
+  //  - no calendars loaded yet → show "Connect Google Calendar", hide the dropdown
+  //  - calendars loaded, none chosen → hide the button, the dropdown is the next step
+  //  - a calendar is chosen → show "↻ Sync now" alongside the dropdown
+  function updateGcalUI(){
+    var chosen=gcalChosen(), hasCals=gcalCals().length>0;
+    var btn=$("gcal-btn"), row=$("gsync-row"), brand=$("gsync-brand"), sel=$("gcal-cal");
+    if(hasCals) fillDropdownFromCache();
+    // Brand chip + picker show only once we have calendars; the bordered pill only then too.
+    if(brand) brand.classList.toggle("gcal-hide", !hasCals);
+    if(sel) sel.classList.toggle("gcal-hide", !hasCals);
+    if(row) row.classList.toggle("bare", !hasCals);
+    if(btn){
+      var lbl=btn.querySelector(".glabel");
+      function setLabel(t){ if(lbl) lbl.textContent=t; else btn.textContent=t; }
+      if(!hasCals){                             // nothing to pick → white Google connect button
+        setLabel("Connect Google Calendar"); btn.classList.add("btn-connect"); btn.classList.remove("btn-sync"); btn.style.display="";
+      } else if(chosen){                        // set up → teal "Sync now" inside the pill
+        setLabel("↻ Sync now"); btn.classList.add("btn-sync"); btn.classList.remove("btn-connect"); btn.style.display="";
+      } else {                                  // calendars loaded, pick one → the picker is the action, no button
+        btn.style.display="none";
+        if($("gcal-status") && !$("gcal-status").textContent) gStatus("Choose a calendar to sync your lessons into.");
+      }
+    }
+  }
+  // Render the dropdown from a list of {v,l} items, selecting the chosen target.
+  function fillDropdown(items){
+    var sel=$("gcal-cal"); if(!sel) return;
+    var opts=(items||[]).map(function(c){ return '<option value="'+esc(c.v)+'">'+esc(c.l)+'</option>'; });
+    if(!gcalChosen()) opts.unshift('<option value="">Choose a calendar…</option>');
+    sel.innerHTML=opts.join("") || '<option value="">Choose a calendar…</option>';
+    sel.value=gcalChosen()?gcalTarget():"";
+  }
+  // On load we have no live token yet — fill from the cached list so the picker isn't empty.
+  function fillDropdownFromCache(){
+    var items=gcalCals();
+    if(items.length) fillDropdown(items);
+  }
+
+  function whenGoogleReady(cb){
+    if(window.google && google.accounts && google.accounts.oauth2){ cb(); return; }
+    var n=0, t=setInterval(function(){ n++; if(window.google&&google.accounts&&google.accounts.oauth2){ clearInterval(t); cb(); } else if(n>40){ clearInterval(t); } },200);
+  }
+  function initGcal(){
+    if(!gcalConfigured() || !$("gcal-btn")) return;
+    $("gcal-btn").style.display="";
+    whenGoogleReady(function(){
+      gTokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:GCLIENT, scope:GSCOPE,
+        callback:function(resp){
+          if(resp && resp.access_token){
+            gToken=resp.access_token;
+            gTokenExp=Date.now()+(((+resp.expires_in||3600)*1000)-60000);   // reuse until ~1min before expiry
+            try{localStorage.setItem("tl_gcal_connected","1");}catch(e){}
+            updateGcalUI(); populateCalendars();
+            if(gUserInit){                                              // only sync on a deliberate click, not silent load
+              gUserInit=false;
+              if(gcalChosen()) syncNow();
+              else gStatus("Connected — now choose which calendar to sync into.","ok");
+            }
+          }
+          else if(gUserInit){ gUserInit=false; gcalFail(); }           // deliberate attempt that returned no token → restart
+        },
+        error_callback:function(){                                     // popup closed / blocked / consent denied
+          if(gUserInit){ gUserInit=false; gcalFail(); }                // only reset on a deliberate click, not a silent load
+        }
+      });
+      updateGcalUI();
+      if(gcalConnected()) gTokenClient.requestAccessToken({prompt:""});   // silent re-auth + sync on load
+    });
+  }
+  function connectGcal(){
+    if(!gTokenClient){ gStatus("Google isn't ready yet — try again in a second.","err"); return; }
+    // Token still good? Just act — no fresh Google popup on every click.
+    if(gTokenValid()){
+      if(gcalChosen()) syncNow();
+      else if(gcalCals().length) gStatus("Choose a calendar to sync your lessons into.");
+      else populateCalendars();
+      return;
+    }
+    gUserInit=true;   // deliberate click → sync (or prompt to choose) once the token arrives
+    // Force the consent screen only until the calendar-list permission is granted; after that,
+    // an expired token refreshes silently where the browser allows it.
+    var needConsent = !gcalListGranted();
+    gTokenClient.requestAccessToken({ prompt: needConsent?"consent":"" });
+  }
+  // Fill the calendar dropdown with the user's own+writable calendars.
+  async function populateCalendars(){
+    var sel=$("gcal-cal"); if(!sel || !gToken) return;
+    try{
+      var res=await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", { headers:{ Authorization:"Bearer "+gToken } });
+      if(res.status===403){                                   // calendar-list permission not granted → restart
+        gcalFail("Google needs permission to see your calendars — click Connect to grant it.");
+        return;
+      }
+      if(res.status===401){ gcalFail("Google session expired — click Connect to reconnect."); return; }
+      if(!res.ok){ return; }
+      try{ localStorage.setItem("tl_gcal_list","1"); }catch(e){}
+      var d=await res.json();
+      var items=(d.items||[]).filter(function(c){ return c.accessRole==="owner"||c.accessRole==="writer"; })
+        .map(function(c){ return { v:c.primary?"primary":c.id, l:c.primary?"Main calendar":(c.summary||c.id) }; });
+      try{ localStorage.setItem("tl_gcal_cals", JSON.stringify(items)); }catch(e){}   // remember for next load
+      fillDropdown(items);
+      updateGcalUI();   // list just arrived → re-render so the Connect button gives way to the picker
+    }catch(e){}
+  }
+
+  function gEvent(l){
+    var sym=(l.postponed?"↻":"")+(!l.slot_id?"✦":"");     // ↻ postponed, ✦ one-off — same keys as the app
+    var summary=(sym?sym+" ":"")+[nameById[l.student_id]||"Lesson", l.subject].filter(Boolean).join(" · ");
+    var d=[]; if(l.level)d.push("Level: "+l.level); if(l.amount!=null)d.push("Amount: S$"+l.amount);
+    d.push(l.status==="scheduled"?"Scheduled":(l.paid?"Paid":"Unpaid"));
+    if(l.postponed)d.push("Postponed (↻)"); if(!l.slot_id)d.push("One-off (✦)");
+    var e={ summary:summary, description:d.join("\n"),
+      start:{ dateTime:l.lesson_date+"T"+hhmm(l.start_time)+":00", timeZone:GTZ },
+      end:{ dateTime:l.lesson_date+"T"+hhmm(l.end_time)+":00", timeZone:GTZ },
+      reminders:{ useDefault:false },                      // no notification spam on re-create
+      extendedProperties:{ private:{ tlengSync:"1", tlLessonId:String(l.id) } } };  // tag + which lesson it mirrors
+    var loc=locById[l.student_id]; if(loc) e.location=loc;
+    return e;
+  }
+  // Comparable fingerprint of the fields we sync — used to detect drift (incl. Google-side edits).
+  function gFP(x){
+    return [ x.summary||"", ((x.start&&x.start.dateTime)||"").slice(0,19),
+      ((x.end&&x.end.dateTime)||"").slice(0,19), x.location||"", x.description||"" ].join("|");
+  }
+  async function gapi(method, path, body){
+    var res=await fetch("https://www.googleapis.com/calendar/v3"+path, {
+      method:method, headers:{ "Authorization":"Bearer "+gToken, "Content-Type":"application/json" },
+      body: body?JSON.stringify(body):undefined });
+    if(res.status===401){ gToken=null; gTokenExp=0; var err=new Error("expired"); err.code=401; throw err; }
+    if(!res.ok && res.status!==410) throw new Error("Google API "+res.status);   // 410 = already gone
+    return (res.status===204||res.status===410) ? null : res.json();
+  }
+  // The month around a date, both as lesson-date bounds (YYYY-MM-DD) and RFC3339 SGT times.
+  function monthWindow(when){
+    var y=when.getFullYear(), m=when.getMonth(), lastDay=new Date(y,m+1,0).getDate();
+    var ny=(m===11)?y+1:y, nm=(m===11)?0:m+1;
+    return { firstISO:y+"-"+pad(m+1)+"-01", lastISO:y+"-"+pad(m+1)+"-"+pad(lastDay),
+      tmin:y+"-"+pad(m+1)+"-01T00:00:00+08:00", tmax:ny+"-"+pad(nm+1)+"-01T00:00:00+08:00", label:MONF[m]+" "+y };
+  }
+  // All app-created events on a calendar (optionally within a time window), following pages.
+  async function listAppEvents(cal, tmin, tmax){
+    var out=[], page=null;
+    do{
+      var q="/calendars/"+encodeURIComponent(cal)+"/events?privateExtendedProperty="+encodeURIComponent("tlengSync=1")+"&maxResults=250&singleEvents=true";
+      if(tmin) q+="&timeMin="+encodeURIComponent(tmin);
+      if(tmax) q+="&timeMax="+encodeURIComponent(tmax);
+      if(page) q+="&pageToken="+encodeURIComponent(page);
+      var d=await gapi("GET", q);
+      (d && d.items || []).forEach(function(e){ if(e.id) out.push(e); });
+      page = d && d.nextPageToken;
+    } while(page);
+    return out;
+  }
+  function evLessonId(ev){ try{ return ev.extendedProperties.private.tlLessonId||""; }catch(e){ return ""; } }
+  // Reconcile ONE month on the target calendar against the ledger (app is source of truth):
+  // create missing lessons, update any that drifted (incl. Google-side edits), delete orphans.
+  // Returns counts; throws on 401 so the caller stops.
+  async function syncMonth(when){
+    var cal=gcalTarget(), w=monthWindow(when);
+    gStatus("Syncing "+w.label+"…");
+    var events=await listAppEvents(cal, w.tmin, w.tmax);
+    var byLesson={}, extra=[];                              // extra = duplicates or legacy events (no lesson id)
+    events.forEach(function(ev){ var lid=evLessonId(ev); if(lid && !byLesson[lid]) byLesson[lid]=ev; else extra.push(ev); });
     var ls=await window.sb.from("lessons")
       .select("id,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,slot_id")
-      .gte("lesson_date", iso(from));
-    if(ls.error){ alert("Couldn't export: "+ls.error.message); return; }
+      .gte("lesson_date", w.firstISO).lte("lesson_date", w.lastISO);
+    if(ls.error) return { created:0, updated:0, deleted:0, skipped:0, fail:1 };
     var rows=(ls.data||[]).filter(function(l){ return l.status!=="cancelled"; });
-    if(!rows.length){ alert("No lessons to export yet — log some in the Ledger first."); return; }
-    var n=new Date();
-    var dtstamp=n.getUTCFullYear()+pad(n.getUTCMonth()+1)+pad(n.getUTCDate())+"T"+pad(n.getUTCHours())+pad(n.getUTCMinutes())+pad(n.getUTCSeconds())+"Z";
-    var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//T-Leng Tuition//Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:Tuition lessons"];
-    rows.forEach(function(l){
-      var summary=[nameById[l.student_id]||"Lesson", l.subject].filter(Boolean).join(" · ");
-      var d=[]; if(l.level) d.push("Level: "+l.level);
-      if(l.amount!=null) d.push("Amount: S$"+l.amount);
-      d.push(l.status==="scheduled"?"Scheduled":(l.paid?"Paid":"Unpaid"));
-      if(l.postponed) d.push("Postponed"); if(!l.slot_id) d.push("One-off");
-      var loc=locById[l.student_id]||"";
-      L.push("BEGIN:VEVENT");
-      L.push("UID:lesson-"+l.id+"@tleng");
-      L.push("DTSTAMP:"+dtstamp);
-      L.push("DTSTART:"+icsStamp(l.lesson_date, hhmm(l.start_time)));
-      L.push("DTEND:"+icsStamp(l.lesson_date, hhmm(l.end_time)));
-      L.push(icsFold("SUMMARY:"+icsEsc(summary)));
-      if(loc) L.push(icsFold("LOCATION:"+icsEsc(loc)));
-      L.push(icsFold("DESCRIPTION:"+icsEsc(d.join("\n"))));
-      L.push("END:VEVENT");
-    });
-    L.push("END:VCALENDAR");
-    var blob=new Blob([L.join("\r\n")+"\r\n"], {type:"text/calendar;charset=utf-8"});
-    var url=URL.createObjectURL(blob), a=document.createElement("a");
-    a.href=url; a.download="tuition-lessons.ics"; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    var created=0, updated=0, deleted=0, skipped=0, fail=0, keep={};
+    for(var i=0;i<rows.length;i++){
+      var l=rows[i], want=gEvent(l), ev=byLesson[String(l.id)]; keep[String(l.id)]=1;
+      try{
+        if(!ev){ await gapi("POST","/calendars/"+encodeURIComponent(cal)+"/events", want); created++; }
+        else if(gFP(ev)!==gFP(want)){ await gapi("PUT","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(ev.id), want); updated++; }
+        else skipped++;
+      }catch(e){ if(e&&e.code===401) throw e; fail++; }
+    }
+    var toDel=extra.slice();                                // orphans: lesson gone/cancelled, plus dups/legacy
+    Object.keys(byLesson).forEach(function(lid){ if(!keep[lid]) toDel.push(byLesson[lid]); });
+    for(var k=0;k<toDel.length;k++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(cal)+"/events/"+encodeURIComponent(toDel[k].id)); deleted++; }catch(e){ if(e&&e.code===401) throw e; } }
+    return { created:created, updated:updated, deleted:deleted, skipped:skipped, fail:fail };
+  }
+  // Sync the current month through the last month that has a lesson (capped +6mo) — so lessons
+  // you've logged for future months go too, while past months are left untouched.
+  async function syncNow(){
+    if(!gToken) return;
+    if(!loadedStatic) await loadStatic();
+    var now=new Date(), fromM=new Date(now.getFullYear(), now.getMonth(), 1);
+    var q=await window.sb.from("lessons").select("lesson_date").gte("lesson_date", iso(fromM)).order("lesson_date",{ascending:false}).limit(1);
+    var lastISO=(!q.error && q.data && q.data[0] && q.data[0].lesson_date) || iso(fromM);
+    var lastM=new Date(+lastISO.slice(0,4), (+lastISO.slice(5,7))-1, 1);
+    var capM=new Date(now.getFullYear(), now.getMonth()+6, 1);
+    if(lastM>capM) lastM=capM;
+    var created=0, updated=0, deleted=0, skipped=0, fail=0, months=0, t0=Date.now();
+    try{
+      for(var cur=new Date(fromM); cur<=lastM; cur=new Date(cur.getFullYear(), cur.getMonth()+1, 1)){
+        var r=await syncMonth(new Date(cur));
+        created+=r.created; updated+=r.updated; deleted+=r.deleted; skipped+=r.skipped; fail+=r.fail; months++;
+      }
+    }catch(e){ if(e&&e.code===401){ gStatus("Google session expired — click Connect again.","err"); return; } gStatus("Sync hit an error — try again.","err"); return; }
+    var secs=Math.max(1, Math.round((Date.now()-t0)/1000)), total=created+updated+skipped;
+    var parts=[]; if(created)parts.push(created+" added"); if(updated)parts.push(updated+" updated"); if(deleted)parts.push(deleted+" removed");
+    var detail=parts.length?parts.join(", "):"already up to date";
+    gStatus("Synced ✓ "+total+" lesson"+(total===1?"":"s")+" in "+secs+"s · "+detail+(fail?" · "+fail+" failed":""), "ok");
+  }
+  // Switch which calendar we sync into: wipe ALL our events off the old calendar, then rebuild
+  // the current month on the new one.
+  async function setGcalTarget(raw){
+    if(!(raw||"").trim()) return;                             // "Choose a calendar…" placeholder — ignore
+    var newT=(raw||"").trim(), oldT=gcalTarget(), first=!gcalChosen();
+    if(!gToken){
+      // No live token this session — remember the choice, then get a token and sync to it.
+      try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
+      updateGcalUI(); gStatus("Connecting to Google…");
+      connectGcal();                                          // gUserInit=true → syncNow() to the chosen calendar after the token
+      return;
+    }
+    if(!first && newT!==oldT){
+      gStatus("Moving to the new calendar…");
+      try{ var evs=await listAppEvents(oldT); for(var i=0;i<evs.length;i++){ try{ await gapi("DELETE","/calendars/"+encodeURIComponent(oldT)+"/events/"+encodeURIComponent(evs[i].id)); }catch(e){} } }catch(e){}
+    }
+    try{ localStorage.setItem("tl_gcal_calendar", newT); localStorage.setItem("tl_gcal_chosen","1"); }catch(e){}
+    updateGcalUI();
+    syncNow();
   }
 
   // ---- nav / mode ----
@@ -463,7 +670,9 @@
     $("cal-prev").addEventListener("click", function(){ shiftRange(-1); });
     $("cal-next").addEventListener("click", function(){ shiftRange(1); });
     $("cal-today").addEventListener("click", goToday);
-    if($("cal-export")) $("cal-export").addEventListener("click", exportICS);
+    if($("gcal-btn")) $("gcal-btn").addEventListener("click", connectGcal);
+    if($("gcal-cal")) $("gcal-cal").addEventListener("change", function(){ if(this.value) setGcalTarget(this.value); });
+    initGcal();
     $("seg-week").addEventListener("click", function(){ setMode("week"); });
     $("seg-month").addEventListener("click", function(){ setMode("month"); });
     initLegend();
@@ -483,7 +692,7 @@
       lessonCache={}; (l||[]).forEach(function(x){ var k=x.lesson_date.slice(0,7); (lessonCache[k]=lessonCache[k]||[]).push(x); });
       var w=$("seg-week"), mo=$("seg-month");
       if(w) w.classList.toggle("on",mode==="week"); if(mo) mo.classList.toggle("on",mode==="month");
-    }, render:render, ensureData:ensureData, initLegend:initLegend, exportICS:exportICS,
+    }, render:render, ensureData:ensureData, initLegend:initLegend,
        go:function(a,m){ anchor=a; if(m) mode=m; },
        blocks:function(){ return buildBlocks(visibleRange()); },
        cachedMonths:function(){ return Object.keys(lessonCache); } };
