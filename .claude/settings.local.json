@@ -4,7 +4,9 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git push *)",
-      "Bash(git --no-pager log --oneline -3)"
+      "Bash(git --no-pager log --oneline -3)",
+      "Bash(node --check assets/js/planner.js)",
+      "Bash(bash bump-version.sh 54)"
     ]
   }
 }

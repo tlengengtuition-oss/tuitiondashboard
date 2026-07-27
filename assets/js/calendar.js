@@ -141,7 +141,8 @@
         if(claimed.occ[s.id+"|"+di]) return;                                 // this occurrence is logged
         if(claimed.time[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return; // one-off / pre-backfill fallback
         blocks.push({ id:"slot-"+s.id+"-"+di, dateISO:di, day:wd, startMin:toMin(s.start_time), endMin:toMin(s.end_time),
-          name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"", location:locById[s.student_id]||"", kind:"proj", state:"proj" });
+          name:nameById[s.student_id]||"—", subject:s.subject||"", level:s.level||"", location:locById[s.student_id]||"", kind:"proj", state:"proj",
+          studentId:s.student_id, slotId:s.id, rate:s.rate, split:s.split||1, startHM:hhmm(s.start_time), endHM:hhmm(s.end_time) });
       });
     }
     return blocks.filter(function(b){ return !hidden[b.state]; });   // legend toggles
@@ -291,7 +292,7 @@
     pop.style.left=Math.max(10,left)+"px"; pop.style.top=top+"px";
   }
   function actionButtons(b){
-    if(b.kind!=="lesson") return "";  // projected ("not logged") block — nothing to act on yet
+    if(b.kind!=="lesson") return '<div class="cp-btns"><button class="cp-btn primary" id="cp-log">Log this lesson</button></div>';
     var toggle=b.state==="cancel"
       ? '<button class="cp-btn" id="cp-restore">Restore</button>'
       : '<button class="cp-btn warn" id="cp-cancel">Cancel</button>';
@@ -325,11 +326,21 @@
     var restoreBtn=$("cp-restore"); if(restoreBtn) restoreBtn.addEventListener("click", function(){ doRestore(b); });
     var deleteBtn=$("cp-delete"); if(deleteBtn) deleteBtn.addEventListener("click", function(){ doDelete(b.id); });
     var postponeBtn=$("cp-postpone"); if(postponeBtn) postponeBtn.addEventListener("click", function(){ showPostponeForm(b); });
+    var logBtn=$("cp-log"); if(logBtn) logBtn.addEventListener("click", function(){ doLogProjected(b); });
   }
   function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; popNode=null; }
   // After any write, the visible range (and whichever month a lesson may have moved
   // into/out of) needs fresh data — simplest correct fix is to drop the whole cache.
   function refreshAfterMutation(){ hidePopover(); lessonCache={}; ensureData(); }
+  function splitAmt(rate,s,e,split){ var sp=(split&&split>1)?split:1; return Math.round(TL.amount(rate,s,e)/sp*100)/100; }
+  async function doLogProjected(b){
+    var row={ tutor_id:userId, student_id:b.studentId, slot_id:b.slotId, lesson_date:b.dateISO, slot_date:b.dateISO,
+      start_time:b.startHM, end_time:b.endHM, subject:b.subject, level:b.level, rate:b.rate, split:b.split||1,
+      amount:splitAmt(b.rate,b.startHM,b.endHM,b.split), status:statusFor(b.dateISO,b.endHM), paid:false };
+    var res=await window.sb.from("lessons").insert(row);
+    if(res.error){alert("Couldn't log: "+res.error.message);return;}
+    refreshAfterMutation();
+  }
   async function doCancel(id){
     if(!confirm("Mark this lesson as cancelled? It won't count toward income or pending."))return;
     var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null}).eq("id",id);
