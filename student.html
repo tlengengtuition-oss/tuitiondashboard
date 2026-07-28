@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Student · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=70">
+<link rel="stylesheet" href="assets/css/app.css?v=76">
 <style>
   /* borderless header meta strip */
   .phead{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline;margin:2px 2px 10px}
@@ -138,9 +138,12 @@
         </div>
       </div>
       <div class="field"><label for="x-subject">Subject</label><input id="x-subject" type="text" placeholder="e.g. A-Math"></div>
-      <div class="row2">
-        <div class="field"><label for="x-score">Score <span class="muted">(marks)</span></label><input id="x-score" type="number" min="0" step="0.5" placeholder="optional"></div>
-        <div class="field"><label for="x-maxscore">Out of</label><input id="x-maxscore" type="number" min="1" step="0.5" placeholder="e.g. 100"></div>
+      <div class="field"><label for="x-score">Marks <span class="muted">(leave score blank if not sat yet)</span></label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="x-score" type="number" min="0" step="0.5" placeholder="score" style="flex:1;min-width:0">
+          <span class="muted" style="font-weight:800">/</span>
+          <input id="x-maxscore" type="number" min="1" step="0.5" placeholder="out of" style="flex:1;min-width:0">
+        </div>
       </div>
       <div class="field"><label for="x-topics">Topics</label><input id="x-topics" type="text" placeholder="e.g. Quadratics"></div>
       <div class="field"><label for="x-remarks">Remarks</label><input id="x-remarks" type="text" placeholder="optional"></div>
@@ -172,9 +175,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=70"></script>
-<script src="assets/js/supabase.js?v=70"></script>
-<script src="assets/js/app.js?v=70"></script>
-<script src="assets/js/student.js?v=70"></script>
+<script src="assets/js/config.js?v=76"></script>
+<script src="assets/js/supabase.js?v=76"></script>
+<script src="assets/js/app.js?v=76"></script>
+<script src="assets/js/student.js?v=76"></script>
 </body>
 </html>
