@@ -244,9 +244,11 @@
       var typ=e.assessment_type?'<span class="kind-tag">'+esc(e.assessment_type)+'</span> ':"";
       var resu=TL.examMarks(e.score,e.max_score) || (past?'<span class="muted">no result</span>':"");
       var topics=(upcoming&&e.topics)?'<span style="display:block;color:var(--muted);font-size:12px;margin-top:2px">Topics: '+esc(e.topics)+'</span>':"";
-      return '<div class="lrow"'+(past&&e.score==null?' style="opacity:.6"':"")+'><span class="lwhen">'+prettyDate(e.exam_date)+'</span>'+
-        '<span>'+typ+(e.subject?esc(e.subject):"")+topics+'</span>'+
-        '<span class="right">'+(resu?resu+' ':"")+'<button class="tact" data-xed="'+e.id+'">Edit</button></span></div>';
+      var dim=(past&&e.score==null)?';opacity:.6':"";
+      // date | subject+topics (flexes/shrinks, can be 2 lines) | marks+Edit locked together, top-aligned
+      return '<div class="lrow" style="align-items:flex-start'+dim+'"><span class="lwhen">'+prettyDate(e.exam_date)+'</span>'+
+        '<span style="flex:1;min-width:0">'+typ+(e.subject?esc(e.subject):"")+topics+'</span>'+
+        '<span class="right" style="flex:none;display:flex;align-items:center;gap:8px;white-space:nowrap">'+(resu||"")+'<button class="tact" data-xed="'+e.id+'">Edit</button></span></div>';
     }).join("");
     $("p-exams").querySelectorAll("[data-xed]").forEach(function(b){b.addEventListener("click",function(){openExam(b.dataset.xed);});});
   }
