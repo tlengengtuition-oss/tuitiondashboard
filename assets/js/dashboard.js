@@ -128,8 +128,15 @@
       }).join("");
       return '<div class="tr-exams"><div class="tr-exh">Upcoming exams</div>'+items+'</div>';
     }
-    // lessons + slots keyed by student|date, so the note button targets the right day
-    todayLesBy={}; lessons.forEach(function(l){ if(l.status!=="cancelled")todayLesBy[l.student_id+"|"+l.lesson_date]=l; });
+    // A recurring slot's occurrence is "claimed" once a lesson row fulfils it — keyed by
+    // slot_id+slot_date, which stays put even if that lesson is later postponed elsewhere.
+    // Without this, a postponed lesson's original day falls back to the raw slot projection
+    // and shows up on both its old and new date. Mirrors calendar.js's loggedOccurrences().
+    var claimedOcc={};
+    lessons.forEach(function(l){ if(l.slot_id&&l.slot_date)claimedOcc[l.slot_id+"|"+l.slot_date]=1; });
+    // lessons + slots keyed by student|date|start_time — a student can have more than one
+    // lesson on the same day (different subjects), so date alone isn't a unique key.
+    todayLesBy={}; lessons.forEach(function(l){ if(l.status!=="cancelled")todayLesBy[l.student_id+"|"+l.lesson_date+"|"+hm(l.start_time)]=l; });
     todaySlotBy={};
     function renderDay(listId, subId, headId, dateObj, label, withNote){
       var wday=(dateObj.getDay()+6)%7, dISO=iso(dateObj);
@@ -145,6 +152,7 @@
       slots.filter(function(s){return s.weekday===wday;}).forEach(function(s){
         var key=s.student_id+"|"+hm(s.start_time);
         if(seen[key]||cancelled[key])return;
+        if(claimedOcc[s.id+"|"+dISO])return;   // already logged (possibly postponed to another date) — don't re-project
         seen[key]=1;
         day.push({student_id:s.student_id,start_time:s.start_time,end_time:s.end_time,subject:s.subject});
       });
@@ -155,12 +163,12 @@
       $(listId).innerHTML=day.map(function(s){
         var btn="";
         if(withNote){
-          var key=s.student_id+"|"+dISO;
+          var key=s.student_id+"|"+dISO+"|"+hm(s.start_time);
           var slotForNote=slots.filter(function(x){return x.student_id===s.student_id&&hm(x.start_time)===hm(s.start_time);})[0];
           if(slotForNote)todaySlotBy[key]=slotForNote;
           var les=todayLesBy[key];
           var has=les&&(les.topics||les.homework||les.remarks);
-          btn='<button class="tnote'+(has?" has":"")+'" data-note-stu="'+s.student_id+'" data-note-date="'+dISO+'">'+(has?"Edit note":"Add note")+'</button>';
+          btn='<button class="tnote'+(has?" has":"")+'" data-note-stu="'+s.student_id+'" data-note-date="'+dISO+'" data-note-time="'+hm(s.start_time)+'">'+(has?"Edit note":"Add note")+'</button>';
         }
         return '<div class="teach-row"><div class="tr-time">'+hm(s.start_time)+'</div>'+
           '<div class="tr-body">'+
@@ -169,7 +177,7 @@
           '<div class="tr-cols"><div class="tr-notes">'+summarizeOne(lastBeforeSubject(s.student_id,dISO,s.subject),s.subject)+'</div>'+examChips(s.student_id)+'</div>'+
           '</div></div>';
       }).join("");
-      if(withNote)$(listId).querySelectorAll("[data-note-stu]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteStu,b.dataset.noteDate);});});
+      if(withNote)$(listId).querySelectorAll("[data-note-stu]").forEach(function(b){b.addEventListener("click",function(){openNote(b.dataset.noteStu,b.dataset.noteDate,b.dataset.noteTime);});});
     }
     // Yesterday — only lessons you actually taught that still have no notes
     (function(){
@@ -187,11 +195,11 @@
         return '<div class="teach-row"><div class="tr-time">'+hm(l.start_time)+'</div>'+
           '<div class="tr-body"><div class="tr-head"><div class="tr-name"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a>'+
           (l.subject?'<span class="tr-subj">'+esc(l.subject)+'</span>':'')+'</div>'+
-          '<button class="tnote" data-note-stu="'+l.student_id+'" data-note-date="'+yISO+'">Add note</button></div>'+
+          '<button class="tnote" data-note-stu="'+l.student_id+'" data-note-date="'+yISO+'" data-note-time="'+hm(l.start_time)+'">Add note</button></div>'+
           '</div></div>';
       }).join("");
       $("yday-list").querySelectorAll("[data-note-stu]").forEach(function(b){
-        b.addEventListener("click",function(){openNote(b.dataset.noteStu,b.dataset.noteDate);});
+        b.addEventListener("click",function(){openNote(b.dataset.noteStu,b.dataset.noteDate,b.dataset.noteTime);});
       });
     })();
     renderDay("today-list","today-sub","today-h", today, "Today", true);
@@ -199,10 +207,10 @@
   }
 
   // ---- quick lesson note (today / yesterday) ----
-  function openNote(stu, dISO){
+  function openNote(stu, dISO, startTime){
     dISO=dISO||iso(new Date());
     noteStu=stu; noteDate=dISO;
-    var key=stu+"|"+dISO;
+    var key=stu+"|"+dISO+"|"+(startTime||"");
     noteSlot=todaySlotBy[key]||null;
     var les=todayLesBy[key]||null; noteLes=les;
     var name=nameByIdM[stu]||"student";
@@ -361,7 +369,7 @@
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,amount,paid,status,subject,level,topics,homework,remarks");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,amount,paid,status,subject,level,topics,homework,remarks,slot_id,slot_date");
     var lessons=ls.data||[];
 
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
