@@ -240,12 +240,15 @@
     var today=todayISO();
     rows.sort(function(a,b){return (a.exam_date||"").localeCompare(b.exam_date||"");});
     $("p-exams").innerHTML=rows.map(function(e){
-      var past=e.exam_date&&e.exam_date<today;
+      var past=e.exam_date&&e.exam_date<today, upcoming=e.exam_date&&e.exam_date>=today;
       var typ=e.assessment_type?'<span class="kind-tag">'+esc(e.assessment_type)+'</span> ':"";
-      var resu=(e.score!=null&&e.max_score)?'<b>'+esc(e.score+"/"+e.max_score)+'</b> <small class="muted">('+Math.round(e.score/e.max_score*100)+'%)</small>':(past?'<span class="muted">no result</span>':"");
-      return '<div class="lrow"'+(past&&e.score==null?' style="opacity:.6"':"")+'><span class="lwhen">'+prettyDate(e.exam_date)+'</span>'+
-        '<span>'+typ+(e.subject?esc(e.subject):"")+'</span>'+
-        '<span class="right">'+(resu?resu+' ':"")+'<button class="tact" data-xed="'+e.id+'">Edit</button></span></div>';
+      var resu=TL.examMarks(e.score,e.max_score) || (past?'<span class="muted">no result</span>':"");
+      var topics=(upcoming&&e.topics)?'<span style="display:block;color:var(--muted);font-size:12px;margin-top:2px">Topics: '+esc(e.topics)+'</span>':"";
+      var dim=(past&&e.score==null)?';opacity:.6':"";
+      // date | subject+topics (flexes/shrinks, can be 2 lines) | marks+Edit locked together, top-aligned
+      return '<div class="lrow" style="align-items:flex-start'+dim+'"><span class="lwhen">'+prettyDate(e.exam_date)+'</span>'+
+        '<span style="flex:1;min-width:0">'+typ+(e.subject?esc(e.subject):"")+topics+'</span>'+
+        '<span class="right" style="flex:none;display:flex;align-items:center;gap:8px;white-space:nowrap">'+(resu||"")+'<button class="tact" data-xed="'+e.id+'">Edit</button></span></div>';
     }).join("");
     $("p-exams").querySelectorAll("[data-xed]").forEach(function(b){b.addEventListener("click",function(){openExam(b.dataset.xed);});});
   }

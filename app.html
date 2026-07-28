@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=71">
+<link rel="stylesheet" href="assets/css/app.css?v=76">
 <style>
   #onboard{display:none;margin-bottom:20px}
   .ob-card{background:linear-gradient(180deg,#fffdf7,#fbf4e4);border:1px solid var(--gold);
@@ -44,11 +44,14 @@
   .tr-recap.prev{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);opacity:.9}
   .tr-cols{display:flex;gap:12px;align-items:stretch;margin-top:9px;flex-wrap:wrap;min-width:0}
   .tr-notes{flex:1 1 220px;min-width:0;max-width:100%;background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:9px 12px;overflow-wrap:anywhere}
-  .tr-exams{flex:0 1 200px;min-width:0;max-width:100%;background:rgba(179,64,47,.06);border:1px solid rgba(179,64,47,.25);border-radius:10px;padding:9px 12px}
+  .tr-exams{flex:0 1 250px;min-width:0;max-width:100%;background:rgba(179,64,47,.06);border:1px solid rgba(179,64,47,.25);border-radius:10px;padding:9px 12px}
   .tr-exh{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--owed);margin-bottom:5px}
-  .exchip{padding:3px 0}
-  .exchip .ex-l{font-weight:700;color:var(--navy);display:block;font-size:12.5px}
-  .exchip .ex-d{color:var(--muted);font-size:11px}
+  .exchip{padding:5px 0;border-top:1px solid rgba(179,64,47,.15)}
+  .exchip:first-of-type{border-top:none;padding-top:0}
+  .exchip .ex-l{font-weight:700;color:var(--navy);font-size:12.5px}
+  .exchip .ex-m{font-weight:700;color:var(--owed);font-size:11px;margin-left:2px}
+  .exchip .ex-d{color:var(--muted);font-size:11px;display:block}
+  .exchip .ex-t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted);font-size:11px;margin-top:2px;line-height:1.35}
   .tr-empty{color:var(--muted);font-size:12.5px;font-style:italic;margin-top:4px}
   .tr-notes,.tr-exams{overflow-wrap:anywhere}
   @media (max-width:600px){
@@ -193,9 +196,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="assets/js/config.js?v=71"></script>
-<script src="assets/js/supabase.js?v=71"></script>
-<script src="assets/js/app.js?v=71"></script>
-<script src="assets/js/dashboard.js?v=71"></script>
+<script src="assets/js/config.js?v=76"></script>
+<script src="assets/js/supabase.js?v=76"></script>
+<script src="assets/js/app.js?v=76"></script>
+<script src="assets/js/dashboard.js?v=76"></script>
 </body>
 </html>
