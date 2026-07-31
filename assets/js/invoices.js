@@ -125,7 +125,10 @@
       var badge=paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Issued</span>';
       var pd=paid?' <input type="date" data-pd="'+v.id+'" value="'+(v.paid_date||"")+'" title="Paid on" style="font-size:12px;padding:2px 5px;border:1px solid var(--line);border-radius:6px;margin-left:6px;color:var(--muted)">':'';
       var proof=v.proof_path
-        ? '<button class="tact" data-vproof="'+v.id+'" title="View transaction screenshot">📎 View</button><button class="tact del" data-rproof="'+v.id+'" title="Remove screenshot">✕</button>'
+        ? '<span style="display:inline-flex;align-items:center;gap:14px">'+
+            '<button class="tact" data-vproof="'+v.id+'" title="View transaction screenshot">📎 View</button>'+
+            '<button class="tact del" data-rproof="'+v.id+'" title="Detach screenshot" aria-label="Detach screenshot">✕ Detach</button>'+
+          '</span>'
         : '<button class="tact" data-aproof="'+v.id+'">Attach</button>';
       return '<tr>'+
         '<td data-label="Issued">'+prettyDate(v.issued_date)+'</td>'+
