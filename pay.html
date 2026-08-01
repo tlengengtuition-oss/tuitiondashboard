@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Invoice · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=82">
+<link rel="stylesheet" href="assets/css/app.css?v=83">
 <style>
   body{background:var(--bg,#fbf6ec);margin:0}
   .pay-wrap{max-width:560px;margin:0 auto;padding:22px 16px 40px}
@@ -19,7 +19,20 @@
   .btn-save{display:inline-flex;align-items:center;gap:8px;background:var(--teal,#0E7C7B);color:#fff;
     font-weight:700;border:none;border-radius:11px;cursor:pointer}
   .btn-save:hover{background:#0b6a69}
-  .btn-save:disabled{opacity:.6;cursor:default}
+  .pay-actions .btn:disabled{opacity:.6;cursor:default}
+  .btn-paid{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fff;
+    color:var(--teal,#0E7C7B);font-weight:700;border:1.5px solid var(--teal,#0E7C7B);border-radius:11px;cursor:pointer}
+  .btn-paid:hover{background:#f2faf9}
+  .pay-form{margin-top:14px;padding:16px;background:var(--cream,#FBF4E4);border:1px solid var(--line);border-radius:12px}
+  .pf-row{margin-bottom:12px}
+  .pf-row label{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:5px}
+  .pf-row input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;box-sizing:border-box;background:#fff}
+  .pf-actions{display:flex;gap:10px;margin-top:4px}
+  .pf-actions .btn{flex:1;justify-content:center;padding:11px}
+  .pay-msg{font-size:12.5px;margin:2px 0 10px;color:var(--muted)}
+  .pay-msg.err{color:var(--owed,#B3402F)}
+  .pay-done{margin-top:16px;padding:16px 18px;background:rgba(14,124,123,.1);border:1px solid rgba(14,124,123,.4);
+    border-radius:12px;color:#0b5b5a;font-weight:700;text-align:center;font-size:14.5px}
 </style>
 </head>
 <body>
@@ -29,15 +42,28 @@
     <div id="pay-inv"></div>
     <div class="pay-actions">
       <button class="btn btn-save" id="pay-save">📷 Save to Photos</button>
+      <button class="btn btn-paid" id="pay-ivepaid" style="display:none">✓ I've paid</button>
     </div>
-    <p class="pay-hint">To pay: scan the PayNow QR above with your banking app, or tap <b>Save to Photos</b> and upload the QR from your gallery in the app.</p>
+
+    <div class="pay-form" id="pay-form" style="display:none">
+      <div class="pf-row"><label for="pay-date">Date you paid</label><input type="date" id="pay-date"></div>
+      <div class="pf-row"><label for="pay-shot">Transaction screenshot <span style="color:var(--muted);font-weight:400">(optional but appreciated)</span></label><input type="file" id="pay-shot" accept="image/*"></div>
+      <div class="pay-msg" id="pay-msg"></div>
+      <div class="pf-actions">
+        <button class="btn" id="pay-cancel">Cancel</button>
+        <button class="btn btn-save" id="pay-submit">Confirm payment</button>
+      </div>
+    </div>
+
+    <div class="pay-done" id="pay-done" style="display:none"></div>
+    <p class="pay-hint" id="pay-hint">To pay: scan the PayNow QR above with your banking app, or tap <b>Save to Photos</b> and upload the QR from your gallery in the app. Once you've paid, tap <b>I've paid</b> so it's recorded.</p>
   </div>
   <div class="pay-foot" id="pay-foot"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=82"></script>
-<script src="assets/js/supabase.js?v=82"></script>
-<script src="assets/js/pay.js?v=82"></script>
+<script src="assets/js/config.js?v=83"></script>
+<script src="assets/js/supabase.js?v=83"></script>
+<script src="assets/js/pay.js?v=83"></script>
 </body>
 </html>

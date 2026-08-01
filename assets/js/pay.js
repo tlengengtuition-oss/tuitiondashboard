@@ -48,6 +48,43 @@
     }
   }
 
+  function todayISO() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+
+  function showPaid(dateISO) {
+    $("pay-ivepaid").style.display = "none";
+    $("pay-form").style.display = "none";
+    $("pay-hint").style.display = "none";
+    var when = dateISO ? (" on " + new Date(dateISO + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric" })) : "";
+    $("pay-done").textContent = "Payment recorded" + when + " — thank you! ✓";
+    $("pay-done").style.display = "";
+  }
+
+  // Parent taps "I've paid": upload the screenshot (if given) under shared/<token>/, then
+  // call the secure RPC that marks the invoice + its lessons paid on the chosen date.
+  async function reportPaid(t) {
+    var msg = $("pay-msg"), sub = $("pay-submit");
+    var date = $("pay-date").value || todayISO();
+    var file = $("pay-shot").files[0] || null;
+    msg.className = "pay-msg"; msg.textContent = "";
+    sub.disabled = true; sub.textContent = "Saving…";
+    var proofPath = null;
+    try {
+      if (file) {
+        var safe = file.name.replace(/[^A-Za-z0-9._-]/g, "_");
+        var path = "shared/" + t + "/" + Date.now() + "_" + safe;
+        var up = await window.sb.storage.from("receipts").upload(path, file, { upsert: false });
+        if (up.error) { msg.className = "pay-msg err"; msg.textContent = "Couldn't upload the screenshot: " + up.error.message; sub.disabled = false; sub.textContent = "Confirm payment"; return; }
+        proofPath = path;
+      }
+      var r = await window.sb.rpc("mark_invoice_paid_by_token", { t: t, p_date: date, p_proof: proofPath });
+      if (r.error) { msg.className = "pay-msg err"; msg.textContent = "Couldn't record it: " + r.error.message; sub.disabled = false; sub.textContent = "Confirm payment"; return; }
+      showPaid(date);
+    } catch (e) {
+      msg.className = "pay-msg err"; msg.textContent = "Something went wrong — please try again.";
+      sub.disabled = false; sub.textContent = "Confirm payment";
+    }
+  }
+
   async function load() {
     var t = qs("t");
     if (!t) { $("pay-status").textContent = "This link is missing its invoice code."; return; }
@@ -61,10 +98,26 @@
 
     $("pay-inv").innerHTML = row.html;
     document.title = (row.title || "Invoice");
-    if (row.status === "paid") { $("pay-foot").textContent = "This invoice is marked paid — thank you!"; }
     $("pay-status").style.display = "none";
     $("pay-card").style.display = "";
     $("pay-save").addEventListener("click", function () { saveImage(row.title); });
+
+    if (row.status === "paid") {
+      showPaid(null);
+      $("pay-done").textContent = "This invoice is already marked paid — thank you! ✓";
+    } else {
+      $("pay-ivepaid").style.display = "";
+      $("pay-ivepaid").addEventListener("click", function () {
+        $("pay-ivepaid").style.display = "none";
+        $("pay-date").value = todayISO();
+        $("pay-form").style.display = "";
+      });
+      $("pay-cancel").addEventListener("click", function () {
+        $("pay-form").style.display = "none";
+        $("pay-ivepaid").style.display = "";
+      });
+      $("pay-submit").addEventListener("click", function () { reportPaid(t); });
+    }
   }
 
   load();

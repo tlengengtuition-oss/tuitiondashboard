@@ -186,6 +186,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-01 — Self-reported payment: parent taps "I've paid" (`v83`)
+
+The parent can record their own payment from the pay link — no gateway, no fees, no manual editing.
+On `pay.html` an **"I've paid"** button opens a small form (date, defaulted to today, + optional
+transaction screenshot). Submitting uploads the screenshot to `shared/<token>/…` and calls a
+security-definer `mark_invoice_paid_by_token(t, date, proof)` that marks the invoice **and its
+lessons** paid on that date, flags it `self_reported`, and stores the proof — so the Ledger stays
+consistent. Tutor's Invoices page shows a **"reported by parent"** badge (glance-and-verify).
+Storage: an anon insert policy scoped to `shared/<valid-token>/` (via `is_valid_share_token`), plus
+a tutor read policy for their own invoices' shared proofs. Run `db/migration_invoice_selfpay.sql`
+(needs `migration_invoice_share.sql` + the receipts bucket first).
+
 ### 2026-08-01 — Shareable invoice payment link (send a link, not an image) (`v82`)
 
 Sidesteps WhatsApp's image/text quirks: instead of attaching an image, send a **link** to a public
