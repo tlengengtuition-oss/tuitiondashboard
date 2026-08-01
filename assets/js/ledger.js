@@ -807,10 +807,23 @@
     var tpl=(profile&&profile.invoice_message)||DEFAULT_INVOICE;
     return fillTemplate(tpl,vars);
   }
+  // Copy text to the clipboard (async API, with a legacy fallback). Returns true on success.
+  async function copyText(text){
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); return true; } }catch(e){}
+    try{
+      var ta=document.createElement("textarea"); ta.value=text;
+      ta.style.position="fixed"; ta.style.top="-1000px"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      var ok=document.execCommand("copy"); ta.remove(); return ok;
+    }catch(e){ return false; }
+  }
   async function shareInvoice(){
     if(!window._invHTML||!window._invMeta)return;
     var m=window._invMeta,b=$("inv-wa"),msg=invoiceMsg(m);
     b.disabled=true;b.textContent="Preparing…";
+    // WhatsApp often drops the text when an image is shared/attached, so keep the message on the
+    // clipboard — it can always be pasted into the chat even if it doesn't prefill.
+    var copied=await copyText(msg);
     try{
       await loadH2C();
       var node=$("inv-body").firstElementChild||$("inv-body");
@@ -821,7 +834,11 @@
         var file=new File([blob],(window._invTitle||("Invoice_"+m.invoiceNo))+".png",{type:"image/png"});
         // Best path: native share sheet with the image attached (mobile)
         if(navigator.canShare&&navigator.canShare({files:[file]})){
-          try{ await navigator.share({files:[file],text:msg}); return; }
+          try{
+            await navigator.share({files:[file],text:msg});
+            alert((copied?"Your message is copied to the clipboard — ":"Tip: copy your message, then ")+"paste it into the chat if WhatsApp only shows the image.");
+            return;
+          }
           catch(e){ if(e&&e.name==="AbortError")return; /* otherwise fall through */ }
         }
         // Fallback (desktop / unsupported): download image, open WhatsApp with text to attach manually
@@ -830,7 +847,7 @@
         setTimeout(function(){URL.revokeObjectURL(url);},5000);
         var num=waNumber(contactById[m.studentId]);
         window.open("https://wa.me/"+num+"?text="+encodeURIComponent(msg),"_blank");
-        alert("Your device can't attach files to WhatsApp automatically.\n\nThe invoice image was just downloaded — attach it in the WhatsApp chat that opened.");
+        alert((copied?"Your message has been copied — paste it into the chat if it doesn't prefill.\n\n":"")+"The invoice image was just downloaded — attach it in the WhatsApp chat that opened.");
       },"image/png");
     }catch(e){
       b.disabled=false;b.textContent="Send on WhatsApp";
