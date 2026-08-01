@@ -790,7 +790,8 @@
     if(!window._invShareToken) await saveInvoice();      // must be saved to have a token
     b.disabled=false;b.textContent=old;
     if(!window._invShareToken){ alert("Couldn't create the payment link — try Save to app first."); return; }
-    var link=new URL("pay.html?t="+encodeURIComponent(window._invShareToken), location.href).href;
+    var base=((window.TLENG_CONFIG||{}).SITE_URL)||location.href;   // always the public URL so the link is tappable
+    var link=new URL("pay.html?t="+encodeURIComponent(window._invShareToken), base).href;
     var msg=invoiceMsg(m)+"\n\n"+link;
     copyText(msg);                                        // clipboard backup
     var num=waNumber(contactById[m.studentId||(m.students&&m.students[0])]);
