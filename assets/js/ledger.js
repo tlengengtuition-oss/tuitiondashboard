@@ -807,6 +807,15 @@
     var tpl=(profile&&profile.invoice_message)||DEFAULT_INVOICE;
     return fillTemplate(tpl,vars);
   }
+  // Mobile-like = the OS share sheet is likely to include WhatsApp. Desktop (fine pointer, no
+  // touch) skips the sheet and goes straight to WhatsApp Web/Desktop instead.
+  function isMobileLike(){
+    try{ if(navigator.userAgentData && typeof navigator.userAgentData.mobile==="boolean") return navigator.userAgentData.mobile; }catch(e){}
+    var ua=navigator.userAgent||"";
+    if(/Android|iPhone|iPod|Mobile/i.test(ua)) return true;
+    var coarse=window.matchMedia && window.matchMedia("(pointer:coarse)").matches;
+    return !!(coarse && (navigator.maxTouchPoints||0)>0);   // touch tablets (incl. iPad-as-Mac) count as mobile
+  }
   // Copy text to the clipboard (async API, with a legacy fallback). Returns true on success.
   async function copyText(text){
     try{ if(navigator.clipboard&&navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); return true; } }catch(e){}
@@ -832,8 +841,10 @@
         b.disabled=false;b.textContent="Send on WhatsApp";
         if(!blob){alert("Couldn't render the invoice image.");return;}
         var file=new File([blob],(window._invTitle||("Invoice_"+m.invoiceNo))+".png",{type:"image/png"});
-        // Best path: native share sheet with the image attached (mobile)
-        if(navigator.canShare&&navigator.canShare({files:[file]})){
+        // On mobile the OS share sheet has WhatsApp and attaches the image directly. On desktop
+        // (esp. macOS) WhatsApp usually isn't a share target — the sheet is a dead end — so skip it
+        // and open WhatsApp Web/Desktop with the message, image downloaded + on the clipboard.
+        if(isMobileLike() && navigator.canShare && navigator.canShare({files:[file]})){
           try{
             await navigator.share({files:[file],text:msg});
             alert((copied?"Your message is copied to the clipboard — ":"Tip: copy your message, then ")+"paste it into the chat if WhatsApp only shows the image.");
