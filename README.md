@@ -186,6 +186,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-01 — Shareable invoice payment link (send a link, not an image) (`v82`)
+
+Sidesteps WhatsApp's image/text quirks: instead of attaching an image, send a **link** to a public
+pay page. Each invoice gets an unguessable `share_token`; a security-definer `invoice_by_token(t)`
+function returns just that one invoice's rendered HTML to `anon` (no login, no enumeration). New
+public **`pay.html`** (`?t=<token>`) renders the invoice with its embedded PayNow QR + a
+**Save to Photos** button (share-sheet "Save Image" on mobile, download on desktop). Ledger invoice
+modal gains **🔗 Send payment link** — saves the invoice (captures the token via `.select()`), builds
+`pay.html?t=…`, and opens WhatsApp with the message + link as plain text (copied to clipboard too).
+Also: WhatsApp image send now copies the message to the clipboard and skips the dead-end macOS share
+sheet (desktop → WhatsApp Web). Run `db/migration_invoice_share.sql`.
+
 ### 2026-07-25 — Invoice history / income record + transaction screenshots (`v66`)
 
 Turned the invoices flow into a tax/claims-ready income record.

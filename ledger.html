@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=81">
+<link rel="stylesheet" href="assets/css/app.css?v=82">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -167,11 +167,12 @@
   <div class="modal-backdrop" id="inv-backdrop">
     <div class="modal card wide">
       <div id="inv-body"></div>
-      <div class="modal-actions" style="margin-top:16px">
+      <div class="modal-actions" style="margin-top:16px;flex-wrap:wrap">
         <button class="btn" id="inv-close">Close</button>
         <button class="btn" id="inv-save">Save to app</button>
-        <button class="btn" id="inv-wa">Send on WhatsApp</button>
-        <button class="btn btn-primary" id="inv-print">Print / Save PDF</button>
+        <button class="btn btn-primary" id="inv-link">🔗 Send payment link</button>
+        <button class="btn" id="inv-wa">Send as image</button>
+        <button class="btn" id="inv-print">Print / PDF</button>
       </div>
     </div>
   </div>
@@ -179,10 +180,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=81"></script>
-<script src="assets/js/supabase.js?v=81"></script>
-<script src="assets/js/app.js?v=81"></script>
-<script src="assets/js/paynow.js?v=81"></script>
-<script src="assets/js/ledger.js?v=81"></script>
+<script src="assets/js/config.js?v=82"></script>
+<script src="assets/js/supabase.js?v=82"></script>
+<script src="assets/js/app.js?v=82"></script>
+<script src="assets/js/paynow.js?v=82"></script>
+<script src="assets/js/ledger.js?v=82"></script>
 </body>
 </html>
