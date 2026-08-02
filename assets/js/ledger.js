@@ -749,7 +749,7 @@
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
-        window._invHTML=invoiceHTML(data,url); window._invShareToken=null;
+        window._invHTML=invoiceHTML(data,url); window._invShareToken=null; window._invSaved=false;
         window._invMeta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons),lessonIds:lessons.map(function(l){return l.id;})};
         $("inv-body").innerHTML=window._invHTML;
         $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
@@ -782,7 +782,7 @@
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
-        window._invHTML=invoiceHTML(data,url); window._invShareToken=null;
+        window._invHTML=invoiceHTML(data,url); window._invShareToken=null; window._invSaved=false;
         window._invMeta={studentId:null,students:ids,name:billTo,
           recipient:(ids.map(function(id){return recipientById[id];}).filter(Boolean)[0]||""),   // parent name for {name}
           invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(all),lessonIds:all.map(function(l){return l.id;})};
@@ -806,6 +806,7 @@
     b.disabled=false;
     if(res.error){b.textContent="Save to app";alert("Couldn't save invoice: "+res.error.message);return;}
     window._invShareToken=(res.data&&res.data.share_token)||null;   // present once migration_invoice_share.sql is run
+    window._invSaved=true;   // recorded in the Invoices tab
     b.textContent="Saved ✓";setTimeout(function(){b.textContent="Save to app";},1600);
   }
   // Send a link to the public pay page (pay.html?t=<token>) instead of an image — sends as plain
@@ -876,6 +877,7 @@
     if(!window._invHTML||!window._invMeta)return;
     var m=window._invMeta,b=$("inv-wa"),msg=invoiceMsg(m);
     b.disabled=true;b.textContent="Preparing…";
+    if(!window._invSaved){ try{ await saveInvoice(); }catch(e){} }   // sending records the invoice in the Invoices tab
     // WhatsApp often drops the text when an image is shared/attached, so keep the message on the
     // clipboard — it can always be pasted into the chat even if it doesn't prefill.
     var copied=await copyText(msg);
