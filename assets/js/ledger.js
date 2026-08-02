@@ -8,6 +8,23 @@
   function pad(n){return (n<10?"0":"")+n;}
   function iso(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
   function todayISO(){return iso(new Date());}
+  // In-app confirm dialog → Promise<boolean>; dims the page instead of the browser's native confirm.
+  function confirmBox(msg, opts){
+    opts=opts||{};
+    return new Promise(function(resolve){
+      var bd=$("confirm-modal"), yes=$("confirm-yes"), no=$("confirm-no");
+      if(!bd){ resolve(window.confirm(msg)); return; }
+      $("confirm-title").textContent=opts.title||"Confirm";
+      $("confirm-msg").textContent=msg;
+      yes.textContent=opts.yes||"Confirm"; no.textContent=opts.no||"Cancel";
+      yes.className="btn "+(opts.danger?"btn-danger":"btn-primary");
+      function done(v){ bd.classList.remove("on"); yes.onclick=null; no.onclick=null; bd.onclick=null; resolve(v); }
+      yes.onclick=function(){ done(true); };
+      no.onclick=function(){ done(false); };
+      bd.onclick=function(e){ if(e.target===bd) done(false); };
+      bd.classList.add("on");
+    });
+  }
   function hm(t){return t?t.slice(0,5):"";}
   // A lesson is "done" only once its end time has passed — so a lesson later TODAY stays
   // "scheduled" (date-only comparison wrongly marked every today lesson done). endHM = "HH:MM".
@@ -129,9 +146,9 @@
       return studentCard(id);
     }).join("");
     $("outstanding").querySelectorAll("[data-pay]").forEach(function(b){b.addEventListener("click",function(){openPayModal([b.dataset.pay]);});});
-    $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",function(){openPayModal(b.dataset.payall.split(","));});});
-    $("outstanding").querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",function(){openPayModal(b.dataset.hhpayall.split(","));});});
-    $("outstanding").querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",function(){openPayModal(b.dataset.paysel.split(","));});});
+    $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.payall.split(",");if(await confirmBox("Mark all "+ids.length+" of this student's lessons as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
+    $("outstanding").querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpayall.split(",");if(await confirmBox("Mark all "+ids.length+" lessons for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
+    $("outstanding").querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.paysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
     $("outstanding").querySelectorAll("[data-invsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.invsel.split("::");openInvoice(p[0], p[1]?p[1].split(","):null);});});
     $("outstanding").querySelectorAll("[data-lsel]").forEach(function(cb){
       cb.addEventListener("change",function(){
