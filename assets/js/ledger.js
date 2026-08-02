@@ -107,7 +107,7 @@
       var selIds=rows.filter(function(l){return selectedLessons[l.id];}).map(function(l){return l.id;});
       var age=ageTag(daysSince(rows[0].lesson_date));
       var inner=rows.map(function(l){var d=daysSince(l.lesson_date);return '<div class="lrow"><input type="checkbox" class="lchk" data-lsel="'+l.id+'"'+(selectedLessons[l.id]?" checked":"")+'><span class="lwhen">'+prettyDate(l.lesson_date)+(d>=14?' <span class="agedot" title="'+d+' days unpaid">•</span>':"")+"</span><span>"+(l.subject?esc(l.subject):'<span class="muted">lesson</span>')+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
-      var selBtn=selIds.length?'<button class="mark" data-paysel="'+selIds.join(",")+'">Mark '+selIds.length+' selected paid</button>':"";
+      var selBtn=selIds.length?'<button class="mark lite" data-invsel="'+id+'::'+selIds.join(",")+'">Invoice '+selIds.length+' selected</button><button class="mark" data-paysel="'+selIds.join(",")+'">Mark '+selIds.length+' selected paid</button>':"";
       return '<div class="card group"><div class="group-head"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select to bill together"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }
     // group owing students by household
@@ -132,6 +132,7 @@
     $("outstanding").querySelectorAll("[data-payall]").forEach(function(b){b.addEventListener("click",function(){openPayModal(b.dataset.payall.split(","));});});
     $("outstanding").querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",function(){openPayModal(b.dataset.hhpayall.split(","));});});
     $("outstanding").querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",function(){openPayModal(b.dataset.paysel.split(","));});});
+    $("outstanding").querySelectorAll("[data-invsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.invsel.split("::");openInvoice(p[0], p[1]?p[1].split(","):null);});});
     $("outstanding").querySelectorAll("[data-lsel]").forEach(function(cb){
       cb.addEventListener("change",function(){
         if(cb.checked)selectedLessons[cb.dataset.lsel]=1; else delete selectedLessons[cb.dataset.lsel];
@@ -694,7 +695,7 @@
     return qrLoading;
   }
 
-  async function openInvoice(studentId){
+  async function openInvoice(studentId, onlyIds){
     if(!profile){
       alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");
       return;
@@ -703,7 +704,9 @@
       if(confirm("No PayNow details saved yet. Open Settings to add them now?")) location.href="settings.html";
       return;
     }
-    var lessons=(outGroups[studentId]||[]).slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
+    var lessons=(outGroups[studentId]||[]).slice()
+      .filter(function(l){ return !onlyIds || onlyIds.indexOf(String(l.id))>-1; })   // invoice only the picked lessons, if any
+      .sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!lessons.length)return;
     try{ await loadQR(); }
     catch(e){
