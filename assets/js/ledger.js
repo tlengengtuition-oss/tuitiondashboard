@@ -140,8 +140,11 @@
         var hhSum=members.reduce(function(t,m){return t+groups[m].reduce(function(s,l){return s+Number(l.amount);},0);},0);
         var hhOldest=members.reduce(function(m,id){var o=oldestOf(id);return (!m||o<m)?o:m;},null);
         var hhLessonIds=members.reduce(function(a,m){return a.concat(groups[m].map(function(l){return l.id;}));},[]);
+        // lessons checked across the whole household → invoice/mark-paid just those together
+        var hhSelIds=members.reduce(function(a,m){return a.concat((groups[m]||[]).filter(function(l){return selectedLessons[l.id];}).map(function(l){return l.id;}));},[]);
+        var hhSelBtns=hhSelIds.length?'<button class="mark lite" data-hhinvsel="'+members.join(",")+'::'+hhSelIds.join(",")+'">Invoice '+hhSelIds.length+' selected</button><button class="mark" data-hhpaysel="'+hhSelIds.join(",")+'">Mark '+hhSelIds.length+' selected paid</button>':'';
         return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all with this phone number"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
-          '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+'</span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button><button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
+          '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+'</span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
       }
       return studentCard(id);
     }).join("");
@@ -150,6 +153,8 @@
     $("outstanding").querySelectorAll("[data-hhpayall]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpayall.split(",");if(await confirmBox("Mark all "+ids.length+" lessons for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
     $("outstanding").querySelectorAll("[data-paysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.paysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" as paid?",{title:"Mark paid",yes:"Continue"})) openPayModal(ids);});});
     $("outstanding").querySelectorAll("[data-invsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.invsel.split("::");openInvoice(p[0], p[1]?p[1].split(","):null);});});
+    $("outstanding").querySelectorAll("[data-hhpaysel]").forEach(function(b){b.addEventListener("click",async function(){var ids=b.dataset.hhpaysel.split(",");if(await confirmBox("Mark "+ids.length+" selected lesson"+(ids.length===1?"":"s")+" for this household as paid?",{title:"Mark household paid",yes:"Continue"})) openPayModal(ids);});});
+    $("outstanding").querySelectorAll("[data-hhinvsel]").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.hhinvsel.split("::");openInvoiceMany(p[0].split(","), p[1]?p[1].split(","):null);});});
     $("outstanding").querySelectorAll("[data-lsel]").forEach(function(cb){
       cb.addEventListener("change",function(){
         if(cb.checked)selectedLessons[cb.dataset.lsel]=1; else delete selectedLessons[cb.dataset.lsel];
@@ -753,11 +758,11 @@
     }catch(e){ alert("Invoice error: "+(e.message||e)); }
   }
 
-  async function openInvoiceMany(ids){
+  async function openInvoiceMany(ids, onlyIds){
     if(!profile){alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");return;}
     if(!profile.paynow_id){if(confirm("No PayNow details saved yet. Open Settings to add them now?"))location.href="settings.html";return;}
     var all=[];
-    ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){all.push(Object.assign({_who:nameById[id]||"—"},l));});});
+    ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) all.push(Object.assign({_who:nameById[id]||"—"},l)); });});
     all.sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date)||String(a._who).localeCompare(String(b._who));});
     if(!all.length)return;
     try{ await loadQR(); }
