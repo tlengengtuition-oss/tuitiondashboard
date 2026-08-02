@@ -761,7 +761,9 @@
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
         window._invHTML=invoiceHTML(data,url); window._invShareToken=null;
-        window._invMeta={studentId:null,students:ids,name:billTo,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(all),lessonIds:all.map(function(l){return l.id;})};
+        window._invMeta={studentId:null,students:ids,name:billTo,
+          recipient:(ids.map(function(id){return recipientById[id];}).filter(Boolean)[0]||""),   // parent name for {name}
+          invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(all),lessonIds:all.map(function(l){return l.id;})};
         $("inv-body").innerHTML=window._invHTML;
         $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
         $("inv-backdrop").classList.add("on");
@@ -822,7 +824,7 @@
   }
   function invoiceMsg(m){
     var isCombined=!m.studentId;
-    var vars={name:isCombined?(m.name||""):(recipientById[m.studentId]||nameById[m.studentId]||""),
+    var vars={name:isCombined?(m.recipient||m.name||""):(recipientById[m.studentId]||nameById[m.studentId]||""),
       student:isCombined?(m.name||""):(nameById[m.studentId]||""),business:(profile&&profile.business_name)||"T-Leng Tuition",
       amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:(profile&&profile.paynow_id)||"",
       month:m.month||"",date:prettyDate(m.issuedDate),year:(m.issuedDate||"").slice(0,4)};
@@ -878,8 +880,9 @@
         var url=URL.createObjectURL(blob),a=document.createElement("a");
         a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
         setTimeout(function(){URL.revokeObjectURL(url);},5000);
-        var num=waNumber(contactById[m.studentId]);
-        window.open("https://wa.me/"+num+"?text="+encodeURIComponent(msg),"_blank");
+        var num=waNumber(contactById[m.studentId||(m.students&&m.students[0])]);   // combined: use the household's number
+        window.open(num ? "https://wa.me/"+num+"?text="+encodeURIComponent(msg)
+                        : "https://api.whatsapp.com/send?text="+encodeURIComponent(msg), "_blank");
         alert((copied?"Your message has been copied — paste it into the chat if it doesn't prefill.\n\n":"")+"The invoice image was just downloaded — attach it in the WhatsApp chat that opened.");
       },"image/png");
     }catch(e){
