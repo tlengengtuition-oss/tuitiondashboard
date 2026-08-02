@@ -132,7 +132,7 @@
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", location:locById[l.student_id]||"", amount:l.amount,
-        kind:"lesson", state:st, postponed:!!l.postponed, adhoc:!l.slot_id, hh:hhById[l.student_id]||null });
+        kind:"lesson", state:st, postponed:!!l.postponed, adhoc:!l.slot_id, slotId:l.slot_id, slotDate:l.slot_date, hh:hhById[l.student_id]||null });
     });
     for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
       var di=iso(d), wd=(d.getDay()+6)%7;
@@ -296,7 +296,9 @@
     var toggle=b.state==="cancel"
       ? '<button class="cp-btn" id="cp-restore">Restore</button>'
       : '<button class="cp-btn warn" id="cp-cancel">Cancel</button>';
-    return '<div class="cp-btns"><button class="cp-btn" id="cp-postpone">Postpone</button>'+toggle+'<button class="cp-btn danger" id="cp-delete">Delete</button></div>';
+    // A postponed lesson that still has its recurring slot can snap back to the original date/time.
+    var revert=(b.postponed && b.slotId && b.slotDate)?'<button class="cp-btn" id="cp-revert">↩ Revert to slot</button>':'';
+    return '<div class="cp-btns"><button class="cp-btn" id="cp-postpone">Postpone</button>'+revert+toggle+'<button class="cp-btn danger" id="cp-delete">Delete</button></div>';
   }
   function showPopover(node){
     var b=findBlock(node.dataset.ev); if(!b) return;
@@ -326,6 +328,7 @@
     var restoreBtn=$("cp-restore"); if(restoreBtn) restoreBtn.addEventListener("click", function(){ doRestore(b); });
     var deleteBtn=$("cp-delete"); if(deleteBtn) deleteBtn.addEventListener("click", function(){ doDelete(b.id); });
     var postponeBtn=$("cp-postpone"); if(postponeBtn) postponeBtn.addEventListener("click", function(){ showPostponeForm(b); });
+    var revertBtn=$("cp-revert"); if(revertBtn) revertBtn.addEventListener("click", function(){ doRevert(b); });
     var logBtn=$("cp-log"); if(logBtn) logBtn.addEventListener("click", function(){ doLogProjected(b); });
   }
   function hidePopover(){ var p=$("cal-pop"); if(p) p.style.display="none"; popNode=null; }
@@ -373,6 +376,18 @@
     $("cp-x").addEventListener("click", hidePopover);
     $("cp-pback").addEventListener("click", function(){ if(popNode) showPopover(popNode); });
     $("cp-psave").addEventListener("click", function(){ savePostpone(b); });
+  }
+  // Undo a postpone: move the lesson back to its recurring slot's original date + time.
+  async function doRevert(b){
+    if(!b.slotId||!b.slotDate){ alert("This lesson has no original slot to revert to."); return; }
+    var slot=slots.filter(function(s){return String(s.id)===String(b.slotId);})[0];
+    var date=b.slotDate;
+    var start=slot?hhmm(slot.start_time):hhmm2(b.startMin);
+    var end=slot?hhmm(slot.end_time):hhmm2(b.endMin);
+    if(!confirm("Revert this lesson to its original slot — "+date+", "+start+"–"+end+"?"))return;
+    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,status:statusFor(date,end),postponed:false}).eq("id",b.id);
+    if(res.error){ alert("Couldn't revert: "+res.error.message); return; }
+    refreshAfterMutation();
   }
   async function savePostpone(b){
     var date=$("cp-pdate").value, start=$("cp-pstart").value, end=$("cp-pend").value, msg=$("cp-pmsg");
