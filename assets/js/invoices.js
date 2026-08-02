@@ -35,15 +35,25 @@
 
   function todayISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
   async function togglePaid(inv){
-    var next=inv.status==="paid"?"issued":"paid";
-    var res=await window.sb.from("invoices").update({status:next,paid_date:next==="paid"?todayISO():null}).eq("id",inv.id);
+    var next=inv.status==="paid"?"issued":"paid", pd=next==="paid"?todayISO():null;
+    var res=await window.sb.from("invoices").update({status:next,paid_date:pd}).eq("id",inv.id);
     if(res.error){alert("Couldn't update: "+res.error.message);return;}
+    // Keep the Ledger in sync — settle (or un-settle) the lessons this invoice covers.
+    var lids=(inv.data&&inv.data.lesson_ids)||null;
+    if(lids&&lids.length){
+      var lr=await window.sb.from("lessons").update({paid:next==="paid",paid_date:pd}).in("id",lids);
+      if(lr.error) alert("Invoice updated, but its lessons didn't sync: "+lr.error.message);
+    }
     load();
   }
   async function updatePaidDate(id,date){
     var res=await window.sb.from("invoices").update({paid_date:date||null}).eq("id",id);
     if(res.error){alert("Couldn't update the paid date: "+res.error.message);load();return;}
-    var v=invoices.filter(function(x){return x.id===id;})[0]; if(v)v.paid_date=date||null;
+    var v=invoices.filter(function(x){return x.id===id;})[0];
+    if(v){ v.paid_date=date||null;
+      var lids=(v.data&&v.data.lesson_ids)||null;
+      if(lids&&lids.length) await window.sb.from("lessons").update({paid_date:date||null}).in("id",lids);   // sync lessons' paid date
+    }
   }
   async function del(id){
     if(!confirm("Delete this saved invoice? This only removes the saved copy — it does not change any lessons or payments."))return;
