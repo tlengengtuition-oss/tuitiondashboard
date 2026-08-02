@@ -335,6 +335,23 @@
   // After any write, the visible range (and whichever month a lesson may have moved
   // into/out of) needs fresh data — simplest correct fix is to drop the whole cache.
   function refreshAfterMutation(){ hidePopover(); lessonCache={}; ensureData(); }
+  // In-app confirm dialog → Promise<boolean>; dims the page instead of the browser's native confirm.
+  function confirmBox(msg, opts){
+    opts=opts||{};
+    return new Promise(function(resolve){
+      var bd=$("confirm-modal"), yes=$("confirm-yes"), no=$("confirm-no");
+      if(!bd){ resolve(window.confirm(msg)); return; }
+      $("confirm-title").textContent=opts.title||"Confirm";
+      $("confirm-msg").textContent=msg;
+      yes.textContent=opts.yes||"Confirm"; no.textContent=opts.no||"Cancel";
+      yes.className="btn "+(opts.danger?"btn-danger":"btn-primary");
+      function done(v){ bd.classList.remove("on"); yes.onclick=null; no.onclick=null; bd.onclick=null; resolve(v); }
+      yes.onclick=function(){ done(true); };
+      no.onclick=function(){ done(false); };
+      bd.onclick=function(e){ if(e.target===bd) done(false); };
+      bd.classList.add("on");
+    });
+  }
   function splitAmt(rate,s,e,split){ var sp=(split&&split>1)?split:1; return Math.round(TL.amount(rate,s,e)/sp*100)/100; }
   async function doLogProjected(b){
     var row={ tutor_id:userId, student_id:b.studentId, slot_id:b.slotId, lesson_date:b.dateISO, slot_date:b.dateISO,
@@ -345,7 +362,7 @@
     refreshAfterMutation();
   }
   async function doCancel(id){
-    if(!confirm("Mark this lesson as cancelled? It won't count toward income or pending."))return;
+    if(!(await confirmBox("Mark this lesson as cancelled? It won't count toward income or pending.", {title:"Cancel lesson", yes:"Cancel lesson", no:"Keep"}))) return;
     var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null}).eq("id",id);
     if(res.error){alert("Couldn't cancel: "+res.error.message);return;}
     refreshAfterMutation();
@@ -356,7 +373,7 @@
     refreshAfterMutation();
   }
   async function doDelete(id){
-    if(!confirm("Delete this lesson permanently? (Use Cancel instead if you just want to void it.)"))return;
+    if(!(await confirmBox("Delete this lesson permanently? Use Cancel instead if you just want to void it.", {title:"Delete lesson", yes:"Delete", danger:true}))) return;
     var res=await window.sb.from("lessons").delete().eq("id",id);
     if(res.error){alert("Couldn't delete: "+res.error.message);return;}
     refreshAfterMutation();
@@ -384,7 +401,7 @@
     var date=b.slotDate;
     var start=slot?hhmm(slot.start_time):hhmm2(b.startMin);
     var end=slot?hhmm(slot.end_time):hhmm2(b.endMin);
-    if(!confirm("Revert this lesson to its original slot — "+date+", "+start+"–"+end+"?"))return;
+    if(!(await confirmBox("Revert this lesson to its original slot — "+date+", "+start+"–"+end+"?", {title:"Revert to slot", yes:"Revert"}))) return;
     var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,status:statusFor(date,end),postponed:false}).eq("id",b.id);
     if(res.error){ alert("Couldn't revert: "+res.error.message); return; }
     refreshAfterMutation();
