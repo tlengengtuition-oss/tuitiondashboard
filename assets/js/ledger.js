@@ -961,8 +961,7 @@
     on("inv-backdrop","click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
     on("inv-print","click",printInvoice);
     on("inv-wa","click",shareInvoice);
-    on("inv-link","click",sendInvoiceLink);
-    on("inv-save","click",saveInvoice);
+    on("inv-save","click",saveInvoice);   // payment-link button removed for now; sendInvoiceLink kept dormant
     on("prev-m","click",function(){shiftMonth(-1);});
     on("next-m","click",function(){shiftMonth(1);});
     on("today-btn","click",goToday);
