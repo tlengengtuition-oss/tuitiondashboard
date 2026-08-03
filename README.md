@@ -186,6 +186,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-03 — Ledger: one shared period navigator in the header (both tabs)
+
+Unified the Outstanding month-picker and the Records period nav into a single **‹ month › · This
+month · All** control in the header (under the 3 KPIs, above the tabs). One `period` state
+(`{mode,y,m}`, persisted as `tl_period`) now drives the KPIs, the Outstanding list, and the Records
+table together — switch tabs and the same navigator applies. Dropped `outPeriod`, the per-view
+controls, and `toggleAll`; `refreshPeriod()` re-renders everything on change.
+
 ### 2026-08-03 — Ledger: outstanding period → month picker + All (superseded the toggle)
 
 Replaced the Overdue/This month/All toggle with a **‹ month › navigator + All** control above the

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=100">
+<link rel="stylesheet" href="assets/css/app.css?v=101">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -41,6 +41,15 @@
       <div class="val" id="k-projected">—</div><div class="note" id="k-projected-n">booked, excl. cancelled</div></div>
   </div>
 
+  <!-- shared period navigator — drives the KPIs, Outstanding, and Records together -->
+  <span class="period" id="hdr-period" style="margin:0 0 14px">
+    <button class="btn" id="p-prev" title="Earlier month">‹</button>
+    <span class="lbl" id="p-label">This month</span>
+    <button class="btn" id="p-next" title="Later month">›</button>
+    <button class="btn" id="p-today">This month</button>
+    <button class="btn" id="p-all">All</button>
+  </span>
+
   <div class="seg" id="led-seg">
     <button id="seg-out" class="on">Outstanding<span class="seg-n" id="seg-out-n"></span></button>
     <button id="seg-rec">Records</button>
@@ -48,12 +57,6 @@
 
   <div id="out-view">
   <div class="section-title">Outstanding by student <span class="hint" id="out-hint"></span></div>
-  <span class="period" id="out-period" style="margin:2px 0 12px">
-    <button class="btn" id="out-prev" title="Earlier month">‹</button>
-    <span class="lbl" id="out-label">All time</span>
-    <button class="btn" id="out-next" title="Later month">›</button>
-    <button class="btn" id="out-all">All</button>
-  </span>
   <div id="outstanding"></div>
   </div>
 
@@ -67,14 +70,7 @@
     </div>
   </div>
   <div class="section-title">Records <span class="hint" id="month-hint"></span>
-    <span class="period">
-      <button class="btn" id="prev-m">&lsaquo;</button>
-      <span class="lbl" id="period-label"></span>
-      <button class="btn" id="next-m">&rsaquo;</button>
-      <button class="btn" id="today-btn">Today</button>
-      <button class="btn" id="all-time">All time</button>
-      <button class="btn" id="csv-btn">Export CSV</button>
-    </span>
+    <span class="period"><button class="btn" id="csv-btn">Export CSV</button></span>
   </div>
   <div class="card">
     <div class="filters">
@@ -191,10 +187,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=100"></script>
-<script src="assets/js/supabase.js?v=100"></script>
-<script src="assets/js/app.js?v=100"></script>
-<script src="assets/js/paynow.js?v=100"></script>
-<script src="assets/js/ledger.js?v=100"></script>
+<script src="assets/js/config.js?v=101"></script>
+<script src="assets/js/supabase.js?v=101"></script>
+<script src="assets/js/app.js?v=101"></script>
+<script src="assets/js/paynow.js?v=101"></script>
+<script src="assets/js/ledger.js?v=101"></script>
 </body>
 </html>

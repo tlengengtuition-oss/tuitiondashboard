@@ -1,7 +1,7 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [], outPeriod = "all";
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -103,8 +103,9 @@
   }
   function renderOutstanding(unpaidAll){
     lastUnpaid=unpaidAll;
-    // Month picker / All — scope the whole view (counts, invoicing, marking) to the period.
-    var unpaid=outPeriod==="all"?unpaidAll:unpaidAll.filter(function(l){return (l.lesson_date||"").slice(0,7)===outPeriod;});
+    // Shared period (header) — scope the whole view (counts, invoicing, marking) to it.
+    var pk=periodKey();
+    var unpaid=pk==="all"?unpaidAll:unpaidAll.filter(function(l){return (l.lesson_date||"").slice(0,7)===pk;});
     var groups={};unpaid.forEach(function(l){(groups[l.student_id]=groups[l.student_id]||[]).push(l);});
     outGroups=groups;
     function oldestOf(id){return groups[id].reduce(function(m,l){return (!m||l.lesson_date<m)?l.lesson_date:m;},null);}
@@ -115,7 +116,7 @@
       var sa=groups[a].reduce(function(t,l){return t+Number(l.amount);},0);
       var sb=groups[b].reduce(function(t,l){return t+Number(l.amount);},0);return sb-sa;});
     if(!ids.length){
-      var em=outPeriod==="all"?"All settled 🎉":"Nothing pending for "+outLabel();
+      var em=periodKey()==="all"?"All settled 🎉":"Nothing pending for "+periodLabel();
       $("outstanding").innerHTML='<div class="card empty"><h3>'+em+'</h3></div>';$("out-hint").textContent="";setOutCount(0);return;}
     $("out-hint").textContent=ids.length+(ids.length===1?" student owing":" students owing");
     setOutCount(ids.length);
@@ -267,8 +268,7 @@
   }
   function renderRecords(){
     if(!period)period={mode:"month",y:new Date().getFullYear(),m:new Date().getMonth()};
-    $("period-label").textContent=periodLabel();
-    $("all-time").classList.toggle("on",period.mode==="all");
+    updatePeriodUI();
     var rows=allLessons.filter(function(l){
       if(period.mode==="all")return true;
       return l.lesson_date.slice(0,7)===period.y+"-"+pad(period.m+1);
@@ -360,8 +360,9 @@
     selectedRecords={};
     deleteLessons(ids);
   }
-  function shiftMonth(d){period.mode="month";var dt=new Date(period.y,period.m+d,1);period.y=dt.getFullYear();period.m=dt.getMonth();renderRecords();}
-  function toggleAll(){period.mode=period.mode==="all"?"month":"all";if(period.mode==="month"){period.y=new Date().getFullYear();period.m=new Date().getMonth();}renderRecords();}
+  function shiftMonth(d){period.mode="month";var dt=new Date(period.y,period.m+d,1);period.y=dt.getFullYear();period.m=dt.getMonth();refreshPeriod();}
+  function periodAll(){period.mode="all";refreshPeriod();}
+  function periodThisMonth(){var n=new Date();period={mode:"month",y:n.getFullYear(),m:n.getMonth()};refreshPeriod();}
   // Outstanding / Records tabs — mirrors setDashMode() on the dashboard.
   function setLedgerMode(mode){
     var rec=mode==="rec";
@@ -925,25 +926,24 @@
     renderRecords();
   }
 
-  // Outstanding period = "all" or a specific month "YYYY-MM".
-  function outMonthDate(){ if(/^\d{4}-\d{2}$/.test(outPeriod)){var p=outPeriod.split("-");return new Date(+p[0],+p[1]-1,1);} var n=new Date(); return new Date(n.getFullYear(),n.getMonth(),1); }
-  function outLabel(){ return outPeriod==="all"?"All time":outMonthDate().toLocaleDateString("en-SG",{month:"long",year:"numeric"}); }
-  function renderOutPeriodUI(){ if($("out-label"))$("out-label").textContent=outLabel(); if($("out-all"))$("out-all").classList.toggle("on",outPeriod==="all"); }
-  // Pending KPI reflects the same period: All = all-time total; a month = that month's pending.
+  // One shared period (the header navigator) drives the KPIs, Outstanding, and Records.
+  function periodKey(){ return period.mode==="all"?"all":(period.y+"-"+pad(period.m+1)); }
+  function updatePeriodUI(){ if($("p-label"))$("p-label").textContent=periodLabel(); if($("p-all"))$("p-all").classList.toggle("on",period.mode==="all"); }
+  function persistPeriod(){ try{localStorage.setItem("tl_period",JSON.stringify(period));}catch(e){} }
+  function refreshPeriod(){ persistPeriod(); updatePeriodUI(); renderPendingKpi(); renderMonthKpis(); renderOutstanding(lastUnpaid); renderRecords(); }
+  // Pending KPI: All = all-time total; a specific month = that month's pending.
   function renderPendingKpi(){
-    var all=lastUnpaid||[];
-    var sel=outPeriod==="all"?all:all.filter(function(l){return (l.lesson_date||"").slice(0,7)===outPeriod;});
+    var all=lastUnpaid||[], pk=periodKey();
+    var sel=pk==="all"?all:all.filter(function(l){return (l.lesson_date||"").slice(0,7)===pk;});
     var amt=sel.reduce(function(t,l){return t+Number(l.amount);},0);
     var lbl=$("k-pending-lbl"), note=$("k-pending-n");
     $("k-pending").textContent=TL.sgd(amt);
-    if(outPeriod==="all"){ if(lbl)lbl.textContent="Total pending"; if(note)note.textContent=all.length+" unpaid lesson"+(all.length===1?"":"s"); }
-    else{ if(lbl)lbl.textContent="Pending"; if(note)note.textContent=outLabel()+" · "+sel.length+" unpaid"; }
+    if(pk==="all"){ if(lbl)lbl.textContent="Total pending"; if(note)note.textContent=all.length+" unpaid lesson"+(all.length===1?"":"s"); }
+    else{ if(lbl)lbl.textContent="Pending"; if(note)note.textContent=periodLabel()+" · "+sel.length+" unpaid"; }
   }
-  // The month the Collected/Projected KPIs describe — the picked month, or the current one in "All".
+  // Collected/Projected describe the picked month (current month while on All).
   function activeMonthRange(){
-    var y,m;
-    if(/^\d{4}-\d{2}$/.test(outPeriod)){ y=+outPeriod.slice(0,4); m=+outPeriod.slice(5,7); }
-    else { var n=new Date(); y=n.getFullYear(); m=n.getMonth()+1; }
+    var y,m; if(period.mode==="all"){var n=new Date();y=n.getFullYear();m=n.getMonth()+1;}else{y=period.y;m=period.m+1;}
     return { first:y+"-"+pad(m)+"-01", last:y+"-"+pad(m)+"-"+pad(new Date(y,m,0).getDate()),
       label:new Date(y,m-1,1).toLocaleDateString("en-SG",{month:"long",year:"numeric"}) };
   }
@@ -955,20 +955,16 @@
     $("k-collected").textContent=TL.sgd(collected); if($("k-collected-n"))$("k-collected-n").textContent=r.label;
     $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=r.label+" · excl. cancelled";
   }
-  function setOutPeriod(p){
-    outPeriod=p; try{localStorage.setItem("tl_out_period",p);}catch(e){}
-    renderOutPeriodUI(); renderPendingKpi(); renderMonthKpis(); renderOutstanding(lastUnpaid);
-  }
-  function outStep(delta){ var d=outMonthDate(); d.setMonth(d.getMonth()+delta); setOutPeriod(d.getFullYear()+"-"+pad(d.getMonth()+1)); }
   function init(user){
     userId=user.id;
     var on=function(id,evt,fn){var el=$(id);if(el)el.addEventListener(evt,fn);};
-    try{outPeriod=localStorage.getItem("tl_out_period")||"all";}catch(e){}
-    if(!/^(all|\d{4}-\d{2})$/.test(outPeriod)) outPeriod="all";
-    renderOutPeriodUI();
-    on("out-prev","click",function(){outStep(-1);});
-    on("out-next","click",function(){outStep(1);});
-    on("out-all","click",function(){setOutPeriod("all");});
+    try{var sp=localStorage.getItem("tl_period"); if(sp)period=JSON.parse(sp);}catch(e){}
+    if(!period||!period.mode) period={mode:"month",y:new Date().getFullYear(),m:new Date().getMonth()};
+    updatePeriodUI();
+    on("p-prev","click",function(){shiftMonth(-1);});
+    on("p-next","click",function(){shiftMonth(1);});
+    on("p-today","click",periodThisMonth);
+    on("p-all","click",periodAll);
     on("add-btn","click",function(){openAdd(true);});
     on("gen-btn","click",generateWeek);
     on("gen-month-btn","click",generateMonth);
@@ -994,10 +990,7 @@
     on("inv-print","click",printInvoice);
     on("inv-wa","click",shareInvoice);
     on("inv-save","click",saveInvoice);
-    on("prev-m","click",function(){shiftMonth(-1);});
-    on("next-m","click",function(){shiftMonth(1);});
-    on("today-btn","click",goToday);
-    on("all-time","click",toggleAll);
+    // period nav is the shared header control (p-prev/p-next/p-today/p-all), wired above
     on("csv-btn","click",exportCSV);
     on("rec-search","input",renderRecords);
     ["rec-student","rec-subject","rec-level","rec-status"].forEach(function(id){on(id,"change",renderRecords);});
