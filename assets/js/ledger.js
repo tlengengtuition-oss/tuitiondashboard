@@ -914,20 +914,14 @@
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
 
-    var mr=monthRange();
+    allLessons=lessons;
     var unpaid=lessons.filter(function(l){return l.status==="done"&&!l.paid;});
-    lastUnpaid=unpaid; renderPendingKpi();   // headline follows the Overdue/This month/All toggle
-
-    var month=lessons.filter(function(l){return l.lesson_date>=mr.first&&l.lesson_date<=mr.last;});
-    var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
-    $("k-collected").textContent=TL.sgd(collected);
-    $("k-collected-n").textContent=mr.label;
-
-    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
-    $("k-projected").textContent=TL.sgd(projected);
+    lastUnpaid=unpaid;
+    renderPendingKpi();   // pending follows the month picker (All = all-time total)
+    renderMonthKpis();    // collected/projected follow the picked month (All = current month)
 
     renderOutstanding(unpaid);
-    allLessons=lessons;fillSubjects(allLessons.map(function(l){return l.subject;}).concat(slots.map(function(s){return s.subject;})));fillRecFilters();
+    fillSubjects(allLessons.map(function(l){return l.subject;}).concat(slots.map(function(s){return s.subject;})));fillRecFilters();
     renderRecords();
   }
 
@@ -945,9 +939,25 @@
     if(outPeriod==="all"){ if(lbl)lbl.textContent="Total pending"; if(note)note.textContent=all.length+" unpaid lesson"+(all.length===1?"":"s"); }
     else{ if(lbl)lbl.textContent="Pending"; if(note)note.textContent=outLabel()+" · "+sel.length+" unpaid"; }
   }
+  // The month the Collected/Projected KPIs describe — the picked month, or the current one in "All".
+  function activeMonthRange(){
+    var y,m;
+    if(/^\d{4}-\d{2}$/.test(outPeriod)){ y=+outPeriod.slice(0,4); m=+outPeriod.slice(5,7); }
+    else { var n=new Date(); y=n.getFullYear(); m=n.getMonth()+1; }
+    return { first:y+"-"+pad(m)+"-01", last:y+"-"+pad(m)+"-"+pad(new Date(y,m,0).getDate()),
+      label:new Date(y,m-1,1).toLocaleDateString("en-SG",{month:"long",year:"numeric"}) };
+  }
+  function renderMonthKpis(){
+    var r=activeMonthRange();
+    var month=(allLessons||[]).filter(function(l){return l.lesson_date>=r.first&&l.lesson_date<=r.last;});
+    var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
+    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
+    $("k-collected").textContent=TL.sgd(collected); if($("k-collected-n"))$("k-collected-n").textContent=r.label;
+    $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=r.label+" · excl. cancelled";
+  }
   function setOutPeriod(p){
     outPeriod=p; try{localStorage.setItem("tl_out_period",p);}catch(e){}
-    renderOutPeriodUI(); renderPendingKpi(); renderOutstanding(lastUnpaid);
+    renderOutPeriodUI(); renderPendingKpi(); renderMonthKpis(); renderOutstanding(lastUnpaid);
   }
   function outStep(delta){ var d=outMonthDate(); d.setMonth(d.getMonth()+delta); setOutPeriod(d.getFullYear()+"-"+pad(d.getMonth()+1)); }
   function init(user){
