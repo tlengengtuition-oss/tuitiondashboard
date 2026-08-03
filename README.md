@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-03 — Ledger: Overdue / This month / All filter + split pending KPI
+
+For monthly (bulk) billers, "Outstanding" mixed genuinely-overdue lessons with the current month
+still accruing. Added an **Overdue / This month / All** toggle above the outstanding list
+(persisted in localStorage, default All) that scopes the whole view — counts, invoicing, and
+marking paid — to the chosen period. "Overdue" = lessons before this month; "This month" = current.
+Also split the **"Total pending"** KPI into **"Overdue"** (headline = before-this-month unpaid) with
+a "N overdue · $X this month" note, so the number isn't inflated by the accruing month. Collected /
+Projected KPIs unchanged.
+
 ### 2026-08-03 — Outstanding: name checkbox = "select all this student's lessons"
 
 Removed the "select students to bill together" combine feature (redundant with household grouping)

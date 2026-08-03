@@ -1,7 +1,7 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [], outPeriod = "all";
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -101,8 +101,15 @@
     var cls=days>=30?"age bad":(days>=14?"age warn":"age");
     return '<span class="'+cls+'">'+lbl+' overdue</span>';
   }
-  function renderOutstanding(unpaid){
-    lastUnpaid=unpaid;
+  function renderOutstanding(unpaidAll){
+    lastUnpaid=unpaidAll;
+    // Overdue / This month / All — scope the whole view (counts, invoicing, marking) to the period.
+    var mr=monthRange();
+    var unpaid=unpaidAll.filter(function(l){
+      if(outPeriod==="overdue") return l.lesson_date<mr.first;
+      if(outPeriod==="month")   return l.lesson_date>=mr.first&&l.lesson_date<=mr.last;
+      return true;
+    });
     var groups={};unpaid.forEach(function(l){(groups[l.student_id]=groups[l.student_id]||[]).push(l);});
     outGroups=groups;
     function oldestOf(id){return groups[id].reduce(function(m,l){return (!m||l.lesson_date<m)?l.lesson_date:m;},null);}
@@ -112,7 +119,9 @@
       if(oa!==ob)return oa.localeCompare(ob);
       var sa=groups[a].reduce(function(t,l){return t+Number(l.amount);},0);
       var sb=groups[b].reduce(function(t,l){return t+Number(l.amount);},0);return sb-sa;});
-    if(!ids.length){$("outstanding").innerHTML='<div class="card empty"><h3>All settled 🎉</h3><p>No unpaid lessons right now.</p></div>';$("out-hint").textContent="";setOutCount(0);return;}
+    if(!ids.length){
+      var em=outPeriod==="overdue"?"Nothing overdue 🎉":outPeriod==="month"?"Nothing pending this month 🎉":"All settled 🎉";
+      $("outstanding").innerHTML='<div class="card empty"><h3>'+em+'</h3></div>';$("out-hint").textContent="";setOutCount(0);return;}
     $("out-hint").textContent=ids.length+(ids.length===1?" student owing":" students owing");
     setOutCount(ids.length);
     var unpaidLessonIds={};unpaid.forEach(function(l){unpaidLessonIds[l.id]=1;});
@@ -910,12 +919,15 @@
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
 
-    var unpaid=lessons.filter(function(l){return l.status==="done"&&!l.paid;});
-    var pending=unpaid.reduce(function(t,l){return t+Number(l.amount);},0);
-    $("k-pending").textContent=TL.sgd(pending);
-    $("k-pending-n").textContent=unpaid.length+" unpaid lessons";
-
     var mr=monthRange();
+    var unpaid=lessons.filter(function(l){return l.status==="done"&&!l.paid;});
+    var overdue=unpaid.filter(function(l){return l.lesson_date<mr.first;});
+    var monthUnpaid=unpaid.filter(function(l){return l.lesson_date>=mr.first&&l.lesson_date<=mr.last;});
+    var overdueAmt=overdue.reduce(function(t,l){return t+Number(l.amount);},0);
+    var monthPendAmt=monthUnpaid.reduce(function(t,l){return t+Number(l.amount);},0);
+    $("k-pending").textContent=TL.sgd(overdueAmt);
+    $("k-pending-n").textContent=overdue.length+" overdue"+(monthPendAmt>0?" · "+TL.sgd(monthPendAmt)+" this month":"");
+
     var month=lessons.filter(function(l){return l.lesson_date>=mr.first&&l.lesson_date<=mr.last;});
     var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
     $("k-collected").textContent=TL.sgd(collected);
@@ -929,9 +941,21 @@
     renderRecords();
   }
 
+  function setOutPeriod(op){
+    outPeriod=op;
+    try{localStorage.setItem("tl_out_period",op);}catch(e){}
+    var seg=$("out-period"); if(seg) Array.prototype.forEach.call(seg.querySelectorAll("[data-op]"),function(b){b.classList.toggle("on",b.dataset.op===op);});
+    renderOutstanding(lastUnpaid);
+  }
   function init(user){
     userId=user.id;
     var on=function(id,evt,fn){var el=$(id);if(el)el.addEventListener(evt,fn);};
+    try{outPeriod=localStorage.getItem("tl_out_period")||"all";}catch(e){}
+    var seg=$("out-period");
+    if(seg) Array.prototype.forEach.call(seg.querySelectorAll("[data-op]"),function(b){
+      b.classList.toggle("on",b.dataset.op===outPeriod);
+      b.addEventListener("click",function(){setOutPeriod(b.dataset.op);});
+    });
     on("add-btn","click",function(){openAdd(true);});
     on("gen-btn","click",generateWeek);
     on("gen-month-btn","click",generateMonth);
