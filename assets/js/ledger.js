@@ -1,7 +1,7 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedStudents = {}, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -125,7 +125,7 @@
       var age=ageTag(daysSince(rows[0].lesson_date));
       var inner=rows.map(function(l){var d=daysSince(l.lesson_date);return '<div class="lrow"><input type="checkbox" class="lchk" data-lsel="'+l.id+'"'+(selectedLessons[l.id]?" checked":"")+'><span class="lwhen">'+prettyDate(l.lesson_date)+(d>=14?' <span class="agedot" title="'+d+' days unpaid">•</span>':"")+"</span><span>"+(l.subject?esc(l.subject):'<span class="muted">lesson</span>')+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
       var selBtn=selIds.length?'<button class="mark lite" data-invsel="'+id+'::'+selIds.join(",")+'">Invoice '+selIds.length+' selected</button><button class="mark" data-paysel="'+selIds.join(",")+'">Mark '+selIds.length+' selected paid</button>':"";
-      return '<div class="card group"><div class="group-head"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select to bill together"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
+      return '<div class="card group"><div class="group-head"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select all lessons for this student"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'</span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }
     // group owing students by household
     var byHH={}; ids.forEach(function(id){var h=householdBy[id];if(h)(byHH[h]=byHH[h]||[]).push(id);});
@@ -143,7 +143,7 @@
         // lessons checked across the whole household → invoice/mark-paid just those together
         var hhSelIds=members.reduce(function(a,m){return a.concat((groups[m]||[]).filter(function(l){return selectedLessons[l.id];}).map(function(l){return l.id;}));},[]);
         var hhSelBtns=hhSelIds.length?'<button class="mark lite" data-hhinvsel="'+members.join(",")+'::'+hhSelIds.join(",")+'">Invoice '+hhSelIds.length+' selected</button><button class="mark" data-hhpaysel="'+hhSelIds.join(",")+'">Mark '+hhSelIds.length+' selected paid</button>':'';
-        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all with this phone number"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
+        return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all lessons in this household"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
           '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+'</span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
       }
       return studentCard(id);
@@ -163,46 +163,30 @@
     });
     $("outstanding").querySelectorAll("[data-inv]").forEach(function(b){b.addEventListener("click",function(){openInvoice(b.dataset.inv);});});
     $("outstanding").querySelectorAll("[data-remind]").forEach(function(b){b.addEventListener("click",function(){remind(b.dataset.remind);});});
-    // drop selections for students no longer owing
-    Object.keys(selectedStudents).forEach(function(id){if(!groups[id])delete selectedStudents[id];});
+    // Master checkbox by the name → tick/untick ALL that student's outstanding lessons.
+    // Shows a dash (indeterminate) when only some of the student's lessons are ticked.
     $("outstanding").querySelectorAll("[data-sel]").forEach(function(cb){
-      cb.checked=!!selectedStudents[cb.dataset.sel];
+      var lids=(groups[cb.dataset.sel]||[]).map(function(l){return String(l.id);});
+      var n=lids.filter(function(x){return selectedLessons[x];}).length;
+      cb.checked=lids.length>0&&n===lids.length; cb.indeterminate=n>0&&n<lids.length;
       cb.addEventListener("change",function(){
-        if(cb.checked)selectedStudents[cb.dataset.sel]=1; else delete selectedStudents[cb.dataset.sel];
-        updateCombineBar();
+        lids.forEach(function(x){ if(cb.checked)selectedLessons[x]=1; else delete selectedLessons[x]; });
+        renderOutstanding(lastUnpaid);
       });
     });
+    // Household master checkbox → tick/untick every lesson across the household.
     $("outstanding").querySelectorAll("[data-hh]").forEach(function(cb){
-      var h=decodeURIComponent(cb.dataset.hh);
-      var members=ids.filter(function(id){return householdBy[id]===h;});
-      cb.checked=members.length>0&&members.every(function(id){return selectedStudents[id];});
+      var h=decodeURIComponent(cb.dataset.hh), members=ids.filter(function(id){return householdBy[id]===h;});
+      var lids=members.reduce(function(a,m){return a.concat((groups[m]||[]).map(function(l){return String(l.id);}));},[]);
+      var n=lids.filter(function(x){return selectedLessons[x];}).length;
+      cb.checked=lids.length>0&&n===lids.length; cb.indeterminate=n>0&&n<lids.length;
       cb.addEventListener("change",function(){
-        members.forEach(function(id){ if(cb.checked)selectedStudents[id]=1; else delete selectedStudents[id]; });
+        lids.forEach(function(x){ if(cb.checked)selectedLessons[x]=1; else delete selectedLessons[x]; });
         renderOutstanding(lastUnpaid);
       });
     });
     $("outstanding").querySelectorAll("[data-hhinv]").forEach(function(b){b.addEventListener("click",function(){openInvoiceMany(b.dataset.hhinv.split(","));});});
     $("outstanding").querySelectorAll("[data-hhrem]").forEach(function(b){b.addEventListener("click",function(){remindMany(b.dataset.hhrem.split(","));});});
-    updateCombineBar();
-  }
-
-  function updateCombineBar(){
-    var bar=$("combine-bar");if(!bar)return;
-    var ids=Object.keys(selectedStudents);
-    if(ids.length<2){bar.style.display="none";bar.innerHTML="";return;}
-    var total=0,count=0;
-    ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){total+=Number(l.amount);count++;});});
-    var names=ids.map(function(id){return nameById[id]||"—";});
-    bar.innerHTML='<span class="cb-txt">'+ids.length+' selected · '+esc(names.join(", "))+'</span>'+
-      '<span class="cb-sum">'+TL.sgd(total)+' · '+count+' lesson'+(count===1?"":"s")+'</span>'+
-      '<span class="spacer"></span>'+
-      '<button class="cb-rem" id="cb-remind">Remind together</button>'+
-      '<button class="cb-inv" id="cb-invoice">Invoice together</button>'+
-      '<button class="cb-clear" id="cb-clear">Clear</button>';
-    bar.style.display="flex";
-    $("cb-invoice").addEventListener("click",function(){openInvoiceMany(Object.keys(selectedStudents));});
-    $("cb-remind").addEventListener("click",function(){remindMany(Object.keys(selectedStudents));});
-    $("cb-clear").addEventListener("click",function(){selectedStudents={};renderOutstanding(lastUnpaid);});
   }
 
   function waNumber(raw){

@@ -186,6 +186,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-03 — Outstanding: name checkbox = "select all this student's lessons"
+
+Removed the "select students to bill together" combine feature (redundant with household grouping)
+— dropped `selectedStudents`, the combine bar, and its CSS. Repurposed the checkbox by the student
+name into a **master toggle** that ticks/unticks all that student's outstanding lessons (shows a dash
+when only some are ticked); the household checkbox does the same across the whole household. Drives
+the existing "Invoice/Mark N selected" buttons. Household ⌂ grouping + "Invoice together" untouched.
+
 ### 2026-08-03 — Remove the abandoned payment-link / self-report route
 
 Dropped the unfinished "send a link" route (went back to the simple WhatsApp image send). Deleted
