@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=101">
+<link rel="stylesheet" href="assets/css/app.css?v=102">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -41,18 +41,19 @@
       <div class="val" id="k-projected">—</div><div class="note" id="k-projected-n">booked, excl. cancelled</div></div>
   </div>
 
-  <!-- shared period navigator — drives the KPIs, Outstanding, and Records together -->
-  <span class="period" id="hdr-period" style="margin:0 0 14px">
-    <button class="btn" id="p-prev" title="Earlier month">‹</button>
-    <span class="lbl" id="p-label">This month</span>
-    <button class="btn" id="p-next" title="Later month">›</button>
-    <button class="btn" id="p-today">This month</button>
-    <button class="btn" id="p-all">All</button>
-  </span>
-
-  <div class="seg" id="led-seg">
-    <button id="seg-out" class="on">Outstanding<span class="seg-n" id="seg-out-n"></span></button>
-    <button id="seg-rec">Records</button>
+  <!-- tabs on the left, shared period navigator on the right (drives KPIs, Outstanding, Records) -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap;margin-bottom:14px">
+    <div class="seg" id="led-seg" style="margin-bottom:0">
+      <button id="seg-out" class="on">Outstanding<span class="seg-n" id="seg-out-n"></span></button>
+      <button id="seg-rec">Records</button>
+    </div>
+    <span class="period" id="hdr-period" style="margin:0">
+      <button class="btn" id="p-prev" title="Earlier month">‹</button>
+      <span class="lbl" id="p-label">This month</span>
+      <button class="btn" id="p-next" title="Later month">›</button>
+      <button class="btn" id="p-today">This month</button>
+      <button class="btn" id="p-all">All</button>
+    </span>
   </div>
 
   <div id="out-view">
@@ -187,10 +188,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=101"></script>
-<script src="assets/js/supabase.js?v=101"></script>
-<script src="assets/js/app.js?v=101"></script>
-<script src="assets/js/paynow.js?v=101"></script>
-<script src="assets/js/ledger.js?v=101"></script>
+<script src="assets/js/config.js?v=102"></script>
+<script src="assets/js/supabase.js?v=102"></script>
+<script src="assets/js/app.js?v=102"></script>
+<script src="assets/js/paynow.js?v=102"></script>
+<script src="assets/js/ledger.js?v=102"></script>
 </body>
 </html>
