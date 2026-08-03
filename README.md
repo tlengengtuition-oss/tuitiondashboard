@@ -197,7 +197,9 @@ lesson-history table and the separate Lesson-notes list — for one combined "Le
 homework / next-lesson notes underneath, no amounts and no buttons. Tutor view keeps the original
 table + notes list untouched. Everything else client-facing stays: particulars (location, contact,
 level), progress, exams with topics/marks, weekly slots. Defaults to Tutor and isn't persisted, so
-money shows by default on load.
+money shows by default on load. The toggle is pinned to the right edge of the toolbar (placed after
+the action buttons) so it stays put when client view hides "Edit details / Open ledger"; the
+combined list has the same inset padding as the notes/slots cards.
 
 ### 2026-08-03 — Ledger: one shared period navigator in the header (both tabs)
 
