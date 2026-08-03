@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=98">
+<link rel="stylesheet" href="assets/css/app.css?v=99">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -48,11 +48,12 @@
 
   <div id="out-view">
   <div class="section-title">Outstanding by student <span class="hint" id="out-hint"></span></div>
-  <div class="seg" id="out-period" style="margin:2px 0 12px">
-    <button data-op="overdue">Overdue</button>
-    <button data-op="month">This month</button>
-    <button data-op="all">All</button>
-  </div>
+  <span class="period" id="out-period" style="margin:2px 0 12px">
+    <button class="btn" id="out-prev" title="Earlier month">‹</button>
+    <span class="lbl" id="out-label">All time</span>
+    <button class="btn" id="out-next" title="Later month">›</button>
+    <button class="btn" id="out-all">All</button>
+  </span>
   <div id="outstanding"></div>
   </div>
 
@@ -190,10 +191,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=98"></script>
-<script src="assets/js/supabase.js?v=98"></script>
-<script src="assets/js/app.js?v=98"></script>
-<script src="assets/js/paynow.js?v=98"></script>
-<script src="assets/js/ledger.js?v=98"></script>
+<script src="assets/js/config.js?v=99"></script>
+<script src="assets/js/supabase.js?v=99"></script>
+<script src="assets/js/app.js?v=99"></script>
+<script src="assets/js/paynow.js?v=99"></script>
+<script src="assets/js/ledger.js?v=99"></script>
 </body>
 </html>

@@ -186,6 +186,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-03 — Ledger: outstanding period → month picker + All (superseded the toggle)
+
+Replaced the Overdue/This month/All toggle with a **‹ month › navigator + All** control above the
+outstanding list. `outPeriod` is now `"all"` or a `"YYYY-MM"` month; the arrows step months (with
+year rollover), "All" shows everything. It scopes the whole view (counts, invoicing, marking) and
+the pending KPI: All → "Total pending" (all-time), a month → "Pending · <Month Year>". Persisted in
+localStorage.
+
 ### 2026-08-03 — Ledger: Overdue / This month / All filter + split pending KPI
 
 For monthly (bulk) billers, "Outstanding" mixed genuinely-overdue lessons with the current month
