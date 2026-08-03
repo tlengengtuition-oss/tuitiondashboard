@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-03 — Remove the abandoned payment-link / self-report route
+
+Dropped the unfinished "send a link" route (went back to the simple WhatsApp image send). Deleted
+`pay.html`, `assets/js/pay.js`, `db/migration_invoice_share.sql`, `db/migration_invoice_selfpay.sql`,
+`ledger.js#sendInvoiceLink`, the `_invShareToken` plumbing, `config.SITE_URL`, and the
+`self_reported` badge/column in `invoices.js`. Kept the income record + transaction-screenshot
+feature (`proof_path` + receipts bucket). The now-unused DB objects (`share_token`, `self_reported`
+columns; `invoice_by_token` / `mark_invoice_paid_by_token` / `is_valid_share_token` functions; the
+`shared/` storage policies) are harmless but can be dropped — see the cleanup SQL if desired.
+
 ### 2026-08-01 — Self-reported payment: parent taps "I've paid" (`v83`)
 
 The parent can record their own payment from the pay link — no gateway, no fees, no manual editing.

@@ -133,7 +133,6 @@
     body.innerHTML=list.map(function(v){
       var paid=v.status==="paid";
       var badge=paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Issued</span>';
-      if(paid&&v.self_reported) badge+=' <span class="badge" style="background:rgba(181,137,43,.14);color:#8a6a1f" title="The parent reported this payment from the invoice link">reported by parent</span>';
       var pd=paid?' <input type="date" data-pd="'+v.id+'" value="'+(v.paid_date||"")+'" title="Paid on" style="font-size:12px;padding:2px 5px;border:1px solid var(--line);border-radius:6px;margin-left:6px;color:var(--muted)">':'';
       var proof=v.proof_path
         ? '<span style="display:inline-flex;align-items:center;gap:14px">'+
@@ -167,7 +166,7 @@
   async function load(){
     var st=await window.sb.from("students").select("id,name");
     nameById={};(st.data||[]).forEach(function(s){nameById[s.id]=s.name;});
-    var res=await window.sb.from("invoices").select("id,student_id,invoice_no,issued_date,total,status,paid_date,proof_path,self_reported,data").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
+    var res=await window.sb.from("invoices").select("id,student_id,invoice_no,issued_date,total,status,paid_date,proof_path,data").order("issued_date",{ascending:false}).order("created_at",{ascending:false});
     if(res.error){$("i-count").textContent="Couldn't load invoices: "+res.error.message;return;}
     invoices=res.data||[];render();
   }

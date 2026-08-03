@@ -749,7 +749,7 @@
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
-        window._invHTML=invoiceHTML(data,url); window._invShareToken=null; window._invSaved=false;
+        window._invHTML=invoiceHTML(data,url); window._invSaved=false;
         window._invMeta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons),lessonIds:lessons.map(function(l){return l.id;})};
         $("inv-body").innerHTML=window._invHTML;
         $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
@@ -782,7 +782,7 @@
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
-        window._invHTML=invoiceHTML(data,url); window._invShareToken=null; window._invSaved=false;
+        window._invHTML=invoiceHTML(data,url); window._invSaved=false;
         window._invMeta={studentId:null,students:ids,name:billTo,
           recipient:(ids.map(function(id){return recipientById[id];}).filter(Boolean)[0]||""),   // parent name for {name}
           invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(all),lessonIds:all.map(function(l){return l.id;})};
@@ -802,30 +802,11 @@
       issued_date:m.issuedDate,total:m.total,status:"issued",
       data:{html:window._invHTML,title:window._invTitle||("Invoice_"+m.invoiceNo),
         students:m.students||null,name:m.name||null,lesson_ids:m.lessonIds||null}
-    }).select().single();
+    });
     b.disabled=false;
     if(res.error){b.textContent="Save to app";alert("Couldn't save invoice: "+res.error.message);return;}
-    window._invShareToken=(res.data&&res.data.share_token)||null;   // present once migration_invoice_share.sql is run
     window._invSaved=true;   // recorded in the Invoices tab
     b.textContent="Saved ✓";setTimeout(function(){b.textContent="Save to app";},1600);
-  }
-  // Send a link to the public pay page (pay.html?t=<token>) instead of an image — sends as plain
-  // text on WhatsApp (no attachment quirks), and the recipient can pay/save from that page.
-  async function sendInvoiceLink(){
-    if(!window._invMeta)return;
-    var m=window._invMeta,b=$("inv-link"),old=b.textContent;
-    b.disabled=true;b.textContent="Preparing…";
-    if(!window._invShareToken) await saveInvoice();      // must be saved to have a token
-    b.disabled=false;b.textContent=old;
-    if(!window._invShareToken){ alert("Couldn't create the payment link — try Save to app first."); return; }
-    var base=((window.TLENG_CONFIG||{}).SITE_URL)||location.href;   // always the public URL so the link is tappable
-    var link=new URL("pay.html?t="+encodeURIComponent(window._invShareToken), base).href;
-    var msg=invoiceMsg(m)+"\n\n"+link;
-    copyText(msg);                                        // clipboard backup
-    var num=waNumber(contactById[m.studentId||(m.students&&m.students[0])]);
-    var wa=num ? "https://wa.me/"+num+"?text="+encodeURIComponent(msg)
-               : "https://api.whatsapp.com/send?text="+encodeURIComponent(msg);
-    window.open(wa,"_blank");
   }
 
   // Lazily load html2canvas (self-hosted copy first, then CDNs) for rendering the invoice to an image.
@@ -991,7 +972,7 @@
     on("inv-backdrop","click",function(e){if(e.target===$("inv-backdrop"))$("inv-backdrop").classList.remove("on");});
     on("inv-print","click",printInvoice);
     on("inv-wa","click",shareInvoice);
-    on("inv-save","click",saveInvoice);   // payment-link button removed for now; sendInvoiceLink kept dormant
+    on("inv-save","click",saveInvoice);
     on("prev-m","click",function(){shiftMonth(-1);});
     on("next-m","click",function(){shiftMonth(1);});
     on("today-btn","click",goToday);
