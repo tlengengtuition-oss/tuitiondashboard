@@ -921,12 +921,7 @@
 
     var mr=monthRange();
     var unpaid=lessons.filter(function(l){return l.status==="done"&&!l.paid;});
-    var overdue=unpaid.filter(function(l){return l.lesson_date<mr.first;});
-    var monthUnpaid=unpaid.filter(function(l){return l.lesson_date>=mr.first&&l.lesson_date<=mr.last;});
-    var overdueAmt=overdue.reduce(function(t,l){return t+Number(l.amount);},0);
-    var monthPendAmt=monthUnpaid.reduce(function(t,l){return t+Number(l.amount);},0);
-    $("k-pending").textContent=TL.sgd(overdueAmt);
-    $("k-pending-n").textContent=overdue.length+" overdue"+(monthPendAmt>0?" · "+TL.sgd(monthPendAmt)+" this month":"");
+    lastUnpaid=unpaid; renderPendingKpi();   // headline follows the Overdue/This month/All toggle
 
     var month=lessons.filter(function(l){return l.lesson_date>=mr.first&&l.lesson_date<=mr.last;});
     var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
@@ -941,10 +936,29 @@
     renderRecords();
   }
 
+  // Pending KPI reflects the same Overdue / This month / All toggle: All = all-time total.
+  function renderPendingKpi(){
+    var mr=monthRange(), all=lastUnpaid||[];
+    function amt(a){return a.reduce(function(t,l){return t+Number(l.amount);},0);}
+    var overdue=all.filter(function(l){return l.lesson_date<mr.first;});
+    var month=all.filter(function(l){return l.lesson_date>=mr.first&&l.lesson_date<=mr.last;});
+    var lbl=$("k-pending-lbl"), note=$("k-pending-n");
+    if(outPeriod==="overdue"){
+      if(lbl)lbl.textContent="Overdue"; $("k-pending").textContent=TL.sgd(amt(overdue));
+      if(note)note.textContent=overdue.length+" lesson"+(overdue.length===1?"":"s")+", before this month";
+    }else if(outPeriod==="month"){
+      if(lbl)lbl.textContent="Pending this month"; $("k-pending").textContent=TL.sgd(amt(month));
+      if(note)note.textContent=month.length+" unpaid · "+mr.label;
+    }else{
+      if(lbl)lbl.textContent="Total pending"; $("k-pending").textContent=TL.sgd(amt(all));
+      if(note)note.textContent=overdue.length?(TL.sgd(amt(overdue))+" overdue · "+TL.sgd(amt(month))+" this month"):(all.length+" unpaid lessons");
+    }
+  }
   function setOutPeriod(op){
     outPeriod=op;
     try{localStorage.setItem("tl_out_period",op);}catch(e){}
     var seg=$("out-period"); if(seg) Array.prototype.forEach.call(seg.querySelectorAll("[data-op]"),function(b){b.classList.toggle("on",b.dataset.op===op);});
+    renderPendingKpi();
     renderOutstanding(lastUnpaid);
   }
   function init(user){
