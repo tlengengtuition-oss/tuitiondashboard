@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Student · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=102">
+<link rel="stylesheet" href="assets/css/app.css?v=103">
 <style>
   /* borderless header meta strip */
   .phead{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline;margin:2px 2px 10px}
@@ -34,13 +34,27 @@
   .field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
     font:inherit;background:#fffdf8;color:var(--ink);resize:vertical;line-height:1.45}
   .field textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(181,137,43,.18)}
+  /* Client view — hide money + editing so the page is safe to show a parent */
+  .client #p-kpis{display:none}
+  .client #p-ltable [data-label="Amount"], .client #p-ltable thead th:nth-child(3){display:none}
+  .client #p-ltable [data-label="Status"],  .client #p-ltable thead th:nth-child(4){display:none}
+  .client .slotline .slc{display:none}
+  .client .tact{display:none}          /* Edit/Add buttons on lessons, exams, notes */
+  .client #p-addexam{display:none}
+  .client .tutor-only{display:none}
 </style>
 </head>
 <body>
 <div id="view">
   <div class="toolbar">
     <a class="btn" href="students.html">‹ Back to students</a>
-    <span id="p-actions"></span>
+    <span style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="seg" id="view-mode" style="margin:0">
+        <button id="vm-tutor" class="on">Tutor</button>
+        <button id="vm-client">Client view</button>
+      </span>
+      <span id="p-actions" class="tutor-only"></span>
+    </span>
   </div>
 
   <div id="p-head"></div>
@@ -175,9 +189,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=102"></script>
-<script src="assets/js/supabase.js?v=102"></script>
-<script src="assets/js/app.js?v=102"></script>
-<script src="assets/js/student.js?v=102"></script>
+<script src="assets/js/config.js?v=103"></script>
+<script src="assets/js/supabase.js?v=103"></script>
+<script src="assets/js/app.js?v=103"></script>
+<script src="assets/js/student.js?v=103"></script>
 </body>
 </html>

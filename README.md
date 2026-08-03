@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-03 — Student page: Tutor / Client view toggle
+
+Added a **Tutor / Client** segmented toggle to the student page so a profile can be shown to a
+parent without exposing money or edit controls. Client view adds a `.client` class to `#view`; CSS
+then hides the KPI row (Outstanding/Collected/Total billed), the Amount + Status columns of lesson
+history, per-slot rates, and every edit affordance (`.tact` Edit/Add on lessons, exams, notes; the
+Exams "+ Add"; the header actions). Everything client-facing stays: particulars (location, contact,
+level), progress, exams with topics/marks, weekly slots, and lesson notes. Defaults to Tutor and
+isn't persisted, so money shows by default on load.
+
 ### 2026-08-03 — Ledger: one shared period navigator in the header (both tabs)
 
 Unified the Outstanding month-picker and the Records period nav into a single **‹ month › · This

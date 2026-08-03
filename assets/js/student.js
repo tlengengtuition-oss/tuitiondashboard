@@ -311,6 +311,13 @@
     $("x-close").addEventListener("click",closeExam);
     $("x-del").addEventListener("click",deleteExam);
     $("x-modal").addEventListener("click",function(e){if(e.target===$("x-modal"))closeExam();});
+    // Tutor / Client view — Client hides money + editing so the page can be shown to a parent.
+    function setViewMode(client){
+      var v=$("view")||document.body; v.classList.toggle("client",client);
+      var t=$("vm-tutor"),c=$("vm-client"); if(t)t.classList.toggle("on",!client); if(c)c.classList.toggle("on",client);
+    }
+    if($("vm-tutor"))$("vm-tutor").addEventListener("click",function(){setViewMode(false);});
+    if($("vm-client"))$("vm-client").addEventListener("click",function(){setViewMode(true);});
     load();
   }
   TL.requireAuth("student",init);
