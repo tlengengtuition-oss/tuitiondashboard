@@ -144,7 +144,7 @@
         var hhSelIds=members.reduce(function(a,m){return a.concat((groups[m]||[]).filter(function(l){return selectedLessons[l.id];}).map(function(l){return l.id;}));},[]);
         var hhSelBtns=hhSelIds.length?'<button class="mark lite" data-hhinvsel="'+members.join(",")+'::'+hhSelIds.join(",")+'">Invoice '+hhSelIds.length+' selected</button><button class="mark" data-hhpaysel="'+hhSelIds.join(",")+'">Mark '+hhSelIds.length+' selected paid</button>':'';
         return '<div class="hh-block"><div class="hh-head"><span class="gsel"><input type="checkbox" data-hh="'+encodeURIComponent(h)+'" title="Select all lessons in this household"><span class="hh-name">⌂ '+esc(hhLabel)+' <span class="muted" style="font-weight:600;font-size:12px">· '+members.length+' students</span></span>'+ageTag(daysSince(hhOldest))+'</span>'+
-          '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+'</span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
+          '<span class="hh-actions"><span class="gsum">'+TL.sgd(hhSum)+' <small>total</small></span><button class="mark lite" data-hhrem="'+members.join(",")+'">Remind</button><button class="mark lite" data-hhinv="'+members.join(",")+'">Invoice together</button>'+hhSelBtns+'<button class="mark" data-hhpayall="'+hhLessonIds.join(",")+'">Mark all paid</button></span></div>'+members.map(studentCard).join("")+'</div>';
       }
       return studentCard(id);
     }).join("");

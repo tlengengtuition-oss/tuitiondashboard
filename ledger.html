@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=95">
+<link rel="stylesheet" href="assets/css/app.css?v=96">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -22,6 +22,10 @@
   .hh-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px 10px;flex-wrap:wrap}
   .hh-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .hh-name{font-weight:800;color:var(--navy);font-size:14.5px}
+  /* household grand total: prominent, so it reads as THE amount (not another subtotal) */
+  .hh-head .gsum{font-weight:800;color:var(--owed);font-size:16px}
+  .hh-head .gsum small{font-weight:700;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-left:3px}
+  .hh-block .group-head .gsum{font-size:12.5px;opacity:.85}   /* per-student subtotals sit below the grand total */
   .hh-block .card.group{margin-bottom:8px}
   .hh-block .card.group:last-child{margin-bottom:0}
 </style>
@@ -181,10 +185,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=95"></script>
-<script src="assets/js/supabase.js?v=95"></script>
-<script src="assets/js/app.js?v=95"></script>
-<script src="assets/js/paynow.js?v=95"></script>
-<script src="assets/js/ledger.js?v=95"></script>
+<script src="assets/js/config.js?v=96"></script>
+<script src="assets/js/supabase.js?v=96"></script>
+<script src="assets/js/app.js?v=96"></script>
+<script src="assets/js/paynow.js?v=96"></script>
+<script src="assets/js/ledger.js?v=96"></script>
 </body>
 </html>
