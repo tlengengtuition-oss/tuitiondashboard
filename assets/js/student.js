@@ -30,8 +30,9 @@
 
     renderHead();
     renderKpis(lessons);
-    renderLessons(lessons);
-    renderNotes(lessons);
+    renderLessons(lessons);        // tutor: lesson-history table
+    renderNotes(lessons);          // tutor: separate notes list
+    renderClientLessons(lessons);  // client: combined lessons + notes
     renderSlots(slots);
     renderExams(exams);
     renderProgress(exams);
@@ -105,6 +106,23 @@
         '<td class="acts"><button class="tact" data-led="'+l.id+'">Edit</button></td></tr>';
     }).join("");
     $("p-lbody").querySelectorAll("[data-led]").forEach(function(b){b.addEventListener("click",function(){openLesson(b.dataset.led);});});
+  }
+
+  // Client view only: one clean list combining each lesson with its notes — no money, no editing.
+  function renderClientLessons(lessons){
+    var live=lessons.filter(function(l){return l.status!=="cancelled";});
+    live.sort(function(a,b){return (b.lesson_date+(b.start_time||"")).localeCompare(a.lesson_date+(a.start_time||""));});
+    var box=$("p-lessons");
+    if(!live.length){box.innerHTML='<p class="muted" style="font-size:13.5px;margin:0">No lessons yet.</p>';$("p-lhint2").textContent="";return;}
+    $("p-lhint2").textContent=live.length+" lessons";
+    box.innerHTML='<div class="nlist">'+live.map(function(l){
+      var has=l.topics||l.homework||l.remarks,bits="";
+      if(l.topics)bits+='<div class="nbits"><span class="nk">Topics</span>'+esc(l.topics)+'</div>';
+      if(l.homework)bits+='<div class="nbits"><span class="nk">Homework</span>'+esc(l.homework)+'</div>';
+      if(l.remarks)bits+='<div class="nbits"><span class="nk">Next</span>'+esc(l.remarks)+'</div>';
+      if(!has)bits='<div class="nempty">No notes recorded</div>';
+      return '<div class="nrow"><div class="nhead"><span class="nd">'+prettyDate(l.lesson_date)+(l.subject?' · '+esc(l.subject):"")+'</span></div>'+bits+'</div>';
+    }).join("")+'</div>';
   }
 
   // ---- lesson edit ----

@@ -190,11 +190,14 @@ A running log of Raphael's changes, newest first.
 
 Added a **Tutor / Client** segmented toggle to the student page so a profile can be shown to a
 parent without exposing money or edit controls. Client view adds a `.client` class to `#view`; CSS
-then hides the KPI row (Outstanding/Collected/Total billed), the Amount + Status columns of lesson
-history, per-slot rates, and every edit affordance (`.tact` Edit/Add on lessons, exams, notes; the
-Exams "+ Add"; the header actions). Everything client-facing stays: particulars (location, contact,
-level), progress, exams with topics/marks, weekly slots, and lesson notes. Defaults to Tutor and
-isn't persisted, so money shows by default on load.
+then hides the KPI row (Outstanding/Collected/Total billed), per-slot rates, and every edit
+affordance (Exams "+ Add", the header actions). It also **swaps the two tutor sections — the
+lesson-history table and the separate Lesson-notes list — for one combined "Lessons & notes" list**
+(`#p-lessons-sec`, `renderClientLessons`): each live lesson as date · subject with its topics /
+homework / next-lesson notes underneath, no amounts and no buttons. Tutor view keeps the original
+table + notes list untouched. Everything else client-facing stays: particulars (location, contact,
+level), progress, exams with topics/marks, weekly slots. Defaults to Tutor and isn't persisted, so
+money shows by default on load.
 
 ### 2026-08-03 — Ledger: one shared period navigator in the header (both tabs)
 
