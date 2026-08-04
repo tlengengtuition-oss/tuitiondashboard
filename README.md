@@ -186,6 +186,17 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-04 — Calendar: "Revert to slot" follows the planner's current day + time
+
+Revert used to take the **date** from the lesson's stored `slot_date` but the **time** from the live
+recurring slot — so after you edited a student's slot day/time on the planner, a revert put the new
+time on the old date (and lessons postponed before the `slot_date` migration, whose original date was
+backfilled to their postponed date, wouldn't move the date at all). `doRevert` now derives *both* from
+the recurring slot: it anchors on the occurrence week (`slot_date`) and lands on the slot's **current
+weekday** at its **current time**. No change when the slot weekday is unchanged (it already equals
+`slot_date`'s weekday); when the planner day moved, revert tracks it, and old stuck-date lessons snap
+back onto the real slot day.
+
 ### 2026-08-03 — Student page: Tutor / Client view toggle
 
 Added a **Tutor / Client** segmented toggle to the student page so a profile can be shown to a

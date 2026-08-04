@@ -398,9 +398,17 @@
   async function doRevert(b){
     if(!b.slotId||!b.slotDate){ alert("This lesson has no original slot to revert to."); return; }
     var slot=slots.filter(function(s){return String(s.id)===String(b.slotId);})[0];
-    var date=b.slotDate;
-    var start=slot?hhmm(slot.start_time):hhmm2(b.startMin);
-    var end=slot?hhmm(slot.end_time):hhmm2(b.endMin);
+    // Follow the planner: land on the slot's CURRENT weekday + time, anchored on the
+    // occurrence week (slot_date). So if the slot's day/time changed, revert tracks it —
+    // and lessons whose slot_date was lost to the old backfill still snap to the real day.
+    var date, start, end;
+    if(slot){
+      var ref=new Date(b.slotDate+"T00:00:00");
+      date=iso(addDays(ref, slot.weekday - dayIdx(b.slotDate)));
+      start=hhmm(slot.start_time); end=hhmm(slot.end_time);
+    } else {
+      date=b.slotDate; start=hhmm2(b.startMin); end=hhmm2(b.endMin);
+    }
     if(!(await confirmBox("Revert this lesson to its original slot — "+date+", "+start+"–"+end+"?", {title:"Revert to slot", yes:"Revert"}))) return;
     var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,status:statusFor(date,end),postponed:false}).eq("id",b.id);
     if(res.error){ alert("Couldn't revert: "+res.error.message); return; }
