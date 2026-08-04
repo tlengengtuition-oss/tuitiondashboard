@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-04 — Invoice WhatsApp: pick the send flow by OS (restore friend's share sheet)
+
+The v81 Mac fix gated the native share sheet to `isMobileLike()`, which also knocked **Windows
+desktop** off the share sheet (onto download+wa.me) — breaking the flow for the friend on
+Windows/Android. Replaced `isMobileLike()` with `isMacDesktop()` and inverted the gate: the OS
+share sheet (image attached — the original flow) now runs on **everything except macOS desktop**
+(Windows/Linux desktop, Android, iOS), and **only macOS desktop** skips it for the download + wa.me
++ clipboard flow (where the Mac share sheet has no WhatsApp target). `isMacDesktop` = Mac platform
+with no touch points, so iPad/iPhone (Mac-ish UA but touch) correctly stay on the share sheet.
+
 ### 2026-08-04 — Calendar: "Revert to slot" follows the planner's current day + time
 
 Revert used to take the **date** from the lesson's stored `slot_date` but the **time** from the live
