@@ -1,7 +1,10 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
+  // Bank-transfer payment method (overseas clients, no PayNow).
+  function hasBank(p){ return !!(p && p.bank_account_no); }
+  function bankObj(p){ return { name:(p.bank_account_name||p.business_name||""), bank:(p.bank_name||""), acct:(p.bank_account_no||""), swift:(p.bank_swift||"") }; }
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -203,6 +206,7 @@
   }
   var DEFAULT_REMINDER="Hi {name}! Friendly reminder from {business}: you have an outstanding balance of {amount} for {count} tuition lesson(s). PayNow to {paynow}. Thank you!";
   var DEFAULT_INVOICE="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. PayNow to {paynow}. Thank you!";
+  var DEFAULT_INVOICE_BANK="Hi {name}! Here's your invoice {invoice} from {business} — total {amount}. Bank-transfer details are on the invoice. Thank you!";
   function fillTemplate(tpl,vars){return String(tpl).replace(/\{(\w+)\}/g,function(_,k){return vars[k]!=null?String(vars[k]):"";});}
   var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
   function monthsLabel(rows){
@@ -451,9 +455,10 @@
     var sorted=rows.slice().sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!single)sorted=sorted.map(function(l){return Object.assign({_who:nameById[l.student_id]||"—"},l);});
     var dstr=pdate.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"});
+    var byBank=anyBank(stuIds);
     var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,dateStr:dstr,paidStr:dstr,
       student:billTo,lessons:sorted,total:total,combined:!single,paid:true,
-      payTo:profile.paynow_id?PayNow.normalize(profile.paynow_type,profile.paynow_id):""};
+      payTo:byBank?bankObj(profile).name:(profile.paynow_id?PayNow.normalize(profile.paynow_type,profile.paynow_id):"")};
     var html=invoiceHTML(data,"");   // paid receipt — no QR needed
     var ins=await window.sb.from("invoices").insert({
       tutor_id:userId,student_id:single?stuIds[0]:null,invoice_no:invoiceNo,
@@ -676,6 +681,14 @@
         ? '<div class="inv-pay"><div><div class="pn-h"><span class="pn-dot"></span>Paid</div>'+
           '<div class="pn-sub">Received with thanks'+(d.paidStr?" on <b>"+esc(d.paidStr)+"</b>":"")+'.<br>'+
           (d.payTo?'Paid to <b>'+esc(d.payTo)+'</b><br>':'')+'Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>'
+        : d.bank
+        ? '<div class="inv-pay"><div><div class="pn-h"><span class="pn-dot"></span>Bank transfer</div>'+
+          '<div class="pn-sub">'+
+          'Account name: <b>'+esc(d.bank.name)+'</b><br>'+
+          (d.bank.bank?'Bank: <b>'+esc(d.bank.bank)+'</b><br>':'')+
+          'Account no: <b>'+esc(d.bank.acct)+'</b><br>'+
+          (d.bank.swift?'SWIFT/BIC: <b>'+esc(d.bank.swift)+'</b><br>':'')+
+          'Ref: <b>'+esc(d.invoiceNo)+'</b></div></div></div>'
         : '<div class="inv-pay"><img src="'+qrUrl+'" alt="PayNow QR">'+
           '<div><div class="pn-h"><span class="pn-dot"></span>PayNow</div>'+
           '<div class="pn-sub">Scan with any Singapore banking app to pay.<br>'+
@@ -706,12 +719,28 @@
     return qrLoading;
   }
 
+  // Show the built invoice in the overlay (shared by the PayNow and bank-transfer paths).
+  function presentInvoice(data, qrUrl, meta){
+    window._invHTML=invoiceHTML(data,qrUrl); window._invSaved=false;
+    window._invMeta=meta;
+    $("inv-body").innerHTML=window._invHTML;
+    $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
+    $("inv-backdrop").classList.add("on");
+  }
+  // If any billed student pays by bank, the invoice shows bank details (no PayNow QR).
+  function anyBank(ids){ return ids.some(function(id){return payByBankById[id];}); }
+
   async function openInvoice(studentId, onlyIds){
     if(!profile){
       alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");
       return;
     }
-    if(!profile.paynow_id){
+    var byBank=!!payByBankById[studentId];
+    if(byBank && !hasBank(profile)){
+      if(confirm("This student pays by bank transfer, but no bank details are saved yet. Open Settings to add them now?")) location.href="settings.html";
+      return;
+    }
+    if(!byBank && !profile.paynow_id){
       if(confirm("No PayNow details saved yet. Open Settings to add them now?")) location.href="settings.html";
       return;
     }
@@ -719,43 +748,48 @@
       .filter(function(l){ return !onlyIds || onlyIds.indexOf(String(l.id))>-1; })   // invoice only the picked lessons, if any
       .sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date);});
     if(!lessons.length)return;
-    try{ await loadQR(); }
-    catch(e){
-      alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again.");
-      return;
-    }
     var total=Math.round(lessons.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var student=nameById[studentId]||"Student";
     var now=new Date();
     window._invTitle="Invoice_"+(student.replace(/[^A-Za-z0-9]+/g,"")||"Student")+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
     var slug=student.replace(/[^A-Za-z0-9]/g,"").slice(0,8).toUpperCase();
     var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
-    var payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,
       dateStr:now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}),
-      student:student,lessons:lessons,total:total,payTo:payTo};
+      student:student,lessons:lessons,total:total};
+    var meta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons),lessonIds:lessons.map(function(l){return l.id;})};
+    if(byBank){
+      data.bank=bankObj(profile); data.payTo=data.bank.name;
+      presentInvoice(data,"",meta);
+      return;
+    }
+    try{ await loadQR(); }
+    catch(e){
+      alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again.");
+      return;
+    }
+    data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     try{
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
-        window._invHTML=invoiceHTML(data,url); window._invSaved=false;
-        window._invMeta={studentId:studentId,invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(lessons),lessonIds:lessons.map(function(l){return l.id;})};
-        $("inv-body").innerHTML=window._invHTML;
-        $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
-        $("inv-backdrop").classList.add("on");
+        presentInvoice(data,url,meta);
       });
     }catch(e){ alert("Invoice error: "+(e.message||e)); }
   }
 
   async function openInvoiceMany(ids, onlyIds){
     if(!profile){alert("Couldn't read your profile. Make sure you've run db/migration_paynow.sql in Supabase.");return;}
-    if(!profile.paynow_id){if(confirm("No PayNow details saved yet. Open Settings to add them now?"))location.href="settings.html";return;}
+    var byBank=anyBank(ids);
+    if(byBank && !hasBank(profile)){
+      if(confirm("This household pays by bank transfer, but no bank details are saved yet. Open Settings to add them now?"))location.href="settings.html";
+      return;
+    }
+    if(!byBank && !profile.paynow_id){if(confirm("No PayNow details saved yet. Open Settings to add them now?"))location.href="settings.html";return;}
     var all=[];
     ids.forEach(function(id){(outGroups[id]||[]).forEach(function(l){ if(!onlyIds||onlyIds.indexOf(String(l.id))>-1) all.push(Object.assign({_who:nameById[id]||"—"},l)); });});
     all.sort(function(a,b){return a.lesson_date.localeCompare(b.lesson_date)||String(a._who).localeCompare(String(b._who));});
     if(!all.length)return;
-    try{ await loadQR(); }
-    catch(e){ alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again."); return; }
     var total=Math.round(all.reduce(function(t,l){return t+Number(l.amount);},0)*100)/100;
     var names=ids.map(function(id){return nameById[id]||"Student";});
     var billTo=names.length===2?names[0]+" & "+names[1]:names.join(", ");
@@ -763,21 +797,25 @@
     var slug=names.map(function(n){return n.replace(/[^A-Za-z0-9]/g,"").slice(0,4);}).join("+").toUpperCase().slice(0,18)||"GROUP";
     window._invTitle="Invoice_"+slug+"_"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
     var invoiceNo=(profile.invoice_prefix||"INV")+"-"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"-"+slug;
-    var payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     var data={biz:profile.business_name||"Tuition",invoiceNo:invoiceNo,
       dateStr:now.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}),
-      student:billTo,lessons:all,total:total,payTo:payTo,combined:true};
+      student:billTo,lessons:all,total:total,combined:true};
+    var meta={studentId:null,students:ids,name:billTo,
+      recipient:(ids.map(function(id){return recipientById[id];}).filter(Boolean)[0]||""),   // parent name for {name}
+      invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(all),lessonIds:all.map(function(l){return l.id;})};
+    if(byBank){
+      data.bank=bankObj(profile); data.payTo=data.bank.name;
+      presentInvoice(data,"",meta);
+      return;
+    }
+    try{ await loadQR(); }
+    catch(e){ alert("The QR code library is being blocked (ad-blocker or network). Allow cdn.jsdelivr.net or unpkg.com, then try again."); return; }
+    data.payTo=PayNow.normalize(profile.paynow_type,profile.paynow_id);
     try{
       var payload=PayNow.build({type:profile.paynow_type,id:profile.paynow_id,amount:total,name:profile.business_name||"Tuition",reference:invoiceNo});
       window.QRCode.toDataURL(payload,{margin:1,width:300},function(err,url){
         if(err){alert("Couldn't generate QR: "+(err.message||err));return;}
-        window._invHTML=invoiceHTML(data,url); window._invSaved=false;
-        window._invMeta={studentId:null,students:ids,name:billTo,
-          recipient:(ids.map(function(id){return recipientById[id];}).filter(Boolean)[0]||""),   // parent name for {name}
-          invoiceNo:invoiceNo,total:total,issuedDate:iso(now),month:monthsLabel(all),lessonIds:all.map(function(l){return l.id;})};
-        $("inv-body").innerHTML=window._invHTML;
-        $("inv-save").textContent="Save to app";$("inv-save").disabled=false;
-        $("inv-backdrop").classList.add("on");
+        presentInvoice(data,url,meta);
       });
     }catch(e){ alert("Invoice error: "+(e.message||e)); }
   }
@@ -817,11 +855,13 @@
   }
   function invoiceMsg(m){
     var isCombined=!m.studentId;
+    var byBank=isCombined?anyBank(m.students||[]):!!payByBankById[m.studentId];
     var vars={name:isCombined?(m.recipient||m.name||""):(recipientById[m.studentId]||nameById[m.studentId]||""),
       student:isCombined?(m.name||""):(nameById[m.studentId]||""),business:(profile&&profile.business_name)||"T-Leng Tuition",
-      amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:(profile&&profile.paynow_id)||"",
+      amount:TL.sgd(m.total),count:"",invoice:m.invoiceNo,paynow:byBank?"":((profile&&profile.paynow_id)||""),
       month:m.month||"",date:prettyDate(m.issuedDate),year:(m.issuedDate||"").slice(0,4)};
-    var tpl=(profile&&profile.invoice_message)||DEFAULT_INVOICE;
+    // Bank clients can't use PayNow — the default message points them to the on-invoice bank details.
+    var tpl=(profile&&profile.invoice_message)||(byBank?DEFAULT_INVOICE_BANK:DEFAULT_INVOICE);
     return fillTemplate(tpl,vars);
   }
   // Two WhatsApp flows, picked by OS:
@@ -906,11 +946,11 @@
   // ---------- load ----------
   async function load(){
     await TL.promotePastLessons();
-    var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message").eq("id",userId).single();
+    var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,bank_account_name,bank_name,bank_account_no,bank_swift").eq("id",userId).single();
     profile=pr.error?null:pr.data;
 
-    var st=await window.sb.from("students").select("id,name,active,contact,recipient_name").order("name");
-    students=st.data||[];nameById={};contactById={};recipientById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;householdBy[s.id]=(function(c){var d=(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;})(s.contact);});
+    var st=await window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank").order("name");
+    students=st.data||[];nameById={};contactById={};recipientById={};payByBankById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;payByBankById[s.id]=!!s.pay_by_bank;householdBy[s.id]=(function(c){var d=(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;})(s.contact);});
     studentOptions();
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);

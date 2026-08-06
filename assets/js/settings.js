@@ -11,13 +11,17 @@
 
   async function load() {
     var res = await window.sb.from("profiles")
-      .select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,fy_start_month").eq("id", userId).single();
+      .select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,fy_start_month,bank_account_name,bank_name,bank_account_no,bank_swift").eq("id", userId).single();
     if (res.error) { $("s-msg").textContent = "Couldn't load: " + res.error.message; $("s-msg").className = "msg err"; return; }
     var p = res.data || {};
     $("biz").value = p.business_name || "";
     $("ptype").value = p.paynow_type || "mobile";
     $("pid").value = p.paynow_id || "";
     $("prefix").value = p.invoice_prefix || "INV";
+    $("bk-name").value = p.bank_account_name || "";
+    $("bk-bank").value = p.bank_name || "";
+    $("bk-acct").value = p.bank_account_no || "";
+    $("bk-swift").value = p.bank_swift || "";
     $("fystart").value = String(p.fy_start_month || 1);
     $("rmsg").value = p.reminder_message || "";
     $("imsg").value = p.invoice_message || "";
@@ -37,7 +41,11 @@
       invoice_prefix: $("prefix").value.trim() || "INV",
       fy_start_month: parseInt($("fystart").value, 10) || 1,
       reminder_message: $("rmsg").value.trim() || null,
-      invoice_message: $("imsg").value.trim() || null
+      invoice_message: $("imsg").value.trim() || null,
+      bank_account_name: $("bk-name").value.trim() || null,
+      bank_name: $("bk-bank").value.trim() || null,
+      bank_account_no: $("bk-acct").value.trim() || null,
+      bank_swift: $("bk-swift").value.trim() || null
     }).eq("id", userId);
     $("save").disabled = false;
     if (res.error) { msg.textContent = res.error.message; msg.className = "msg err"; return; }

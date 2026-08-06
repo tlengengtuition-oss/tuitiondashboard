@@ -17,7 +17,7 @@
     if(!sid){$("p-head").innerHTML='<div class="card"><p>No student selected. <a href="students.html">Back to students</a>.</p></div>';return;}
     await TL.promotePastLessons();
 
-    var sres=await window.sb.from("students").select("id,name,kind,level,contact,location,recipient_name,notes,active").eq("id",sid).single();
+    var sres=await window.sb.from("students").select("id,name,kind,level,contact,location,recipient_name,notes,active,pay_by_bank").eq("id",sid).single();
     if(sres.error||!sres.data){$("p-head").innerHTML='<div class="card"><p>Couldn\'t load this student. <a href="students.html">Back to students</a>.</p></div>';return;}
     student=sres.data;setTitle(student.name);
 
@@ -58,6 +58,7 @@
     $("e-level").value=student.level||"";$("e-contact").value=student.contact||"";
     $("e-location").value=student.location||"";
     $("e-recipient").value=student.recipient_name||"";$("e-notes").value=student.notes||"";
+    $("e-paybank").checked=!!student.pay_by_bank;
     $("e-msg").textContent="";$("e-msg").className="msg";
     $("e-modal").classList.add("on");
   }
@@ -70,7 +71,8 @@
       name:name,
       level:$("e-level").value.trim()||null,contact:$("e-contact").value.trim()||null,
       location:$("e-location").value.trim()||null,
-      recipient_name:$("e-recipient").value.trim()||null,notes:$("e-notes").value.trim()||null
+      recipient_name:$("e-recipient").value.trim()||null,notes:$("e-notes").value.trim()||null,
+      pay_by_bank:$("e-paybank").checked
     }).eq("id",sid);
     b.disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}

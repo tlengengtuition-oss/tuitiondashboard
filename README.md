@@ -186,6 +186,19 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-06 — Invoices: bank-transfer payment method for overseas clients (no PayNow)
+
+Overseas clients can't use PayNow, so an invoice can now show **bank-transfer details instead of the
+PayNow QR**. New `db/migration_bank_transfer.sql` adds bank fields to `profiles`
+(`bank_account_name`, `bank_name`, `bank_account_no`, `bank_swift`) and a `pay_by_bank` flag to
+`students` — **run it before this deploys or the Ledger/Settings/Student pages error on the missing
+columns.** Settings gained a "Bank transfer" section; the student edit modal gained a "Pays by bank
+transfer" toggle. In the Ledger, `openInvoice`/`openInvoiceMany` branch on the student's flag: bank
+clients get a bank-details block (`invoiceHTML` `d.bank`, no QR, no QR library load), everyone else
+keeps the PayNow QR. Combined household invoices use bank if any member is flagged. The paid-receipt
+"Paid to" and the WhatsApp caption (new `DEFAULT_INVOICE_BANK`, points to on-invoice details) follow
+the same flag.
+
 ### 2026-08-04 — Invoice WhatsApp: pick the send flow by OS (restore friend's share sheet)
 
 The v81 Mac fix gated the native share sheet to `isMobileLike()`, which also knocked **Windows

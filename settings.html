@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=108">
+<link rel="stylesheet" href="assets/css/app.css?v=109">
 <style>
   .field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
     font:inherit;background:#fffdf8;color:var(--ink);resize:vertical;line-height:1.45}
@@ -40,6 +40,31 @@
     <div class="field" style="max-width:200px">
       <label for="prefix">Invoice prefix</label>
       <input id="prefix" type="text" placeholder="INV" maxlength="8">
+    </div>
+
+    <h2 style="margin-top:26px">Bank transfer <span class="muted" style="font-size:13.5px;font-weight:normal">(for overseas clients)</span></h2>
+    <p class="muted" style="font-size:13.5px;margin-bottom:14px">
+      Shown on invoices for students marked <b>“pays by bank transfer”</b>, in place of the PayNow QR.
+      Leave blank if you only use PayNow.</p>
+    <div class="row2">
+      <div class="field">
+        <label for="bk-name">Account holder name</label>
+        <input id="bk-name" type="text" placeholder="e.g. Tan Ah Kow">
+      </div>
+      <div class="field">
+        <label for="bk-bank">Bank name</label>
+        <input id="bk-bank" type="text" placeholder="e.g. DBS Bank">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="bk-acct">Account number</label>
+        <input id="bk-acct" type="text" placeholder="e.g. 123-45678-9">
+      </div>
+      <div class="field">
+        <label for="bk-swift">SWIFT / BIC <span class="muted">(for international transfers)</span></label>
+        <input id="bk-swift" type="text" placeholder="e.g. DBSSSGSG">
+      </div>
     </div>
 
     <div class="field" style="max-width:260px">
@@ -132,10 +157,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=108"></script>
-<script src="assets/js/supabase.js?v=108"></script>
-<script src="assets/js/app.js?v=108"></script>
-<script src="assets/js/paynow.js?v=108"></script>
-<script src="assets/js/settings.js?v=108"></script>
+<script src="assets/js/config.js?v=109"></script>
+<script src="assets/js/supabase.js?v=109"></script>
+<script src="assets/js/app.js?v=109"></script>
+<script src="assets/js/paynow.js?v=109"></script>
+<script src="assets/js/settings.js?v=109"></script>
 </body>
 </html>
