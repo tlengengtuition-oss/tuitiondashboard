@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-07 — No more flash of raw markup while a page loads
+
+Shell pages render `<div id="view">` immediately, but `requireAuth` does a few async round-trips
+(session, MFA, profile) before `mountShell` swaps `#view` for the `.app` shell — so the bare,
+sidebar-less markup flashed the whole time. Added a CSS-only boot state in app.css: `#view` is hidden
+and a centred gold spinner shows over a clean background via `body:has(#view)::before/::after`. Both
+clear automatically the moment the shell mounts (`#view` is replaced, so the selector stops
+matching), and `.app` fades in. Scoped with `:has(#view)` so the auth/landing pages are untouched;
+degrades to a plain background on browsers without `:has`. Honors `prefers-reduced-motion`.
+
 ### 2026-08-07 — Record-payment modal: flag an already-attached screenshot
 
 Marking a lesson paid always showed an empty screenshot upload, even when the covering invoice
