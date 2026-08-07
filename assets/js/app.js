@@ -57,11 +57,8 @@ window.TL = (function () {
              '"><span class="ic">' + n.ic + '</span>' + n.label + "</a>";
     }).join("");
 
-    // Re-callable: the page's original #view markup is captured once, so a later re-mount
-    // (e.g. brand/owner correction after the optimistic paint) still has the content.
     var view = document.getElementById("view");
-    var inner = view ? view.innerHTML : (window._tlInner || "");
-    if (view) window._tlInner = inner;
+    var inner = view.innerHTML;
     var app = document.createElement("div");
     app.className = "app";
     app.innerHTML = `
@@ -102,23 +99,11 @@ window.TL = (function () {
       mountShell(active, "", meta[0], meta[1]);
       return;
     }
-
-    // Optimistic instant shell: if a session is already stored, paint the sidebar/topbar right
-    // away from cached brand + owner flag — no waiting on the network — so switching tabs doesn't
-    // flash. The session/MFA/profile are then verified in the background and the shell refined.
-    var mounted = false;
-    if (hasStoredSession()) {
-      isOwner = localStorage.getItem("tl_owner") === "1";
-      brandName = localStorage.getItem("tl_brand") || DEFAULT_BRAND;
-      mountShell(active, localStorage.getItem("tl_email") || "", meta[0], meta[1]);
-      mounted = true;
-    }
-
     var res = await window.sb.auth.getSession();
     var session = res.data && res.data.session;
     if (!session) { location.replace("login.html"); return; }
-    var realOwner = session.user.id === OWNER_ID;
-    window.TL_IS_OWNER = realOwner; window.TL_OWNER_ID = OWNER_ID;
+    isOwner = session.user.id === OWNER_ID;
+    window.TL_IS_OWNER = isOwner; window.TL_OWNER_ID = OWNER_ID;
     // If two-factor is enabled but not yet satisfied this session (e.g. after a
     // Google sign-in), send the user to complete the challenge first.
     try {
@@ -127,48 +112,14 @@ window.TL = (function () {
         location.replace("login.html?mfa=1"); return;
       }
     } catch (e) { /* MFA unavailable — proceed as normal */ }
-    // Brand the sidebar with this tutor's business name; fall back to the cached/default name.
-    var newBrand = brandName;
+    // Brand the sidebar with this tutor's business name; fall back to the default.
     try {
       var pr = await window.sb.from("profiles").select("business_name").eq("id", session.user.id).single();
       var bn = pr.data && pr.data.business_name && pr.data.business_name.trim();
-      newBrand = bn || DEFAULT_BRAND;
-    } catch (e) { /* keep the cached brand on error */ }
-    try {
-      localStorage.setItem("tl_owner", realOwner ? "1" : "0");
-      localStorage.setItem("tl_brand", newBrand);
-      localStorage.setItem("tl_email", session.user.email || "");
-    } catch (e) {}
-
-    if (!mounted) {
-      // No optimistic paint (e.g. first sign-in this session) — mount now with verified values.
-      isOwner = realOwner; brandName = newBrand;
-      mountShell(active, session.user.email, meta[0], meta[1]);
-    } else {
-      // Optimistic shell is already up; refine it in place if the cached values were stale.
-      if (newBrand !== brandName) {
-        brandName = newBrand;
-        var bEl = document.querySelector(".brand");
-        if (bEl) bEl.innerHTML = mono();
-      }
-      if (realOwner !== isOwner) {   // owner status changed since cache → rebuild nav (rare)
-        isOwner = realOwner;
-        mountShell(active, session.user.email, meta[0], meta[1]);
-      }
-    }
+      brandName = bn || DEFAULT_BRAND;
+    } catch (e) { brandName = DEFAULT_BRAND; }
+    mountShell(active, session.user.email, meta[0], meta[1]);
     if (typeof init === "function") init(session.user);
-  }
-
-  // Cheap synchronous check for a stored Supabase session, so we can paint the shell before the
-  // async getSession() resolves. A wrong "false" simply falls back to the verified path below.
-  function hasStoredSession() {
-    try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (/^sb-.*-auth-token$/.test(k) && (localStorage.getItem(k) || "").length > 20) return true;
-      }
-    } catch (e) {}
-    return false;
   }
 
   async function signOut() {

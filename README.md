@@ -186,17 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
-### 2026-08-07 — Sidebar no longer flashes on navigation (optimistic shell + cross-fade)
+### 2026-08-07 — Loading skeleton matches the shell (no sidebar flash)
 
-Each tab is a separate page (MPA), and `requireAuth` only mounted the sidebar/topbar *after*
-awaiting getSession + MFA + the profile fetch — so the shell popped in late on every navigation.
-`requireAuth` now paints the shell **synchronously** from cached values (`tl_brand`, `tl_owner`,
-`tl_email` in localStorage) the moment a stored Supabase session is detected (`hasStoredSession()`),
-then verifies session/MFA/profile in the background and refines the shell in place only if the cache
-was stale. `mountShell` is now re-callable (captures the page's original `#view` once in
-`window._tlInner`). Added `@view-transition{navigation:auto}` so supporting browsers cross-fade
-between pages — since the sidebar is identical page-to-page, it looks unchanged. Not a full SPA, but
-navigation now feels instant instead of flashing.
+The earlier optimistic-mount + `@view-transition` attempt still flashed a white sidebar between
+pages, so it was reverted (requireAuth/mountShell back to their simple form). Instead the boot state
+is now a CSS-only **skeleton that mirrors the mounted layout**: `body:has(#view)::before` paints a
+steady navy sidebar strip (matching `.sidebar`'s 236px) with `::after` a spinner centred in the
+content area. So during load the sidebar reads as constant navy and only the content shows a
+spinner; the moment `mountShell` swaps `#view` for `.app`, the strip becomes the real sidebar and the
+spinner becomes the content — no white flash. Mobile (top-bar nav) falls back to plain bg + centred
+spinner. `html{background}` set to the app bg to kill any inter-page white.
 
 ### 2026-08-07 — No more flash of raw markup while a page loads
 
