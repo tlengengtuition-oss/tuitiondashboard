@@ -186,6 +186,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-07 — Ledger ⇄ Invoices: keep invoice paid-status in sync from every path
+
+Marking a lesson paid didn't reliably update its invoice. `syncInvoiceOnPaid` only ever set an
+invoice to *paid* (never reverted) and was called from the Outstanding "Mark paid" flow but **not**
+from the Records add/edit modal's "already paid" checkbox. Replaced it with
+`reconcileInvoicesForLessons(ids, date, {create})`: for every invoice covering those lessons it sets
+status *paid* when all its lessons are paid, else *issued* (reverting a previously-settled invoice) —
+and it now runs from both `doMarkPaid` (Outstanding, `create:true` so a receipt is still generated
+when no invoice exists) and `saveLesson` (Records edit, `create:false`). The reverse direction
+(Invoices tab → lessons) already existed in invoices.js, so the two stay consistent. Note: a
+multi-lesson (e.g. whole-month) invoice only flips to paid once **every** lesson on it is paid.
+
 ### 2026-08-06 — Invoices: bank-transfer payment method for overseas clients (no PayNow)
 
 Overseas clients can't use PayNow, so an invoice can now show **bank-transfer details instead of the

@@ -469,35 +469,44 @@
     return ins.error?null:(ins.data&&ins.data.id);
   }
   // Settle/create the invoice covering these lessons; returns its id so proof can attach.
-  async function syncInvoiceOnPaid(ids, paidDate){
-    var rows=allLessons.filter(function(l){return ids.indexOf(l.id)>-1;});
-    if(!rows.length)return null;
+  // Keep every invoice that covers any of these lessons in sync with its lessons' paid state:
+  //   all its lessons paid  → invoice "paid"  (paid_date = given date)
+  //   any lesson unpaid     → invoice "issued" (revert if it had been settled)
+  // Runs from both "mark paid" (Outstanding) and the Records edit, in both directions, so the
+  // Invoices tab always matches the ledger. Returns the first covering invoice's id (for proof
+  // attachment). With opts.create, freshly-paid lessons that no invoice covers get a paid receipt.
+  async function reconcileInvoicesForLessons(ids, paidDate, opts){
+    opts=opts||{};
     var q=await window.sb.from("invoices").select("id,data,status");
     if(q.error)return null;
-    var match=null;
-    (q.data||[]).forEach(function(v){
-      if(match)return;
-      var lids=(v.data&&v.data.lesson_ids)||null;
-      if(!lids||!lids.length)return;
-      if(lids.some(function(x){return ids.indexOf(x)>-1;}))match=v;
+    var matches=(q.data||[]).filter(function(v){
+      var lids=(v.data&&v.data.lesson_ids)||[];
+      return lids.length && lids.some(function(x){return ids.indexOf(x)>-1;});
     });
-    if(match){
-      if(match.status==="paid")return match.id;     // already settled
-      var chk=await window.sb.from("lessons").select("id,paid").in("id",match.data.lesson_ids);
+    var firstId=matches.length?matches[0].id:null;
+    for(var i=0;i<matches.length;i++){
+      var m=matches[i], lids=m.data.lesson_ids;
+      var chk=await window.sb.from("lessons").select("id,paid").in("id",lids);
       var got=chk.data||[];
-      // only settle the invoice once every lesson on it is paid
-      if(got.length&&got.every(function(l){return l.paid;}))
-        await window.sb.from("invoices").update({status:"paid",paid_date:paidDate||todayISO()}).eq("id",match.id);
-      return match.id;              // an invoice exists — never duplicate it
+      var allPaid=got.length>0 && got.every(function(l){return l.paid;});
+      if(allPaid && m.status!=="paid")
+        await window.sb.from("invoices").update({status:"paid",paid_date:paidDate||todayISO()}).eq("id",m.id);
+      else if(!allPaid && m.status==="paid")
+        await window.sb.from("invoices").update({status:"issued",paid_date:null}).eq("id",m.id);
     }
-    return await createPaidInvoice(rows, paidDate);
+    if(matches.length) return firstId;   // an invoice exists — reconciled above, never duplicated
+    if(opts.create){
+      var rows=allLessons.filter(function(l){return ids.indexOf(l.id)>-1 && l.paid;});
+      if(rows.length) return await createPaidInvoice(rows, paidDate);
+    }
+    return null;
   }
   // Core: mark lessons paid on the given date, settle the invoice, attach the screenshot.
   async function doMarkPaid(ids, paidDate, file){
     var res=await window.sb.from("lessons").update({paid:true,paid_date:paidDate}).in("id",ids);
     if(res.error){alert("Couldn't update: "+res.error.message);return false;}
     var invId=null;
-    try{ invId=await syncInvoiceOnPaid(ids, paidDate); }
+    try{ invId=await reconcileInvoicesForLessons(ids, paidDate, {create:true}); }
     catch(e){ console.warn("Invoice sync skipped:",e); }        // payment still stands
     if(file && invId){
       try{
@@ -593,6 +602,11 @@
       : await window.sb.from("lessons").insert(Object.assign({tutor_id:userId},fields));
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    // Ticking/unticking "already paid" here must flow through to any invoice covering this lesson.
+    if(editLessonId){
+      try{ await reconcileInvoicesForLessons([editLessonId], fields.paid_date||todayISO(), {create:false}); }
+      catch(e){ console.warn("Invoice reconcile skipped:",e); }
+    }
     openAdd(false);load();
   }
   async function generateMonth(){
