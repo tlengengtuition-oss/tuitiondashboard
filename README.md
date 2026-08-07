@@ -186,6 +186,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-07 — Sidebar no longer flashes on navigation (optimistic shell + cross-fade)
+
+Each tab is a separate page (MPA), and `requireAuth` only mounted the sidebar/topbar *after*
+awaiting getSession + MFA + the profile fetch — so the shell popped in late on every navigation.
+`requireAuth` now paints the shell **synchronously** from cached values (`tl_brand`, `tl_owner`,
+`tl_email` in localStorage) the moment a stored Supabase session is detected (`hasStoredSession()`),
+then verifies session/MFA/profile in the background and refines the shell in place only if the cache
+was stale. `mountShell` is now re-callable (captures the page's original `#view` once in
+`window._tlInner`). Added `@view-transition{navigation:auto}` so supporting browsers cross-fade
+between pages — since the sidebar is identical page-to-page, it looks unchanged. Not a full SPA, but
+navigation now feels instant instead of flashing.
+
 ### 2026-08-07 — No more flash of raw markup while a page loads
 
 Shell pages render `<div id="view">` immediately, but `requireAuth` does a few async round-trips
