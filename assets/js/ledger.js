@@ -518,14 +518,38 @@
     }
     return true;
   }
+  // Does any invoice covering these lessons already have a payment screenshot attached?
+  async function existingProofFor(ids){
+    var q=await window.sb.from("invoices").select("proof_path,data");
+    if(q.error)return null;
+    var hit=null;
+    (q.data||[]).forEach(function(v){
+      if(hit||!v.proof_path)return;
+      var lids=(v.data&&v.data.lesson_ids)||[];
+      if(lids.length && lids.some(function(x){return ids.indexOf(x)>-1;})) hit=v.proof_path;
+    });
+    return hit;
+  }
   // Every "mark paid" trigger opens this modal to capture the real date + optional screenshot.
-  function openPayModal(ids){
+  async function openPayModal(ids){
     payIds=(ids||[]).slice();
+    var myIds=payIds;   // guards the async note below against a reopen for different lessons
     if(!payIds.length)return;
     $("pay-date").value=todayISO(); $("pay-shot").value=""; $("pay-msg").textContent="";
     $("pay-sub").textContent="Marking "+payIds.length+" lesson"+(payIds.length===1?"":"s")+" as paid.";
+    // If a covering invoice already has a screenshot, say so — no need to re-upload.
+    var note=$("pay-proof"), lbl=$("pay-shot-lbl");
+    if(note){ note.style.display="none"; note.textContent=""; }
+    if(lbl) lbl.innerHTML='Transaction screenshot <span class="muted">(optional)</span>';
     $("pay-save").disabled=false;
     $("pay-modal").classList.add("on");
+    try{
+      var proof=await existingProofFor(myIds);
+      if(proof && payIds===myIds && $("pay-modal").classList.contains("on")){
+        if(note){ note.textContent="✓ A screenshot is already attached to this invoice — leave this blank to keep it, or choose a file to replace it."; note.style.display="block"; }
+        if(lbl) lbl.innerHTML='Transaction screenshot <span class="muted">(optional — replaces the attached one)</span>';
+      }
+    }catch(e){ /* non-blocking: the field still works without the hint */ }
   }
   function closePay(){ $("pay-modal").classList.remove("on"); payIds=[]; }
   async function confirmPay(){

@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-07 — Record-payment modal: flag an already-attached screenshot
+
+Marking a lesson paid always showed an empty screenshot upload, even when the covering invoice
+already had a proof attached (e.g. uploaded earlier from the Invoices tab, then un-paid/re-paid for
+testing). `openPayModal` is now async and calls `existingProofFor(ids)` — if a covering invoice has
+a `proof_path`, it shows a teal "✓ A screenshot is already attached — leave blank to keep it, or
+choose a file to replace it" note and relabels the field as optional-replace. Leaving it blank never
+touches the existing `proof_path`, so the original attachment is preserved. Guarded against a stale
+note if the modal is reopened for different lessons mid-lookup.
+
 ### 2026-08-07 — Ledger ⇄ Invoices: keep invoice paid-status in sync from every path
 
 Marking a lesson paid didn't reliably update its invoice. `syncInvoiceOnPaid` only ever set an
