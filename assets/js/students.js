@@ -109,6 +109,14 @@
     scope.querySelectorAll("[data-off]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.off,false);});});
     scope.querySelectorAll("[data-on]").forEach(function(b){b.addEventListener("click",function(){setActive(b.dataset.on,true);});});
     scope.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){remove(b.dataset.del,find(b.dataset.del).name);});});
+    // Mobile: rows are a compact list — tapping one (not a link/button) opens the profile.
+    scope.querySelectorAll("tr[data-id]").forEach(function(tr){
+      tr.addEventListener("click",function(e){
+        if(!window.matchMedia("(max-width:820px)").matches)return;
+        if(e.target.closest("a,button,input,label"))return;
+        location.href="student.html?id="+encodeURIComponent(tr.dataset.id);
+      });
+    });
   }
   function fillOpt(id,vals,label){
     var el=$(id);if(!el)return;var cur=el.value;

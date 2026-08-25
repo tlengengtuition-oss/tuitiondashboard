@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-25 — Students roster: clean tappable list on mobile
+
+The roster table became a tall stacked card per student on phones — four labelled lines (Name /
+Parent / Level / Contact) plus a five-button action strip, ~one screen each. Added a mobile block in
+students.html: each row is now a compact 2-line card (Name + Level on top, Parent + Contact muted
+below); the per-row action buttons are hidden on phones (manage from the profile / on desktop), and
+tapping a row opens that student's profile (`wire()` adds a `matchMedia`-gated row click; rows carry
+`data-id`). Applies to the active and Discontinued tables. Desktop table unchanged.
+
 ### 2026-08-25 — Student page: clean mobile layout
 
 The phone view was dominated by four full-width tall KPI blocks (endless scroll) and tall 5-row
