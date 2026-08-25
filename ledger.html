@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ledger · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=117">
+<link rel="stylesheet" href="assets/css/app.css?v=118">
 <style>
   .genwrap{display:inline-flex;align-items:stretch}
   .genwrap .btn{border-radius:0}
@@ -49,12 +49,31 @@
     .hh-block{padding:6px}
     .hh-block .card.group{margin-bottom:6px}
 
-    /* Records: keep the filters (and therefore the cards) inside the screen; denser; drop Level */
+    /* Records → compact, scannable rows; tap a row for the full detail sheet.
+       Filters stay inside the screen (a 2×2 grid under a full-width search). */
     .filters input[type=search]{flex:1 1 100%}
     .filters select{flex:1 1 calc(50% - 5px);min-width:0}
-    #month-table td{padding:9px 14px;font-size:14px}
-    #month-table td[data-label="Level"]{display:none}
+    #month-table tbody tr:not(.today-div){display:grid;grid-template-columns:1fr auto;gap:1px 12px;
+      padding:12px 14px;cursor:pointer;align-items:baseline}
+    #month-table tbody tr:not(.today-div):active{background:#fcfaf3}
+    #month-table tbody tr:not(.today-div) td{display:block;border:none;padding:0;font-size:14px;text-align:left}
+    #month-table tbody tr:not(.today-div) td::before{display:none}
+    #month-table tbody tr:not(.today-div) td[data-label=""],
+    #month-table tbody tr:not(.today-div) td[data-label="Subject"],
+    #month-table tbody tr:not(.today-div) td[data-label="Level"],
+    #month-table tbody tr:not(.today-div) td.acts{display:none}
+    #month-table tbody tr:not(.today-div) td[data-label="Date"]{order:1;font-weight:700;color:var(--navy)}
+    #month-table tbody tr:not(.today-div) td[data-label="Amount"]{order:2;text-align:right;font-weight:700}
+    #month-table tbody tr:not(.today-div) td[data-label="Student"]{order:3;font-size:13px;color:var(--ink)}
+    #month-table tbody tr:not(.today-div) td[data-label="Status"]{order:4;text-align:right}
   }
+  /* lesson detail sheet body */
+  .rd-list{display:flex;flex-direction:column}
+  .rd-row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+    padding:11px 0;border-bottom:1px solid var(--line)}
+  .rd-row:last-child{border-bottom:none}
+  .rd-k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+  .rd-v{text-align:right;font-size:14.5px;color:var(--ink)}
 </style>
 </head>
 <body>
@@ -171,6 +190,18 @@
     </div>
   </div>
 
+  <!-- lesson detail sheet (mobile: opens when a compact Records row is tapped) -->
+  <div class="modal-backdrop" id="rec-detail">
+    <div class="modal card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+        <h2 id="rd-title" style="margin:0">Lesson</h2>
+        <button class="btn" id="rd-close" aria-label="Close" style="padding:6px 11px">Close</button>
+      </div>
+      <div id="rd-body"></div>
+      <div class="modal-actions" id="rd-actions" style="margin-top:18px"></div>
+    </div>
+  </div>
+
   <!-- in-app confirm dialog (replaces the browser's native confirm) -->
   <div class="modal-backdrop" id="confirm-modal" style="z-index:60">
     <div class="modal card" style="max-width:380px;border-top-color:var(--navy)">
@@ -216,10 +247,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="assets/js/config.js?v=117"></script>
-<script src="assets/js/supabase.js?v=117"></script>
-<script src="assets/js/app.js?v=117"></script>
-<script src="assets/js/paynow.js?v=117"></script>
-<script src="assets/js/ledger.js?v=117"></script>
+<script src="assets/js/config.js?v=118"></script>
+<script src="assets/js/supabase.js?v=118"></script>
+<script src="assets/js/app.js?v=118"></script>
+<script src="assets/js/paynow.js?v=118"></script>
+<script src="assets/js/ledger.js?v=118"></script>
 </body>
 </html>

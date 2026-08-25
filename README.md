@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-25 — Mobile Records: compact tappable rows + lesson detail sheet
+
+Reworked the Records list on phones from tall stacked cards into **compact, scannable rows** — date +
+amount on the top line, student + status badge below (subject/level/checkbox/action-buttons hidden).
+Each row now carries `data-lid`; tapping one (anywhere but the student link) opens a new **detail
+sheet** (`#rec-detail`) showing the full lesson — student, subject, level, time, amount, status — with
+the row's actions relocated there (Postpone/edit, Cancel/Restore, Delete) plus Close. The tap is gated
+to ≤820px via `matchMedia`, so desktop keeps its inline table + action buttons. Fixed a specificity
+trap where the generic phone-table `td{display:block}` rule outranked the per-cell hide rules.
+
 ### 2026-08-25 — Mobile: tidy the Ledger's Outstanding + Records
 
 On phones the Outstanding action buttons (Remind / Invoice / Mark all paid) and per-lesson "Mark

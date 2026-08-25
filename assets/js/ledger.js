@@ -328,7 +328,7 @@
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
         : '<button class="tact warn" data-cancel="'+l.id+'">Cancel</button>';
-      return lead+'<tr'+attrs+'><td data-label=""><input type="checkbox" class="lchk" data-rsel="'+l.id+'"'+(selectedRecords[l.id]?" checked":"")+'></td><td data-label="Date">'+recDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
+      return lead+'<tr data-lid="'+l.id+'"'+attrs+'><td data-label=""><input type="checkbox" class="lchk" data-rsel="'+l.id+'"'+(selectedRecords[l.id]?" checked":"")+'></td><td data-label="Date">'+recDate(l.lesson_date)+'</td><td class="name" data-label="Student"><a class="snl" href="student.html?id='+l.student_id+'">'+esc(nameById[l.student_id]||"—")+'</a></td><td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td><td data-label="Level">'+(l.level?esc(l.level):'<span class="muted">—</span>')+'</td><td data-label="Amount">'+TL.sgd(l.amount)+'</td><td data-label="Status">'+badge+'</td>'+
         '<td class="acts"><button class="tact" data-edit="'+l.id+'">Postpone / edit</button>'+cancelBtn+'<button class="tact del" data-delete="'+l.id+'">Delete</button></td></tr>';
     }).join("")
       // every row is newer than today (or filters hid it) — today belongs at the bottom
@@ -343,8 +343,36 @@
         updateRecSelBar();
       });
     });
+    // Mobile: rows are compact — tapping one (not a link/button) opens its detail sheet.
+    body.querySelectorAll("tr[data-lid]").forEach(function(tr){
+      tr.addEventListener("click",function(e){
+        if(!window.matchMedia("(max-width:820px)").matches)return;
+        if(e.target.closest("a,button,input,label"))return;
+        openRecDetail(tr.dataset.lid);
+      });
+    });
     updateRecSelBar();
   }
+  // Read-friendly detail sheet for one lesson (mobile), carrying the same row actions.
+  function openRecDetail(id){
+    var l=monthById[id]; if(!l)return;
+    var badge=l.status==="cancelled"?'<span class="kind-tag">cancelled</span>':(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
+    if(l.postponed)badge+=' <span class="kind-tag" style="background:#C8922A;color:#fff">postponed</span>';
+    $("rd-title").textContent=recDate(l.lesson_date);
+    var time=(l.start_time&&l.end_time)?(hm(l.start_time)+"–"+hm(l.end_time)):"";
+    var items=[["Student",esc(nameById[l.student_id]||"—")],["Subject",l.subject?esc(l.subject):"—"],["Level",l.level?esc(l.level):"—"]];
+    if(time)items.push(["Time",time]);
+    items.push(["Amount","<b>"+TL.sgd(l.amount)+"</b>"],["Status",badge]);
+    $("rd-body").innerHTML='<div class="rd-list">'+items.map(function(r){return '<div class="rd-row"><span class="rd-k">'+r[0]+'</span><span class="rd-v">'+r[1]+'</span></div>';}).join("")+'</div>';
+    var canc=l.status==="cancelled"?'<button class="btn" id="rd-restore">Restore</button>':'<button class="btn" id="rd-cancel" style="color:var(--gold-2)">Cancel lesson</button>';
+    $("rd-actions").innerHTML='<button class="btn" id="rd-del" style="color:var(--owed)">Delete</button><span style="display:inline-flex;gap:8px;margin-left:auto">'+canc+'<button class="btn btn-primary" id="rd-edit">Postpone / edit</button></span>';
+    $("rd-edit").onclick=function(){closeRecDetail();openAdd(true,l);};
+    $("rd-del").onclick=function(){closeRecDetail();deleteLesson(id);};
+    var rc=$("rd-cancel");if(rc)rc.onclick=function(){closeRecDetail();cancelLesson(id);};
+    var rr=$("rd-restore");if(rr)rr.onclick=function(){closeRecDetail();restoreLesson(l);};
+    $("rec-detail").classList.add("on");
+  }
+  function closeRecDetail(){$("rec-detail").classList.remove("on");}
   function updateRecSelBar(){
     var n=Object.keys(selectedRecords).length;
     var btn=$("rec-delsel-btn");
@@ -1066,6 +1094,8 @@
     on("pay-cancel","click",closePay);
     on("pay-modal","click",function(e){if(e.target===$("pay-modal"))closePay();});
     on("pay-save","click",confirmPay);
+    on("rd-close","click",closeRecDetail);
+    on("rec-detail","click",function(e){if(e.target===$("rec-detail"))closeRecDetail();});
     on("m-student","change",prefillFromSlot);
     ["m-rate","m-split","m-start","m-end"].forEach(function(id){on(id,"input",recalcCost);});
     on("inv-close","click",function(){$("inv-backdrop").classList.remove("on");});
