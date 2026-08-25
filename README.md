@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-25 — Mobile: top bar + hamburger + slide-in nav drawer
+
+Replaced the cramped wrap-around row of nav pills on phones with a proper mobile pattern. `mountShell`
+now renders a fixed navy **top bar** (`.mnav`: hamburger + monogram + brand) and a `.nav-scrim`
+backdrop; the hamburger toggles a `nav-open` class on `.app`. Below 820px the sidebar becomes an
+off-canvas **drawer** that slides in from the left (full vertical nav + email + sign-out) over a
+dimmed scrim; tapping the scrim, a tab, or pressing Esc closes it, and the page is locked from
+scrolling while open. The authoritative mobile block sits at the end of app.css so it overrides the
+old pill-row rules. The mobile boot skeleton now shows a matching navy top strip. Desktop unchanged.
+
 ### 2026-08-07 — Loading skeleton matches the shell (no sidebar flash)
 
 The earlier optimistic-mount + `@view-transition` attempt still flashed a white sidebar between

@@ -61,6 +61,7 @@ window.TL = (function () {
     var inner = view.innerHTML;
     var app = document.createElement("div");
     app.className = "app";
+    var burgerSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>';
     app.innerHTML = `
       <aside class="sidebar">
         <div class="brand">${mono()}</div>
@@ -70,7 +71,13 @@ window.TL = (function () {
           <button id="tl-signout">Sign out</button>
         </div>
       </aside>
+      <div class="nav-scrim" id="tl-scrim"></div>
       <div class="main">
+        <div class="mnav">
+          <button class="burger" id="tl-burger" aria-label="Open menu" aria-expanded="false">${burgerSvg}</button>
+          <span class="mmono">${esc(monogram(brandName))}</span>
+          <span class="mbrand">${esc(brandName)}</span>
+        </div>
         <div class="topbar">
           <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
         </div>
@@ -80,6 +87,13 @@ window.TL = (function () {
     document.body.innerHTML = "";
     document.body.appendChild(app);
     document.getElementById("tl-signout").addEventListener("click", signOut);
+    // Mobile nav: hamburger opens a slide-in drawer; scrim / a tab / Esc closes it.
+    var burger = document.getElementById("tl-burger"), scrim = document.getElementById("tl-scrim");
+    function setNav(open) { app.classList.toggle("nav-open", open); if (burger) burger.setAttribute("aria-expanded", open ? "true" : "false"); }
+    if (burger) burger.addEventListener("click", function () { setNav(!app.classList.contains("nav-open")); });
+    if (scrim) scrim.addEventListener("click", function () { setNav(false); });
+    app.querySelectorAll(".nav a").forEach(function (a) { a.addEventListener("click", function () { setNav(false); }); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") setNav(false); });
   }
 
   async function requireAuth(active, init) {
