@@ -1,4 +1,4 @@
-/* v119 */
+/* v120 */
 /* =====================================================================
    T-Leng Tuition Dashboard — house style
    navy / gold / cream / teal · Georgia headings · sans body
@@ -433,3 +433,11 @@ a.snl:hover{color:var(--gold);text-decoration:underline}
 .filters select{flex:0 1 auto;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:13.5px;background:#fff;font-family:inherit;color:var(--ink);max-width:100%}
 .filters select.on{border-color:var(--gold);background:rgba(181,137,43,.07);font-weight:700}
 .filters .btn{padding:8px 13px;font-size:13px}
+
+/* ---------- iOS: never auto-zoom into a sub-16px input (it won't zoom back out) ----------
+   Keep every form control at ≥16px on phones so Safari leaves the zoom alone. Appended last so
+   it beats the smaller sizes set on .filters above. */
+@media(max-width:820px){
+  input,select,textarea{font-size:16px}
+  .filters input[type=search],.filters select{font-size:16px}
+}

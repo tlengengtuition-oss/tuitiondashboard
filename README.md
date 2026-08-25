@@ -186,6 +186,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-25 — Stop iOS auto-zoom on inputs (Records search etc.)
+
+iOS Safari zooms into any focused input smaller than 16px and doesn't zoom back out — the Records
+search (14px) and filter selects (13.5px) triggered it. Rather than force a zoom-out (only possible
+by disabling pinch-zoom, which harms accessibility), keep controls at 16px on phones so Safari never
+zooms: added a `@media(max-width:820px){ input,select,textarea{font-size:16px} }` rule (plus the
+`.filters` selectors explicitly, to beat their smaller sizes). Verified computed size is 16px.
+
 ### 2026-08-25 — Outstanding collapses by default; Calendar legend back on mobile
 
 Two things. (1) **Outstanding** student cards are now **collapsed by default** — each shows just its
