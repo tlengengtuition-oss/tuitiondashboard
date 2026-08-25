@@ -101,13 +101,21 @@
     $("p-lhint").textContent=lessons.length+" total";
     $("p-lbody").innerHTML=lessons.map(function(l){
       var badge=l.status==="cancelled"?'<span class="kind-tag">cancelled</span>':(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
-      return '<tr><td data-label="Date">'+prettyDate(l.lesson_date)+'</td>'+
+      return '<tr data-lid="'+l.id+'"><td data-label="Date">'+prettyDate(l.lesson_date)+'</td>'+
         '<td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td>'+
         '<td data-label="Amount">'+TL.sgd(l.amount)+'</td>'+
         '<td data-label="Status">'+badge+'</td>'+
         '<td class="acts"><button class="tact" data-led="'+l.id+'">Edit</button></td></tr>';
     }).join("");
     $("p-lbody").querySelectorAll("[data-led]").forEach(function(b){b.addEventListener("click",function(){openLesson(b.dataset.led);});});
+    // Mobile: rows are compact — tapping one opens the edit sheet (buttons are hidden there).
+    $("p-lbody").querySelectorAll("tr[data-lid]").forEach(function(tr){
+      tr.addEventListener("click",function(e){
+        if(!window.matchMedia("(max-width:820px)").matches)return;
+        if(e.target.closest("a,button,input,label"))return;
+        openLesson(tr.dataset.lid);
+      });
+    });
   }
 
   // Client view only: one clean list combining each lesson with its notes — no money, no editing.

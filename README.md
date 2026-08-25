@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-25 — Student page: clean mobile layout
+
+The phone view was dominated by four full-width tall KPI blocks (endless scroll) and tall 5-row
+lesson-history cards. Added a mobile block in student.html: KPIs become a compact **2×2 grid** with
+tightened padding and uppercase labels; **lesson history** becomes compact tappable rows
+(date+amount / subject+status) — tapping a row opens the existing edit sheet (`openLesson`, gated to
+≤820px via matchMedia; row gets a `data-lid`), matching the Records pattern; and the toolbar controls
+align left and wrap cleanly instead of right-floating over three rows.
+
 ### 2026-08-25 — Stop iOS auto-zoom on inputs (Records search etc.)
 
 iOS Safari zooms into any focused input smaller than 16px and doesn't zoom back out — the Records
