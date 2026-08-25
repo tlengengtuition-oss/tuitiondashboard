@@ -74,9 +74,9 @@ window.TL = (function () {
       <div class="nav-scrim" id="tl-scrim"></div>
       <div class="main">
         <div class="mnav">
-          <button class="burger" id="tl-burger" aria-label="Open menu" aria-expanded="false">${burgerSvg}</button>
           <span class="mmono">${esc(monogram(brandName))}</span>
           <span class="mbrand">${esc(brandName)}</span>
+          <button class="burger" id="tl-burger" aria-label="Open menu" aria-expanded="false">${burgerSvg}</button>
         </div>
         <div class="topbar">
           <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div>

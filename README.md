@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-25 — Mobile: move the nav bar to the bottom, hamburger on the right
+
+Relocated the mobile nav bar from the top to a fixed **bottom** bar with the hamburger on the
+**right** (thumb-reachable for one-handed use), and flipped the drawer to slide in from the right to
+match the trigger. Content gets `padding-bottom` (incl. `env(safe-area-inset-bottom)` for the iOS
+home indicator) instead of top padding; the bar itself is safe-area-padded with a top shadow. The
+mobile boot skeleton now paints a navy strip along the **bottom**. Brand stays on the left of the
+bar. Desktop unchanged.
+
 ### 2026-08-25 — Mobile: top bar + hamburger + slide-in nav drawer
 
 Replaced the cramped wrap-around row of nav pills on phones with a proper mobile pattern. `mountShell`
