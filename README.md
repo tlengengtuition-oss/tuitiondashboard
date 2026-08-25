@@ -186,6 +186,17 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-25 — Mobile: tidy the Ledger's Outstanding + Records
+
+On phones the Outstanding action buttons (Remind / Invoice / Mark all paid) and per-lesson "Mark
+paid" ran off the right edge because their rows didn't wrap — the group/household containers weren't
+width-capped, so the flex rows sized to content and spilled (then got clipped). Added a mobile block
+in ledger.html: cap `#outstanding`/`.hh-block`/`.card.group` to the screen, stack each group/household
+header, and let the action rows wrap to full-width (with `min-width:0` children so wrapping actually
+kicks in); lesson rows stay one line with the subject shrinking. Records: the filter selects now form
+a 2×2 grid under a full-width search (they were stretching the whole card wide), cards are denser, and
+the low-value Level row is hidden on mobile. Desktop unchanged.
+
 ### 2026-08-25 — Mobile: move the nav bar to the bottom, hamburger on the right
 
 Relocated the mobile nav bar from the top to a fixed **bottom** bar with the hamburger on the
