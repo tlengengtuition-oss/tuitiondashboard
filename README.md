@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-25 — Mobile: fix white-on-white cards (roster + profile lessons)
+
+The phone list cards (white `.tbl tr`) sat inside a white `.card` container, so they blended together.
+Made the container transparent on mobile (`background/border/box-shadow: none`) for the students
+roster (`.card:has(#s-table)`, `#disc-card`) and the profile's lesson-history
+(`#p-lhist-sec .card:has(#p-ltable)`), so each white card now stands out on the cream page. (Left the
+Ledger Records card alone for now — its "today" row is cream-highlighted and would blend on a cream
+page; that one wants a flat-list treatment instead.)
+
 ### 2026-08-25 — Students roster: clean tappable list on mobile
 
 The roster table became a tall stacked card per student on phones — four labelled lines (Name /

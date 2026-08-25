@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Students · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=122">
+<link rel="stylesheet" href="assets/css/app.css?v=123">
 <style>
   a.slink{color:var(--navy);font-weight:700;text-decoration:none}
   a.slink:hover{text-decoration:underline}
 
   /* ---- mobile: clean, scannable roster — tap a student to open their profile ---- */
   @media(max-width:820px){
+    /* drop the white container so each white student card stands out on the cream page */
+    .card:has(#s-table),#disc-card{background:transparent;border:none;box-shadow:none}
     #s-table tbody tr,#disc-card .tbl tbody tr{display:grid;grid-template-columns:1fr auto;
       gap:2px 12px;padding:13px 14px;cursor:pointer;align-items:baseline}
     #s-table tbody tr:active,#disc-card .tbl tbody tr:active{background:#fcfaf3}
@@ -126,9 +128,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=122"></script>
-<script src="assets/js/supabase.js?v=122"></script>
-<script src="assets/js/app.js?v=122"></script>
-<script src="assets/js/students.js?v=122"></script>
+<script src="assets/js/config.js?v=123"></script>
+<script src="assets/js/supabase.js?v=123"></script>
+<script src="assets/js/app.js?v=123"></script>
+<script src="assets/js/students.js?v=123"></script>
 </body>
 </html>
