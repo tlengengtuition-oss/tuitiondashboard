@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-25 — Outstanding collapses by default; Calendar legend back on mobile
+
+Two things. (1) **Outstanding** student cards are now **collapsed by default** — each shows just its
+header (name, days overdue, amount, and the Remind/Invoice/Mark-all-paid actions) with a caret;
+tapping the header (ignoring its buttons/checkbox/link) toggles the lesson list. Much easier to scan
+students; expand only when you want to see or pick individual lessons. (2) **Calendar**: the category
+legend/toggles (Paid / Unpaid / Scheduled / Not logged / Cancelled) were `display:none` below 820px —
+now shown as a full-width wrapping row under the Week/Month control, so the filters are usable on
+phones again.
+
 ### 2026-08-25 — Mobile Records: compact tappable rows + lesson detail sheet
 
 Reworked the Records list on phones from tall stacked cards into **compact, scannable rows** — date +
