@@ -1,6 +1,6 @@
 // Per-student profile: header, totals, lesson history, slots, exams.
 (function () {
-  var userId=null, sid=null, student=null, lessons=[], exams=[], noteId=null, lessonId=null, examId=null;
+  var userId=null, sid=null, student=null, lessons=[], exams=[], noteId=null, lessonId=null, examId=null, cancelConfirming=false;
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function qid(){var m=location.search.match(/[?&]id=([^&]+)/);return m?decodeURIComponent(m[1]):null;}
@@ -154,6 +154,8 @@
     $("l-amount").value=(l.amount!=null?l.amount:"");$("l-paid").checked=!!l.paid;
     var lbl=$("l-amount-lbl");if(lbl)lbl.textContent=cancelled?"Compensation (S$)":"Amount (S$)";
     $("l-toggle").textContent=cancelled?"Restore lesson":"Cancel lesson";
+    $("l-toggle").classList.remove("btn-danger");
+    cancelConfirming=false;$("l-cancel-box").style.display="none";$("l-cancel-comp").value="";
     $("l-msg").textContent="";$("l-msg").className="msg";
     $("l-modal").classList.add("on");
   }
@@ -172,15 +174,24 @@
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     closeLesson();load();
   }
+  function abortCancel(){
+    cancelConfirming=false;$("l-cancel-box").style.display="none";
+    $("l-toggle").textContent="Cancel lesson";$("l-toggle").classList.remove("btn-danger");
+  }
   async function toggleLesson(){
     var l=lessons.filter(function(x){return x.id===lessonId;})[0];if(!l)return;
     var fields;
     if(l.status==="cancelled"){
       fields={status:(l.lesson_date>todayISO())?"scheduled":"done",compensation:null};
+    }else if(!cancelConfirming){
+      // First click just reveals the (optional) compensation field — the second click,
+      // now relabelled, actually cancels. No browser prompt.
+      cancelConfirming=true;
+      $("l-cancel-box").style.display="block";$("l-cancel-comp").focus();
+      $("l-toggle").textContent="Confirm cancel";$("l-toggle").classList.add("btn-danger");
+      return;
     }else{
-      var raw=prompt("Cancel this lesson? It won't count toward income unless you add a compensation amount.\n\nCompensation amount (optional, leave blank for $0):","");
-      if(raw===null)return;   // backed out of the prompt — don't cancel
-      var comp=Math.max(0,parseFloat(raw)||0);
+      var comp=Math.max(0,parseFloat($("l-cancel-comp").value)||0);
       fields={status:"cancelled",paid:false,paid_date:null,compensation:comp>0?comp:null};
     }
     var res=await window.sb.from("lessons").update(fields).eq("id",lessonId);
@@ -351,6 +362,7 @@
     TL.wirePostal("e-postal-btn","e-location","e-postal-msg");
     $("l-save").addEventListener("click",saveLesson);
     $("l-toggle").addEventListener("click",toggleLesson);
+    $("l-cancel-abort").addEventListener("click",abortCancel);
     $("l-del").addEventListener("click",deleteLesson);
     $("l-modal").addEventListener("click",function(e){if(e.target===$("l-modal"))closeLesson();});
     $("p-addexam").addEventListener("click",function(){openExam(null);});

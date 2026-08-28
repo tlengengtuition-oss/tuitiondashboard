@@ -330,7 +330,7 @@
     pop.style.display="block";
     positionPopover(node);
     $("cp-x").addEventListener("click", hidePopover);
-    var cancelBtn=$("cp-cancel"); if(cancelBtn) cancelBtn.addEventListener("click", function(){ doCancel(b.id); });
+    var cancelBtn=$("cp-cancel"); if(cancelBtn) cancelBtn.addEventListener("click", function(){ showCancelForm(b); });
     var restoreBtn=$("cp-restore"); if(restoreBtn) restoreBtn.addEventListener("click", function(){ doRestore(b); });
     var deleteBtn=$("cp-delete"); if(deleteBtn) deleteBtn.addEventListener("click", function(){ doDelete(b.id); });
     var postponeBtn=$("cp-postpone"); if(postponeBtn) postponeBtn.addEventListener("click", function(){ showPostponeForm(b); });
@@ -367,12 +367,23 @@
     if(res.error){alert("Couldn't log: "+res.error.message);return;}
     refreshAfterMutation();
   }
-  async function doCancel(id){
-    var raw=prompt("Cancel this lesson? It won't count toward income unless you add a compensation amount.\n\nCompensation amount (optional, leave blank for $0):","");
-    if(raw===null)return;   // backed out of the prompt — don't cancel
-    var comp=Math.max(0,parseFloat(raw)||0);
-    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null,compensation:comp>0?comp:null}).eq("id",id);
-    if(res.error){alert("Couldn't cancel: "+res.error.message);return;}
+  function showCancelForm(b){
+    var pop=$("cal-pop");
+    pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>Cancel '+esc(b.name)+'</h4>'+
+      '<div class="cp-row" style="color:var(--muted)">Won\'t count toward income unless you add a compensation amount.</div>'+
+      '<div class="cp-field"><label for="cp-comp">Compensation <span class="muted">(optional)</span></label><input type="number" id="cp-comp" min="0" step="0.01" placeholder="0.00"></div>'+
+      '<div class="msg" id="cp-cmsg"></div>'+
+      '<div class="cp-btns"><button class="cp-btn danger" id="cp-csave">Cancel lesson</button><button class="cp-btn" id="cp-cback">Back</button></div>';
+    pop.style.display="block";
+    if(popNode) positionPopover(popNode);
+    $("cp-x").addEventListener("click", hidePopover);
+    $("cp-cback").addEventListener("click", function(){ if(popNode) showPopover(popNode); });
+    $("cp-csave").addEventListener("click", function(){ saveCancelForm(b); });
+  }
+  async function saveCancelForm(b){
+    var comp=Math.max(0,parseFloat($("cp-comp").value)||0), msg=$("cp-cmsg");
+    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null,compensation:comp>0?comp:null}).eq("id",b.id);
+    if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     refreshAfterMutation();
   }
   async function doRestore(b){

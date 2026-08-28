@@ -453,12 +453,21 @@
     setTimeout(function(){URL.revokeObjectURL(url);},4000);
   }
 
-  async function cancelLesson(id){
-    var raw=prompt("Cancel this lesson? It won't count toward income unless you add a compensation amount.\n\nCompensation amount (optional, leave blank for $0):","");
-    if(raw===null)return;   // backed out of the prompt — don't cancel
-    var comp=Math.max(0,parseFloat(raw)||0);
+  var cancelLessonId=null;
+  function cancelLesson(id){
+    cancelLessonId=id;
+    $("cancel-amt").value="";$("cancel-msg").textContent="";$("cancel-msg").className="msg";
+    $("cancel-modal").classList.add("on");
+  }
+  function closeCancelModal(){$("cancel-modal").classList.remove("on");cancelLessonId=null;}
+  async function confirmCancel(){
+    if(!cancelLessonId)return;
+    var id=cancelLessonId, comp=Math.max(0,parseFloat($("cancel-amt").value)||0), msg=$("cancel-msg");
+    $("cancel-confirm").disabled=true;
     var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null,compensation:comp>0?comp:null}).eq("id",id);
-    if(res.error){alert("Couldn't cancel: "+res.error.message);return;}
+    $("cancel-confirm").disabled=false;
+    if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
+    closeCancelModal();
     load();
   }
   async function restoreLesson(l){
@@ -1124,6 +1133,9 @@
     on("pay-cancel","click",closePay);
     on("pay-modal","click",function(e){if(e.target===$("pay-modal"))closePay();});
     on("pay-save","click",confirmPay);
+    on("cancel-back","click",closeCancelModal);
+    on("cancel-modal","click",function(e){if(e.target===$("cancel-modal"))closeCancelModal();});
+    on("cancel-confirm","click",confirmCancel);
     on("rd-close","click",closeRecDetail);
     on("rec-detail","click",function(e){if(e.target===$("rec-detail"))closeRecDetail();});
     on("m-student","change",prefillFromSlot);
