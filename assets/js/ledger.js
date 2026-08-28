@@ -131,7 +131,11 @@
       var lessonIds=rows.map(function(l){return l.id;});
       var selIds=rows.filter(function(l){return selectedLessons[l.id];}).map(function(l){return l.id;});
       var age=ageTag(daysSince(rows[0].lesson_date));
-      var inner=rows.map(function(l){var d=daysSince(l.lesson_date);return '<div class="lrow"><input type="checkbox" class="lchk" data-lsel="'+l.id+'"'+(selectedLessons[l.id]?" checked":"")+'><span class="lwhen">'+prettyDate(l.lesson_date)+(d>=14?' <span class="agedot" title="'+d+' days unpaid">•</span>':"")+"</span><span>"+(l.subject?esc(l.subject):'<span class="muted">lesson</span>')+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
+      var inner=rows.map(function(l){var d=daysSince(l.lesson_date);
+        var label=l.status==="cancelled"
+          ?'<span class="muted">Cancellation fee'+(l.subject?" · "+esc(l.subject):"")+'</span>'
+          :(l.subject?esc(l.subject):'<span class="muted">lesson</span>');
+        return '<div class="lrow"><input type="checkbox" class="lchk" data-lsel="'+l.id+'"'+(selectedLessons[l.id]?" checked":"")+'><span class="lwhen">'+prettyDate(l.lesson_date)+(d>=14?' <span class="agedot" title="'+d+' days unpaid">•</span>':"")+"</span><span>"+label+'</span><span class="lamt">'+TL.sgd(l.amount)+'</span><button class="mark lite" data-pay="'+l.id+'">Mark paid</button></div>';}).join("");
       var selBtn=selIds.length?'<button class="mark lite" data-invsel="'+id+'::'+selIds.join(",")+'">Invoice '+selIds.length+' selected</button><button class="mark" data-paysel="'+selIds.join(",")+'">Mark '+selIds.length+' selected paid</button>':"";
       return '<div class="card group collapsed"><div class="group-head" data-grp="'+id+'"><span class="gsel"><input type="checkbox" data-sel="'+id+'" title="Select all lessons for this student"><span class="gname"><a class="snl" href="student.html?id='+id+'">'+esc(nameById[id]||"—")+'</a></span>'+age+'<span class="grp-caret" aria-hidden="true">›</span></span><span class="right"><span class="gsum">'+TL.sgd(sum)+'</span><button class="mark lite" data-remind="'+id+'">Remind</button><button class="mark lite" data-inv="'+id+'">Invoice</button>'+selBtn+'<button class="mark" data-payall="'+lessonIds.join(",")+'">Mark all paid</button></span></div>'+inner+'</div>';
     }
@@ -294,7 +298,7 @@
     if(fSub)rows=rows.filter(function(l){return (l.subject||"")===fSub;});
     if(fLvl)rows=rows.filter(function(l){return (l.level||"")===fLvl;});
     if(stat)rows=rows.filter(function(l){
-      if(stat==="unpaid")return l.status==="done"&&!l.paid;
+      if(stat==="unpaid")return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));
       if(stat==="paid")return l.paid;
       if(stat==="postponed")return !!l.postponed;
       return l.status===stat; // scheduled / cancelled
@@ -330,7 +334,9 @@
       if(isToday)cls.push("today");
       if(l.status==="cancelled")cls.push("is-cancelled");
       var attrs=(isToday&&!placed?(placed=true,' id="rec-today"'):"")+(cls.length?' class="'+cls.join(" ")+'"':"");
-      var badge=l.status==="cancelled"?'<span class="kind-tag">cancelled</span>':(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
+      var badge=l.status==="cancelled"
+        ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
+        :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
       if(l.postponed)badge+=' <span class="kind-tag" style="background:#C8922A;color:#fff">postponed</span>';
       var cancelBtn=l.status==="cancelled"
         ? '<button class="tact" data-restore="'+l.id+'">Restore</button>'
@@ -363,13 +369,15 @@
   // Read-friendly detail sheet for one lesson (mobile), carrying the same row actions.
   function openRecDetail(id){
     var l=monthById[id]; if(!l)return;
-    var badge=l.status==="cancelled"?'<span class="kind-tag">cancelled</span>':(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
+    var badge=l.status==="cancelled"
+      ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
+      :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
     if(l.postponed)badge+=' <span class="kind-tag" style="background:#C8922A;color:#fff">postponed</span>';
     $("rd-title").textContent=recDate(l.lesson_date);
     var time=(l.start_time&&l.end_time)?(hm(l.start_time)+"–"+hm(l.end_time)):"";
     var items=[["Student",esc(nameById[l.student_id]||"—")],["Subject",l.subject?esc(l.subject):"—"],["Level",l.level?esc(l.level):"—"]];
     if(time)items.push(["Time",time]);
-    items.push(["Amount","<b>"+TL.sgd(l.amount)+"</b>"],["Status",badge]);
+    items.push([l.status==="cancelled"?"Compensation":"Amount","<b>"+TL.sgd(l.amount)+"</b>"],["Status",badge]);
     $("rd-body").innerHTML='<div class="rd-list">'+items.map(function(r){return '<div class="rd-row"><span class="rd-k">'+r[0]+'</span><span class="rd-v">'+r[1]+'</span></div>';}).join("")+'</div>';
     var canc=l.status==="cancelled"?'<button class="btn" id="rd-restore">Restore</button>':'<button class="btn" id="rd-cancel" style="color:var(--gold-2)">Cancel lesson</button>';
     $("rd-actions").innerHTML='<button class="btn" id="rd-del" style="color:var(--owed)">Delete</button><span style="display:inline-flex;gap:8px;margin-left:auto">'+canc+'<button class="btn btn-primary" id="rd-edit">Postpone / edit</button></span>';
@@ -446,14 +454,16 @@
   }
 
   async function cancelLesson(id){
-    if(!confirm("Mark this lesson as cancelled? It won't count toward income or pending."))return;
-    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null}).eq("id",id);
+    var raw=prompt("Cancel this lesson? It won't count toward income unless you add a compensation amount.\n\nCompensation amount (optional, leave blank for $0):","");
+    if(raw===null)return;   // backed out of the prompt — don't cancel
+    var comp=Math.max(0,parseFloat(raw)||0);
+    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null,compensation:comp>0?comp:null}).eq("id",id);
     if(res.error){alert("Couldn't cancel: "+res.error.message);return;}
     load();
   }
   async function restoreLesson(l){
     var status=statusFor(l.lesson_date,hm(l.end_time));
-    var res=await window.sb.from("lessons").update({status:status}).eq("id",l.id);
+    var res=await window.sb.from("lessons").update({status:status,compensation:null}).eq("id",l.id);
     if(res.error){alert("Couldn't restore: "+res.error.message);return;}
     load();
   }
@@ -652,9 +662,11 @@
     if(!start||!end||end<=start){msg.textContent="Check the start/end times.";msg.className="msg err";return;}
     if(!(rate>=0)){msg.textContent="Enter a rate.";msg.className="msg err";return;}
     var paid=$("m-paid").checked;
+    // status here is always scheduled/done, never cancelled — saving through this form
+    // always un-cancels, so any compensation from a prior cancellation no longer applies.
     var fields={student_id:sid,lesson_date:date,start_time:start,end_time:end,
       subject:$("m-subject").value.trim()||null,level:$("m-level").value.trim()||null,rate:rate,split:split,amount:splitAmt(rate,start,end,split),
-      status:statusFor(date,end),paid:paid,paid_date:paid?date:null,postponed:$("m-postponed").checked};
+      status:statusFor(date,end),paid:paid,paid_date:paid?date:null,postponed:$("m-postponed").checked,compensation:null};
     $("m-save").disabled=true;
     var res=editLessonId
       ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)
@@ -717,12 +729,16 @@
       var tm=function(t){var p=t.split(":");return (+p[0])*60+(+p[1]);}; var m=tm(e)-tm(s); return m>0?m/60:0; }
     function hrsLabel(h){ h=Math.round(h*100)/100; return h===1?"1 hr":(h+" hrs"); }
     function lrow(l){
+      if(l.status==="cancelled") return "<tr><td>"+prettyDate(l.lesson_date)+"</td><td>Cancellation fee</td>"+'<td class="r">'+TL.sgd(l.amount)+"</td></tr>";
       var dur=durHrs(l);
       return "<tr><td>"+prettyDate(l.lesson_date)+"</td><td>"+(dur?hrsLabel(dur):"Lesson")+'</td><td class="r">'+TL.sgd(l.amount)+"</td></tr>";
     }
     function subjLevel(ls){ var seen={},out=[]; ls.forEach(function(l){ var s=[l.subject,l.level].filter(Boolean).join(" · "); if(s&&!seen[s]){seen[s]=1;out.push(s);} }); return out.join(", "); }
-    // "N hrs @ $R/hr" from the effective (blended) rate = amount / hours
-    function rateNote(ls){ var hrs=ls.reduce(function(t,l){return t+durHrs(l);},0), amt=ls.reduce(function(t,l){return t+(Number(l.amount)||0);},0);
+    // "N hrs @ $R/hr" from the effective (blended) rate = amount / hours — cancellation
+    // fees aren't taught hours, so they'd skew this; excluded from the note (their amount
+    // still counts in the subtotal/total, just not in this blended-rate line).
+    function rateNote(ls){ var real=ls.filter(function(l){return l.status!=="cancelled";});
+      var hrs=real.reduce(function(t,l){return t+durHrs(l);},0), amt=real.reduce(function(t,l){return t+(Number(l.amount)||0);},0);
       if(!hrs)return ""; return hrsLabel(hrs)+" @ "+TL.sgd(Math.round(amt/hrs*100)/100)+"/hr"; }
     var rows;
     if(combined){
@@ -1029,12 +1045,16 @@
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
     slots=sl.data||[];
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,rate,split,amount,paid,paid_date,status,postponed");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,subject,level,rate,split,amount,paid,paid_date,status,postponed,compensation");
     if(ls.error){$("k-pending").textContent="—";$("out-hint").textContent="Couldn't load: "+ls.error.message;return;}
     var lessons=ls.data||[];
+    // A cancelled lesson's billable amount is its compensation (0 if none) — everything
+    // downstream (Outstanding, KPIs, invoices, CSV) reads plain l.amount, so normalizing
+    // it once here means none of that code needs to know compensation exists.
+    lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
 
     allLessons=lessons;
-    var unpaid=lessons.filter(function(l){return l.status==="done"&&!l.paid;});
+    var unpaid=lessons.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));});
     lastUnpaid=unpaid;
     renderPendingKpi();   // pending follows the month picker (All = all-time total)
     renderMonthKpis();    // collected/projected follow the picked month (All = current month)
@@ -1069,9 +1089,12 @@
     var r=activeMonthRange();
     var month=(allLessons||[]).filter(function(l){return l.lesson_date>=r.first&&l.lesson_date<=r.last;});
     var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
-    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
+    // No cancelled-exclusion needed: a cancelled lesson's amount is already normalized to
+    // its compensation (0 if none), so a plain lesson-run vs. a compensated cancellation
+    // both contribute correctly, and a no-compensation cancellation contributes $0.
+    var projected=month.reduce(function(t,l){return t+Number(l.amount);},0);
     $("k-collected").textContent=TL.sgd(collected); if($("k-collected-n"))$("k-collected-n").textContent=r.label;
-    $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=r.label+" · excl. cancelled";
+    $("k-projected").textContent=TL.sgd(projected);  if($("k-projected-n"))$("k-projected-n").textContent=r.label+" · excl. uncompensated cancellations";
   }
   function init(user){
     userId=user.id;

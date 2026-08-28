@@ -1,0 +1,17 @@
+-- =====================================================================
+-- Add compensation: an optional fee charged for a cancelled lesson.
+-- Run once in the Supabase SQL editor. Safe to re-run.
+--
+-- Cancelling a lesson normally excludes it from income entirely. If you still
+-- charge something for a late cancellation, set compensation to that amount —
+-- the app then treats the lesson's billable amount as compensation (0 if
+-- left blank) instead of the original scheduled cost, so it flows through
+-- Outstanding / dashboard totals / invoices exactly like a normal lesson.
+--
+-- NULL (the default) means "no compensation" — existing cancelled lessons are
+-- unaffected; their original `amount` is never read once cancelled.
+--
+-- This is ADDITIVE and backward-compatible: nothing that predates it reads or
+-- writes compensation, so adding the column can't break the current app.
+-- =====================================================================
+alter table public.lessons add column if not exists compensation numeric;

@@ -40,12 +40,14 @@
   function renderMonthKpis(){
     var mFirst=selY+"-"+pad(selM+1)+"-01",mLast=selY+"-"+pad(selM+1)+"-"+pad(new Date(selY,selM+1,0).getDate());
     var month=allLessons.filter(function(l){return l.lesson_date>=mFirst&&l.lesson_date<=mLast;});
-    var projected=month.filter(function(l){return l.status!=="cancelled";}).reduce(function(t,l){return t+Number(l.amount);},0);
+    // No cancelled-exclusion needed: a cancelled lesson's amount is already normalized to
+    // its compensation (0 if none), so this sums correctly either way.
+    var projected=month.reduce(function(t,l){return t+Number(l.amount);},0);
     var collected=month.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
     $("k-projected").textContent=TL.sgd(projected);
     $("k-collected").textContent=TL.sgd(collected);
     // collection progress: collected (teal) + owed (red) + upcoming (grey remainder)
-    var owed=month.filter(function(l){return l.status==="done"&&!l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
+    var owed=month.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));}).reduce(function(t,l){return t+Number(l.amount);},0);
     var upcoming=Math.max(0,projected-collected-owed);
     var pct=projected>0?Math.round(collected/projected*100):0;
     var owedPct=projected>0?Math.round(owed/projected*100):0;
@@ -232,14 +234,17 @@
   function collectedInFy(anchor){
     var keys={};fyMonthsOf(anchor).forEach(function(o){keys[mkey(o)]=1;});
     return allLessons.reduce(function(t,l){
-      return (l.paid && l.lesson_date && keys[l.lesson_date.slice(0,7)] && l.status!=="cancelled") ? t+Number(l.amount) : t;
+      return (l.paid && l.lesson_date && keys[l.lesson_date.slice(0,7)]) ? t+Number(l.amount) : t;
     },0);
   }
 
   function renderYear(){
     if($("fy-label"))$("fy-label").textContent=fyLabelOf(fyAnchor);
     var months=fyMonthsOf(fyAnchor), keys={}; months.forEach(function(o){keys[mkey(o)]=1;});
-    var rows=allLessons.filter(function(l){return l.lesson_date&&keys[l.lesson_date.slice(0,7)]&&l.status!=="cancelled";});
+    // Keep a cancelled lesson out of the taught/billed counts below unless it carries a
+    // compensation fee (already normalized into amount) — an uncompensated cancellation
+    // isn't a lesson taught or billed.
+    var rows=allLessons.filter(function(l){return l.lesson_date&&keys[l.lesson_date.slice(0,7)]&&(l.status!=="cancelled"||l.amount>0);});
 
     var collected=0,owed=0,upc=0,doneCount=0,doneBilled=0;
     var perMonth={}, perStudent={}, perSubject={};
@@ -331,15 +336,18 @@
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);
 
-    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,amount,paid,status,subject,level,topics,homework,remarks");
+    var ls=await window.sb.from("lessons").select("id,student_id,lesson_date,start_time,end_time,amount,paid,status,subject,level,topics,homework,remarks,compensation");
     var lessons=ls.data||[];
+    // A cancelled lesson's billable amount is its compensation (0 if none) — every KPI/
+    // chart below reads plain l.amount, so normalizing it once here keeps that code simple.
+    lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
 
     renderOnboarding((st.data||[]).length, (sl.data||[]).length, lessons.length);
     allLessons=lessons;
     var now=new Date(),y=now.getFullYear(),m=now.getMonth();
     if(selY===null){selY=y;selM=m;}
 
-    var unpaid=lessons.filter(function(l){return l.status==="done"&&!l.paid;});
+    var unpaid=lessons.filter(function(l){return !l.paid&&(l.status==="done"||(l.status==="cancelled"&&l.amount>0));});
     $("k-pending").textContent=TL.sgd(unpaid.reduce(function(t,l){return t+Number(l.amount);},0));
     $("k-pending-n").textContent=unpaid.length+" unpaid lessons";
 
@@ -362,7 +370,7 @@
     // income by month for current year: collected (paid) + pending (done, unpaid) + upcoming (scheduled)
     var collected=new Array(12).fill(0),pending=new Array(12).fill(0),upcoming=new Array(12).fill(0);
     lessons.forEach(function(l){
-      if(!l.lesson_date||l.lesson_date.slice(0,4)!=String(y)||l.status==="cancelled")return;
+      if(!l.lesson_date||l.lesson_date.slice(0,4)!=String(y)||(l.status==="cancelled"&&!(l.amount>0)))return;
       var mi=parseInt(l.lesson_date.slice(5,7),10)-1,amt=Number(l.amount);
       if(l.paid)collected[mi]+=amt;
       else if(l.status==="done")pending[mi]+=amt;

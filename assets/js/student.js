@@ -21,8 +21,11 @@
     if(sres.error||!sres.data){$("p-head").innerHTML='<div class="card"><p>Couldn\'t load this student. <a href="students.html">Back to students</a>.</p></div>';return;}
     student=sres.data;setTitle(student.name);
 
-    var lres=await window.sb.from("lessons").select("id,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks").eq("student_id",sid);
+    var lres=await window.sb.from("lessons").select("id,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks,compensation").eq("student_id",sid);
     lessons=lres.data||[];
+    // A cancelled lesson's billable amount is its compensation (0 if none) — every KPI/
+    // table below reads plain l.amount, so normalizing it once here keeps that code simple.
+    lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
     var xres=await window.sb.from("exams").select("id,exam_date,assessment_type,subject,topics,remarks,score,max_score").eq("student_id",sid);
     exams=xres.data||[];
     var slres=await window.sb.from("recurring_slots").select("id,weekday,start_time,end_time,subject,rate").eq("student_id",sid);
@@ -80,11 +83,13 @@
   }
 
   function renderKpis(lessons){
-    var live=lessons.filter(function(l){return l.status!=="cancelled";});
+    // Keep a cancelled lesson out of these totals unless it carries a compensation fee
+    // (already normalized into amount) — an uncompensated cancellation isn't billable.
+    var live=lessons.filter(function(l){return l.status!=="cancelled"||l.amount>0;});
     var billed=live.reduce(function(t,l){return t+Number(l.amount);},0);
     var paid=live.filter(function(l){return l.paid;}).reduce(function(t,l){return t+Number(l.amount);},0);
-    var outstanding=live.filter(function(l){return !l.paid&&l.status==="done";}).reduce(function(t,l){return t+Number(l.amount);},0);
-    var done=live.filter(function(l){return l.status==="done";}).length;
+    var outstanding=live.filter(function(l){return !l.paid&&l.status!=="scheduled";}).reduce(function(t,l){return t+Number(l.amount);},0);
+    var done=lessons.filter(function(l){return l.status==="done";}).length;
     function kpi(label,val,cls){return '<div class="kpi"><div class="lbl">'+label+'</div><div class="val'+(cls?" "+cls:"")+'">'+val+'</div></div>';}
     $("p-kpis").innerHTML=
       kpi("Outstanding",TL.sgd(outstanding),outstanding>0?"owed":"")+
@@ -100,7 +105,9 @@
     empty.style.display="none";table.style.display="table";
     $("p-lhint").textContent=lessons.length+" total";
     $("p-lbody").innerHTML=lessons.map(function(l){
-      var badge=l.status==="cancelled"?'<span class="kind-tag">cancelled</span>':(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
+      var badge=l.status==="cancelled"
+        ?'<span class="kind-tag">cancelled</span>'+(l.amount>0?(l.paid?' <span class="badge paid">Paid</span>':' <span class="badge owed">Unpaid</span>'):'')
+        :(l.status==="scheduled"?'<span class="kind-tag">scheduled</span>':(l.paid?'<span class="badge paid">Paid</span>':'<span class="badge owed">Unpaid</span>'));
       return '<tr data-lid="'+l.id+'"><td data-label="Date">'+prettyDate(l.lesson_date)+'</td>'+
         '<td data-label="Subject">'+(l.subject?esc(l.subject):'<span class="muted">—</span>')+'</td>'+
         '<td data-label="Amount">'+TL.sgd(l.amount)+'</td>'+
@@ -139,10 +146,14 @@
   function openLesson(id){
     var l=lessons.filter(function(x){return x.id===id;})[0];if(!l)return;
     lessonId=id;
+    var cancelled=l.status==="cancelled";
     $("l-title").textContent="Edit lesson · "+prettyDate(l.lesson_date);
     $("l-date").value=l.lesson_date||"";$("l-subject").value=l.subject||"";
+    // l.amount is already normalized to the compensation for a cancelled lesson, so this
+    // field doubles as the compensation editor here — no separate UI needed.
     $("l-amount").value=(l.amount!=null?l.amount:"");$("l-paid").checked=!!l.paid;
-    $("l-toggle").textContent=l.status==="cancelled"?"Restore lesson":"Cancel lesson";
+    var lbl=$("l-amount-lbl");if(lbl)lbl.textContent=cancelled?"Compensation (S$)":"Amount (S$)";
+    $("l-toggle").textContent=cancelled?"Restore lesson":"Cancel lesson";
     $("l-msg").textContent="";$("l-msg").className="msg";
     $("l-modal").classList.add("on");
   }
@@ -151,8 +162,10 @@
     var l=lessons.filter(function(x){return x.id===lessonId;})[0];if(!l)return;
     var date=$("l-date").value,paid=$("l-paid").checked,msg=$("l-msg");
     if(!date){msg.textContent="Set a date.";msg.className="msg err";return;}
-    var fields={lesson_date:date,subject:$("l-subject").value.trim()||null,
-      amount:Number($("l-amount").value)||0,paid:paid,paid_date:paid?date:null};
+    var val=Number($("l-amount").value)||0;
+    var fields={lesson_date:date,subject:$("l-subject").value.trim()||null,paid:paid,paid_date:paid?date:null};
+    if(l.status==="cancelled") fields.compensation=val>0?val:null;
+    else fields.amount=val;
     var b=$("l-save");b.disabled=true;
     var res=await window.sb.from("lessons").update(fields).eq("id",lessonId);
     b.disabled=false;
@@ -161,10 +174,16 @@
   }
   async function toggleLesson(){
     var l=lessons.filter(function(x){return x.id===lessonId;})[0];if(!l)return;
-    var next;
-    if(l.status==="cancelled"){next=(l.lesson_date>todayISO())?"scheduled":"done";}
-    else{next="cancelled";}
-    var res=await window.sb.from("lessons").update({status:next}).eq("id",lessonId);
+    var fields;
+    if(l.status==="cancelled"){
+      fields={status:(l.lesson_date>todayISO())?"scheduled":"done",compensation:null};
+    }else{
+      var raw=prompt("Cancel this lesson? It won't count toward income unless you add a compensation amount.\n\nCompensation amount (optional, leave blank for $0):","");
+      if(raw===null)return;   // backed out of the prompt — don't cancel
+      var comp=Math.max(0,parseFloat(raw)||0);
+      fields={status:"cancelled",paid:false,paid_date:null,compensation:comp>0?comp:null};
+    }
+    var res=await window.sb.from("lessons").update(fields).eq("id",lessonId);
     if(res.error){$("l-msg").textContent=res.error.message;$("l-msg").className="msg err";return;}
     closeLesson();load();
   }

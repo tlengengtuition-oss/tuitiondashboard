@@ -76,9 +76,15 @@
     var p=key.split("-"), y=+p[0], m=+p[1]-1;
     var first=iso(new Date(y,m,1)), last=iso(new Date(y,m+1,0));
     pending[key]=window.sb.from("lessons")
-      .select("id,slot_id,slot_date,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed")
+      .select("id,slot_id,slot_date,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,compensation")
       .gte("lesson_date",first).lte("lesson_date",last)
-      .then(function(ls){ lessonCache[key]=ls.error?[]:(ls.data||[]); delete pending[key]; });
+      .then(function(ls){
+        var rows=ls.error?[]:(ls.data||[]);
+        // A cancelled lesson's billable amount is its compensation (0 if none) — the
+        // popover already shows plain l.amount, so normalizing it once here is enough.
+        rows.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
+        lessonCache[key]=rows; delete pending[key];
+      });
     return pending[key];
   }
   function lessonsForRange(range){
@@ -314,7 +320,7 @@
       '<div class="cp-row">'+esc(when)+'</div>'+
       (sub?'<div class="cp-row"><b>'+esc(sub)+'</b></div>':'')+
       (b.location?'<div class="cp-row">◍ <b>'+esc(b.location)+'</b></div>':'')+
-      (b.kind==="lesson"&&b.amount!=null?'<div class="cp-row">Amount <b>'+TL.sgd(b.amount)+'</b></div>':'')+
+      (b.kind==="lesson"&&b.amount!=null?'<div class="cp-row">'+(b.state==="cancel"?"Compensation":"Amount")+' <b>'+TL.sgd(b.amount)+'</b></div>':'')+
       (b.clash?'<div class="cp-row" style="color:var(--owed);font-weight:700">⚠ Overlaps another lesson</div>':'')+
       '<span class="cp-tag" style="background:'+label[1]+';color:'+label[2]+'">'+label[0]+'</span>'+
       (b.adhoc?' <span class="cp-tag" style="background:rgba(26,42,79,.10);color:var(--navy)">✦ One-off</span>':'')+
@@ -362,13 +368,15 @@
     refreshAfterMutation();
   }
   async function doCancel(id){
-    if(!(await confirmBox("Mark this lesson as cancelled? It won't count toward income or pending.", {title:"Cancel lesson", yes:"Cancel lesson", no:"Keep"}))) return;
-    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null}).eq("id",id);
+    var raw=prompt("Cancel this lesson? It won't count toward income unless you add a compensation amount.\n\nCompensation amount (optional, leave blank for $0):","");
+    if(raw===null)return;   // backed out of the prompt — don't cancel
+    var comp=Math.max(0,parseFloat(raw)||0);
+    var res=await window.sb.from("lessons").update({status:"cancelled",paid:false,paid_date:null,compensation:comp>0?comp:null}).eq("id",id);
     if(res.error){alert("Couldn't cancel: "+res.error.message);return;}
     refreshAfterMutation();
   }
   async function doRestore(b){
-    var res=await window.sb.from("lessons").update({status:statusFor(b.dateISO,hhmm2(b.endMin))}).eq("id",b.id);
+    var res=await window.sb.from("lessons").update({status:statusFor(b.dateISO,hhmm2(b.endMin)),compensation:null}).eq("id",b.id);
     if(res.error){alert("Couldn't restore: "+res.error.message);return;}
     refreshAfterMutation();
   }
