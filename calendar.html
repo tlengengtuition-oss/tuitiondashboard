@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calendar · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=125">
+<link rel="stylesheet" href="assets/css/app.css?v=126">
 <style>
   .cal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .cal-nav{display:flex;align-items:center;gap:8px}
@@ -153,6 +153,7 @@
       <span class="cal-range" id="cal-range">—</span>
       <button class="btn" id="cal-next" title="Next week">&rsaquo;</button>
       <button class="btn" id="cal-today">Today</button>
+      <button class="btn btn-gold" id="cal-add">+ Add lesson</button>
     </div>
     <div class="cal-right">
       <div class="seg" id="cal-seg">
@@ -188,6 +189,33 @@
   </div>
   <div id="cal-pop" class="cal-pop" style="display:none"></div>
 
+  <!-- add-lesson modal (add a one-off lesson straight from the calendar) -->
+  <div class="modal-backdrop" id="add-modal">
+    <div class="modal card">
+      <h2>Add lesson</h2>
+      <div class="field"><label for="ca-student">Student</label><select id="ca-student"></select></div>
+      <div class="row2">
+        <div class="field"><label for="ca-date">Date</label><input id="ca-date" type="date"></div>
+        <div class="field"><label for="ca-subject">Subject</label><input id="ca-subject" type="text" placeholder="optional"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="ca-start">Start</label><input id="ca-start" type="time"></div>
+        <div class="field"><label for="ca-end">End</label><input id="ca-end" type="time"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="ca-rate">Rate <span class="muted">(/hr)</span></label><input id="ca-rate" type="number" min="0" step="0.5"></div>
+        <div class="field"><label for="ca-split">Split between</label><input id="ca-split" type="number" min="1" step="1" value="1"></div>
+      </div>
+      <div class="field"><label for="ca-level">Level <span class="muted">(optional)</span></label><input id="ca-level" type="text" placeholder="optional"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 12px"><input type="checkbox" id="ca-paid"> Already paid</label>
+      <div class="msg" id="ca-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="ca-cancel">Cancel</button>
+        <button class="btn btn-primary" id="ca-save">Save lesson</button>
+      </div>
+    </div>
+  </div>
+
   <!-- in-app confirm dialog (replaces the browser's native confirm) -->
   <div class="modal-backdrop" id="confirm-modal" style="z-index:60">
     <div class="modal card" style="max-width:380px;border-top-color:var(--navy)">
@@ -203,9 +231,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="assets/js/config.js?v=125"></script>
-<script src="assets/js/supabase.js?v=125"></script>
-<script src="assets/js/app.js?v=125"></script>
-<script src="assets/js/calendar.js?v=125"></script>
+<script src="assets/js/config.js?v=126"></script>
+<script src="assets/js/supabase.js?v=126"></script>
+<script src="assets/js/app.js?v=126"></script>
+<script src="assets/js/calendar.js?v=126"></script>
 </body>
 </html>

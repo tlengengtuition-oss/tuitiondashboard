@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-08-29 — Calendar: add a lesson without leaving the page
+
+Added a gold **+ Add lesson** button to the calendar toolbar and an add-lesson modal
+(`#add-modal`, `ca-*` fields) so a one-off lesson can be logged straight from the calendar instead of
+going to the Ledger. `openAdd`/`saveAdd` reuse the calendar's existing helpers (`splitAmt`,
+`statusFor`, `refreshAfterMutation`) and insert a lesson with `slot_id` null (shows as a ✦ one-off);
+picking a student auto-fills blank subject/level/rate/split from their recurring slot
+(`applyStudentDefaults`). No schema change. (Chrome-verified parse — JSC gave a false syntax error
+on this file.)
+
 ### 2026-08-25 — Mobile: fix white-on-white cards (roster + profile lessons)
 
 The phone list cards (white `.tbl tr`) sat inside a white `.card` container, so they blended together.

@@ -367,6 +367,53 @@
     if(res.error){alert("Couldn't log: "+res.error.message);return;}
     refreshAfterMutation();
   }
+
+  // ---- add a one-off lesson straight from the calendar ----
+  function studentOpts(){
+    var act=students.filter(function(s){return s.active!==false;});
+    return act.length ? act.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+'</option>';}).join("")
+                      : '<option value="">— add a student first —</option>';
+  }
+  function slotFor(sid){ return slots.filter(function(s){return String(s.student_id)===String(sid);})[0]; }
+  // Fill blank subject/level/rate/split from the chosen student's recurring slot, if any.
+  function applyStudentDefaults(){
+    var sl=slotFor($("ca-student").value); if(!sl) return;
+    if(!$("ca-subject").value) $("ca-subject").value=sl.subject||"";
+    if(!$("ca-level").value)   $("ca-level").value=sl.level||"";
+    if(!$("ca-rate").value)    $("ca-rate").value=(sl.rate!=null?sl.rate:"");
+    if(!$("ca-split").value||$("ca-split").value==="1") $("ca-split").value=sl.split||1;
+  }
+  function openAdd(prefill){
+    prefill=prefill||{};
+    $("ca-student").innerHTML=studentOpts();
+    $("ca-date").value=prefill.date||iso(new Date());
+    $("ca-start").value=prefill.start||"16:00";
+    $("ca-end").value=prefill.end||"17:00";
+    $("ca-subject").value=""; $("ca-level").value=""; $("ca-rate").value=""; $("ca-split").value="1"; $("ca-paid").checked=false;
+    $("ca-msg").textContent=""; $("ca-msg").className="msg";
+    applyStudentDefaults();
+    $("add-modal").classList.add("on");
+  }
+  function closeAdd(){ $("add-modal").classList.remove("on"); }
+  async function saveAdd(){
+    var sid=$("ca-student").value, date=$("ca-date").value, start=$("ca-start").value, end=$("ca-end").value,
+        rate=parseFloat($("ca-rate").value), split=Math.max(1,parseInt($("ca-split").value,10)||1), msg=$("ca-msg");
+    function err(m){ msg.textContent=m; msg.className="msg err"; }
+    if(!sid){ err("Pick a student."); return; }
+    if(!date){ err("Pick a date."); return; }
+    if(!start||!end||end<=start){ err("Check the start and end times."); return; }
+    if(!(rate>=0)){ err("Enter a rate."); return; }
+    var paid=$("ca-paid").checked;
+    var row={ tutor_id:userId, student_id:sid, lesson_date:date, start_time:start, end_time:end,
+      subject:$("ca-subject").value.trim()||null, level:$("ca-level").value.trim()||null,
+      rate:rate, split:split, amount:splitAmt(rate,start,end,split), status:statusFor(date,end),
+      paid:paid, paid_date:paid?date:null };
+    var b=$("ca-save"); b.disabled=true;
+    var res=await window.sb.from("lessons").insert(row);
+    b.disabled=false;
+    if(res.error){ err(res.error.message); return; }
+    closeAdd(); refreshAfterMutation();
+  }
   function showCancelForm(b){
     var pop=$("cal-pop");
     pop.innerHTML='<span class="cp-x" id="cp-x">×</span><h4>Cancel '+esc(b.name)+'</h4>'+
@@ -734,6 +781,11 @@
     initGcal();
     $("seg-week").addEventListener("click", function(){ setMode("week"); });
     $("seg-month").addEventListener("click", function(){ setMode("month"); });
+    if($("cal-add")) $("cal-add").addEventListener("click", function(){ openAdd(); });
+    if($("ca-student")) $("ca-student").addEventListener("change", applyStudentDefaults);
+    if($("ca-cancel")) $("ca-cancel").addEventListener("click", closeAdd);
+    if($("ca-save")) $("ca-save").addEventListener("click", saveAdd);
+    if($("add-modal")) $("add-modal").addEventListener("click", function(e){ if(e.target===$("add-modal")) closeAdd(); });
     initLegend();
     // Clicks inside the popover (buttons, date/time fields) shouldn't bubble to the
     // document listener below, which closes it on any outside click.
