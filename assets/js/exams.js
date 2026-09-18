@@ -73,7 +73,19 @@
         : '<span class="muted">— add result</span>';
       base+='<td data-label="Result">'+rhtml+'</td>';
     }
-    return '<tr>'+base+'<td class="acts">'+acts+'</td></tr>';
+    return '<tr id="ex-row-'+esc(String(ex.id))+'">'+base+'<td class="acts">'+acts+'</td></tr>';
+  }
+
+  function highlightParam(){
+    var m=location.search.match(/[?&]highlight=([^&]+)/);
+    return m?decodeURIComponent(m[1]):null;
+  }
+  function highlightExam(){
+    var id=highlightParam(); if(!id)return;
+    var row=$("ex-row-"+id); if(!row)return;
+    row.scrollIntoView({behavior:"smooth",block:"center"});
+    row.classList.add("ex-hl");
+    setTimeout(function(){row.classList.remove("ex-hl");},2600);
   }
 
   function wire(scope){
@@ -105,6 +117,8 @@
       $("past-title").style.display="";$("past-card").style.display="";
       $("past-body").innerHTML=past.map(function(e){return row(e,false);}).join("");wire($("past-body"));
     }else{$("past-title").style.display="none";$("past-card").style.display="none";}
+
+    highlightExam();
   }
 
   function init(user){
