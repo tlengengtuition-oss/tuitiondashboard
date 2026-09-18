@@ -82,8 +82,8 @@
       var mk=TL.examMarks(e.score,e.max_score);
       var extra=[]; if(e.topics)extra.push(esc(e.topics)); if(mk)extra.push(mk);
       var sub=esc(label)+(extra.length?" — "+extra.join(" · "):"");
-      return '<div class="exam-row"><div class="ex-main"><div class="ex-name">'+esc(nameById[e.student_id]||"—")+'</div><div class="ex-sub">'+sub+'</div></div>'+
-        '<div class="days'+(soon?" soon":"")+'"><b>'+days+'</b><small>'+(days===1?"day":"days")+'</small></div></div>';
+      return '<a class="exam-row" href="exams.html?highlight='+esc(String(e.id))+'"><div class="ex-main"><div class="ex-name">'+esc(nameById[e.student_id]||"—")+'</div><div class="ex-sub">'+sub+'</div></div>'+
+        '<div class="days'+(soon?" soon":"")+'"><b>'+days+'</b><small>'+(days===1?"day":"days")+'</small></div></a>';
     }).join("");
   }
 
@@ -125,8 +125,8 @@
         var lbl=[e.assessment_type,e.subject].filter(Boolean).join(" ")||"Exam";
         var mk=TL.examMarks(e.score,e.max_score);
         var top=e.topics?'<span class="ex-t" title="'+esc(e.topics)+'">'+esc(e.topics)+'</span>':"";
-        return '<div class="exchip"><span class="ex-l">'+esc(lbl)+(mk?' <span class="ex-m">'+mk+'</span>':'')+'</span>'+
-          '<span class="ex-d">'+shortDate(e.exam_date)+' · '+(days<=0?"today":"in "+days+"d")+'</span>'+top+'</div>';
+        return '<a class="exchip" href="exams.html?highlight='+esc(String(e.id))+'"><span class="ex-l">'+esc(lbl)+(mk?' <span class="ex-m">'+mk+'</span>':'')+'</span>'+
+          '<span class="ex-d">'+shortDate(e.exam_date)+' · '+(days<=0?"today":"in "+days+"d")+'</span>'+top+'</a>';
       }).join("");
       return '<div class="tr-exams"><div class="tr-exh">Upcoming exams</div>'+items+'</div>';
     }
@@ -380,7 +380,7 @@
     $("inc-hint").textContent="Collected YTD "+TL.sgd(ytd);
     if(window.Chart)chartObj=drawStacked("incomeChart",MONTHS,collected,pending,upcoming,chartObj);
 
-    var ex=await window.sb.from("exams").select("student_id,exam_date,assessment_type,subject,topics,max_score");
+    var ex=await window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject,topics,max_score");
     var exams=ex.data||[];
     renderExams(exams,nameById,"teach-exam-list",null);
     renderTeaching(lessons,nameById,exams);
