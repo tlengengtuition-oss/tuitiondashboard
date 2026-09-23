@@ -227,6 +227,8 @@ body:has(#view)::after{content:"";position:fixed;top:50%;left:calc(236px + (100%
 .exam-row .ex-main{min-width:0;flex:1}
 .exam-row .ex-name{font-weight:600;font-size:14px}
 .exam-row .ex-sub{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+a.exam-row{color:inherit;text-decoration:none;cursor:pointer;border-radius:8px}
+a.exam-row:hover{background:rgba(181,137,43,.07)}
 .days{flex:none;text-align:center;border-radius:9px;padding:6px 10px;min-width:58px;background:var(--bg);border:1px solid var(--line)}
 .days b{display:block;font-family:var(--serif);font-size:18px;line-height:1;color:var(--navy)}
 .days small{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
