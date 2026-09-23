@@ -76,7 +76,7 @@
     var p=key.split("-"), y=+p[0], m=+p[1]-1;
     var first=iso(new Date(y,m,1)), last=iso(new Date(y,m+1,0));
     pending[key]=window.sb.from("lessons")
-      .select("id,slot_id,slot_date,student_id,lesson_date,start_time,end_time,subject,level,amount,paid,status,postponed,compensation")
+      .select("id,slot_id,slot_date,student_id,lesson_date,start_time,end_time,subject,level,amount,rate,split,paid,status,postponed,compensation")
       .gte("lesson_date",first).lte("lesson_date",last)
       .then(function(ls){
         var rows=ls.error?[]:(ls.data||[]);
@@ -138,6 +138,7 @@
       var st=l.status==="cancelled" ? "cancel" : l.status==="scheduled" ? "sched" : (l.paid?"paid":"unpaid");
       blocks.push({ id:l.id, dateISO:l.lesson_date, day:dayIdx(l.lesson_date), startMin:toMin(l.start_time), endMin:toMin(l.end_time),
         name:nameById[l.student_id]||"—", subject:l.subject||"", level:l.level||"", location:locById[l.student_id]||"", amount:l.amount,
+        rate:l.rate, split:l.split,
         kind:"lesson", state:st, postponed:!!l.postponed, adhoc:!l.slot_id, slotId:l.slot_id, slotDate:l.slot_date, hh:hhById[l.student_id]||null });
     });
     for(var d=new Date(range.start); iso(d)<=iso(range.end); d=addDays(d,1)){
@@ -359,6 +360,13 @@
     });
   }
   function splitAmt(rate,s,e,split){ var sp=(split&&split>1)?split:1; return Math.round(TL.amount(rate,s,e)/sp*100)/100; }
+  // Amount for a changed lesson time. Prefer the stored rate/split (matches the Ledger); if a lesson
+  // has no rate, scale the old amount by the new/old duration ratio so it never drops to zero.
+  function amtFor(rate, split, oldAmount, oldStartMin, oldEndMin, start, end){
+    if(rate!=null && rate!=="") return splitAmt(rate, start, end, split);
+    var oldMin=oldEndMin-oldStartMin, newMin=toMin(end)-toMin(start);
+    return oldMin>0 ? Math.round((Number(oldAmount)||0)*newMin/oldMin*100)/100 : (Number(oldAmount)||0);
+  }
   async function doLogProjected(b){
     var row={ tutor_id:userId, student_id:b.studentId, slot_id:b.slotId, lesson_date:b.dateISO, slot_date:b.dateISO,
       start_time:b.startHM, end_time:b.endHM, subject:b.subject, level:b.level, rate:b.rate, split:b.split||1,
@@ -476,7 +484,8 @@
       date=b.slotDate; start=hhmm2(b.startMin); end=hhmm2(b.endMin);
     }
     if(!(await confirmBox("Revert this lesson to its original slot — "+date+", "+start+"–"+end+"?", {title:"Revert to slot", yes:"Revert"}))) return;
-    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,status:statusFor(date,end),postponed:false}).eq("id",b.id);
+    var amount=amtFor(slot?slot.rate:b.rate, slot?slot.split:b.split, b.amount, b.startMin, b.endMin, start, end);
+    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,amount:amount,status:statusFor(date,end),postponed:false}).eq("id",b.id);
     if(res.error){ alert("Couldn't revert: "+res.error.message); return; }
     refreshAfterMutation();
   }
@@ -484,7 +493,8 @@
     var date=$("cp-pdate").value, start=$("cp-pstart").value, end=$("cp-pend").value, msg=$("cp-pmsg");
     if(!date||!start||!end){msg.textContent="Pick a date, start and end time.";msg.className="msg err";return;}
     if(end<=start){msg.textContent="End time must be after start time.";msg.className="msg err";return;}
-    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,status:statusFor(date,end),postponed:true}).eq("id",b.id);
+    var amount=amtFor(b.rate, b.split, b.amount, b.startMin, b.endMin, start, end);   // keep earnings in step with the new duration
+    var res=await window.sb.from("lessons").update({lesson_date:date,start_time:start,end_time:end,amount:amount,status:statusFor(date,end),postponed:true}).eq("id",b.id);
     if(res.error){msg.textContent="Couldn't postpone: "+res.error.message;msg.className="msg err";return;}
     refreshAfterMutation();
   }

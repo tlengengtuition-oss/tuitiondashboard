@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-09-23 — Calendar: recompute the amount when a lesson's duration changes
+
+Postponing/editing a lesson's times on the calendar (or reverting to slot) updated `start_time`/
+`end_time` but never `amount`, so the earned figure stayed stale until you reopened the lesson in the
+Ledger and saved. Fixed: the month fetch + calendar block now carry `rate`/`split`, and `savePostpone`
+/`doRevert` recompute `amount` via a new `amtFor()` helper — `splitAmt(rate,start,end,split)` when a
+rate is stored (matches the Ledger), else the old amount scaled by the new/old duration ratio so it
+never drops to zero. Verified the math (5 cases) and a Chrome parse (JSC still throws a false syntax
+error on this file). No schema change.
+
 ### 2026-08-29 — Calendar: add a lesson without leaving the page
 
 Added a gold **+ Add lesson** button to the calendar toolbar and an add-lesson modal
