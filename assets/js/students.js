@@ -79,6 +79,10 @@
   async function setActive(id,active){
     var res=await window.sb.from("students").update({active:active}).eq("id",id);
     if(res.error){alert("Couldn't update: "+res.error.message);return;}
+    // Keep the weekly schedule in step: discontinuing removes the student's recurring slots from the
+    // Planner/Calendar (both filter active slots); reactivating brings them back. Lessons are untouched.
+    try{ await window.sb.from("recurring_slots").update({active:active}).eq("student_id",id); }
+    catch(e){ console.warn("Couldn't update the student's slots:",e); }
     load();
   }
 

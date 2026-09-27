@@ -186,6 +186,17 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-09-27 — Discontinuing a student drops them from the Planner (and Calendar)
+
+Discontinuing a student in the Students tab only flipped `students.active` — their recurring slots
+lingered on the Planner and kept projecting lessons on the Calendar/Ledger. Now `setActive` also flips
+those slots' `active` flag (Calendar/Ledger already filter active slots, so projections stop and
+return on reactivate; logged lessons untouched), and the Planner's `load()` filters slots to active
+students — which also hides any already-discontinued students immediately. Reactivating restores the
+slots everywhere. (Students discontinued before this shipped: their slots are still `active` in the DB
+so the Calendar may still project them until you toggle them off/on once — the Planner already hides
+them via the student filter.)
+
 ### 2026-09-27 — Calendar Add-lesson: fix student defaults not populating
 
 Choosing a student in the calendar's Add-lesson modal didn't fill in subject/rate — `applyStudentDefaults`
