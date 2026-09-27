@@ -59,7 +59,7 @@
   // ---- data ----
   async function loadStatic(){
     var r=await Promise.all([
-      window.sb.from("students").select("id,name,location,contact,active"),
+      window.sb.from("students").select("id,name,location,contact,active,level"),
       window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true),
       window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject")
     ]);
@@ -406,13 +406,21 @@
                       : '<option value="">— add a student first —</option>';
   }
   function slotFor(sid){ return slots.filter(function(s){return String(s.student_id)===String(sid);})[0]; }
-  // Fill blank subject/level/rate/split from the chosen student's recurring slot, if any.
+  function studentById(sid){ return students.filter(function(s){return String(s.id)===String(sid);})[0]; }
+  // Fill the form from the chosen student — subject/rate/split from their recurring slot, level from
+  // the slot or the student record. Overwrites (not just-if-blank) so switching students updates it.
   function applyStudentDefaults(){
-    var sl=slotFor($("ca-student").value); if(!sl) return;
-    if(!$("ca-subject").value) $("ca-subject").value=sl.subject||"";
-    if(!$("ca-level").value)   $("ca-level").value=sl.level||"";
-    if(!$("ca-rate").value)    $("ca-rate").value=(sl.rate!=null?sl.rate:"");
-    if(!$("ca-split").value||$("ca-split").value==="1") $("ca-split").value=sl.split||1;
+    var id=$("ca-student").value, sl=slotFor(id), stu=studentById(id);
+    if(sl){
+      $("ca-subject").value=sl.subject||"";
+      $("ca-rate").value=(sl.rate!=null?sl.rate:"");
+      $("ca-split").value=sl.split||1;
+      $("ca-level").value=sl.level||(stu&&stu.level)||"";
+    } else {
+      // no recurring slot → no subject/rate default; still offer the student's level
+      $("ca-subject").value=""; $("ca-rate").value=""; $("ca-split").value="1";
+      $("ca-level").value=(stu&&stu.level)||"";
+    }
   }
   function openAdd(prefill){
     prefill=prefill||{};

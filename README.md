@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-09-27 — Calendar Add-lesson: fix student defaults not populating
+
+Choosing a student in the calendar's Add-lesson modal didn't fill in subject/rate — `applyStudentDefaults`
+only filled *blank* fields, so once the first student pre-filled, switching to another student did
+nothing. Rewrote it to **overwrite** from the chosen student's recurring slot (subject/rate/split) and
+their record's `level` (now fetched in `loadStatic`); a student with no recurring slot clears
+subject/rate and still fills level. Note: rate/subject come from the recurring **slot** (Planner), not
+the student record — a student with no slot has nothing to auto-fill beyond level.
+
 ### 2026-09-23 — Calendar: recompute the amount when a lesson's duration changes
 
 Postponing/editing a lesson's times on the calendar (or reverting to slot) updated `start_time`/
