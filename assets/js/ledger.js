@@ -742,24 +742,19 @@
       var dur=durHrs(l);
       return "<tr><td>"+prettyDate(l.lesson_date)+"</td><td>"+(dur?hrsLabel(dur):"Lesson")+'</td><td class="r">'+TL.sgd(l.amount)+"</td></tr>";
     }
-    // Label for a student's lessons: SUBJECTS from their planner slots (a student can take several),
-    // LEVEL from their profile (one grade across subjects). Neither is read from the lessons' own
-    // stored fields, so a lesson saved with a stale subject/level (e.g. the student was switched on
-    // the add form) can't mislabel the invoice. Falls back to the lessons only when a student has no
-    // active slot / no profile level. Called per student (single invoice, or one household member).
+    // Label for a student's lessons: SUBJECTS from the invoiced lessons themselves (so only what's
+    // actually billed this month appears — a Math-only month never lists their Chinese slot), and
+    // LEVEL from the student profile (one grade across subjects; this is the field that was showing
+    // wrong when a lesson kept a switched student's stale level). Level falls back to the lesson's own
+    // value only if the profile has none. Called per student (single invoice / one household member).
     function subjLevel(ls){
       var out=[], done={};
       ls.forEach(function(l){
         var id=l.student_id; if(id==null||done[id])return; done[id]=1;
+        var mine=ls.filter(function(x){return String(x.student_id)===String(id);});
         var subs=[], seen={};
-        slots.filter(function(s){return String(s.student_id)===String(id);}).forEach(function(s){
-          if(s.subject && !seen[s.subject]){ seen[s.subject]=1; subs.push(s.subject); }
-        });
-        var lvl=levelById[id]||"";
-        if(!subs.length){   // no active slot → use the subjects the lessons recorded for this student
-          ls.forEach(function(x){ if(String(x.student_id)===String(id) && x.subject && !seen[x.subject]){ seen[x.subject]=1; subs.push(x.subject); } });
-          if(!lvl){ var f=ls.filter(function(x){return String(x.student_id)===String(id);})[0]; lvl=(f&&f.level)||""; }
-        }
+        mine.forEach(function(x){ if(x.subject && !seen[x.subject]){ seen[x.subject]=1; subs.push(x.subject); } });
+        var lvl=levelById[id]||(mine[0]&&mine[0].level)||"";
         var label=[subs.join(", "), lvl].filter(Boolean).join(" · ");
         if(label) out.push(label);
       });

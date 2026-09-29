@@ -186,6 +186,14 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-09-30 — Invoice subject: from the billed lessons (not all Planner slots)
+
+Refined the previous change: sourcing subjects from the Planner slots meant a student with e.g. Math
+AND Chinese slots showed *both* on every invoice, even a month where only Math was taught. `subjLevel`
+now takes **subjects from the invoiced lessons themselves** (only what's actually billed appears) and
+keeps **level from the student profile**. So a Math-only month reads "Math · Sec 3", a mixed month
+"Math, Chinese · Sec 3", and a lesson's stale level is still ignored. Verified in a rendered invoice.
+
 ### 2026-09-30 — Invoice subject/level: subjects from Planner, level from profile
 
 An invoice read its "Bill to" subject/level from each lesson's own stored fields, so a lesson saved
