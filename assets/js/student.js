@@ -22,7 +22,7 @@
     if(sres.error||!sres.data){$("p-head").innerHTML='<div class="card"><p>Couldn\'t load this student. <a href="students.html">Back to students</a>.</p></div>';return;}
     student=sres.data;setTitle(student.name);
 
-    var lres=await window.sb.from("lessons").select("id,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks,compensation").eq("student_id",sid);
+    var lres=await window.sb.from("lessons").select("id,slot_id,slot_date,lesson_date,start_time,end_time,subject,amount,paid,status,topics,homework,remarks,compensation").eq("student_id",sid);
     lessons=lres.data||[];
     // A cancelled lesson's billable amount is its compensation (0 if none) — every KPI/
     // table below reads plain l.amount, so normalizing it once here keeps that code simple.
@@ -264,21 +264,30 @@
   function t12(t){ if(!t)return""; var p=t.split(":"),h=+p[0],mi=+p[1],ap=h>=12?"pm":"am",hr=h%12; if(hr===0)hr=12; return hr+(mi?":"+(mi<10?"0"+mi:mi):"")+ap; }
   // "16:00"–"18:00" → "4–6pm" (drops the first meridian when it matches the second)
   function timeRange(s,e){ var a=t12(hhmm(s)),b=t12(hhmm(e)); if(a.slice(-2)===b.slice(-2)) a=a.slice(0,-2); return a+"–"+b; }
-  // Occurrences for the month. A logged lesson wins for its date (so a postponed/edited-time lesson
-  // shows once, at its real time, and a cancelled one drops out); dates with no logged lesson fall
-  // back to the student's weekly slot projected onto them.
+  // Occurrences for the month — sourced exactly like the Calendar (calendar.js buildBlocks): show the
+  // logged lessons, and project a weekly slot onto a date only where no lesson claims that occurrence
+  // (by slot_id|slot_date, so a postponed lesson vacates its original day) or already sits at that
+  // date+time. Cancelled lessons are omitted (you wouldn't send a cancelled slot).
   function schedFor(y,m){
     var first=isoD(new Date(y,m,1)), lastD=new Date(y,m+1,0), lastISO=isoD(lastD);
-    var loggedDates={}, items=[];
+    var occ={}, timeClaim={};                                        // built from ALL the student's lessons
     lessons.forEach(function(l){
-      if(l.lesson_date<first||l.lesson_date>lastISO) return;
-      loggedDates[l.lesson_date]=1;                                  // this date is decided by logged data
-      if(l.status!=="cancelled") items.push({date:l.lesson_date,start:l.start_time,end:l.end_time});
+      if(l.slot_id && l.slot_date) occ[l.slot_id+"|"+l.slot_date]=1;
+      timeClaim[l.lesson_date+"|"+hhmm(l.start_time)]=1;
+    });
+    var items=[];
+    lessons.forEach(function(l){
+      if(l.lesson_date>=first && l.lesson_date<=lastISO && l.status!=="cancelled")
+        items.push({date:l.lesson_date,start:l.start_time,end:l.end_time});
     });
     for(var day=1;day<=lastD.getDate();day++){
       var dt=new Date(y,m,day), di=isoD(dt), wd=(dt.getDay()+6)%7;
-      if(loggedDates[di]) continue;                                  // logged lessons already cover this date
-      slots.forEach(function(s){ if(s.weekday===wd) items.push({date:di,start:s.start_time,end:s.end_time}); });
+      slots.forEach(function(s){
+        if(s.weekday!==wd) return;
+        if(occ[s.id+"|"+di]) return;                                 // this occurrence is logged (maybe moved)
+        if(timeClaim[di+"|"+hhmm(s.start_time)]) return;             // a lesson already sits at this date+time
+        items.push({date:di,start:s.start_time,end:s.end_time});
+      });
     }
     return items.sort(function(a,b){return (a.date+hhmm(a.start)).localeCompare(b.date+hhmm(b.start));});
   }

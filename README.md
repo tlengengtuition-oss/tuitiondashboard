@@ -186,6 +186,15 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-09-29 — Monthly schedule now matches the Calendar exactly
+
+The schedule projected from weekly slots but skipped projection per-*date*, so a lesson postponed to
+a different day printed a phantom line on its original slot day (the Calendar removes it). Rewrote
+`schedFor` to use the Calendar's own claiming logic (calendar.js buildBlocks): a lesson claims its
+slot occurrence by `slot_id|slot_date` (so a postponed lesson vacates its original day) plus a
+date+time claim; cancelled lessons are omitted. Fetches `slot_id`/`slot_date` on the profile's
+lessons now. Verified against postpone-across-dates, time-edit, cancel, and one-off cases.
+
 ### 2026-09-29 — Monthly schedule: drop the greeting + WhatsApp contact picker
 
 Removed the "Hi {name}!" line from the schedule message (now opens straight with "Here are your
