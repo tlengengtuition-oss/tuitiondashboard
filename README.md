@@ -186,6 +186,12 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-09-29 — Monthly schedule: drop the greeting + WhatsApp contact picker
+
+Removed the "Hi {name}!" line from the schedule message (now opens straight with "Here are your
+lessons for {month}:"). Since student/parent numbers aren't linked yet, `sendScheduleWA` no longer
+dials a saved contact — it opens WhatsApp with the text so the tutor picks who to send to.
+
 ### 2026-09-29 — Student profile: copy-ready "Monthly schedule" to send
 
 Added a **Monthly schedule** card to the student profile (tutor-only) so you can mass-send a student

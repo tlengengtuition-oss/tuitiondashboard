@@ -286,9 +286,8 @@
   function monthLabel(y,m){ return new Date(y,m,1).toLocaleString("en-SG",{month:"long",year:"numeric"}); }
   function scheduleMsg(y,m){
     var items=schedFor(y,m), mn=monthLabel(y,m);
-    var name=(student&&(student.recipient_name||student.name))||"";
     if(!items.length) return "No lessons scheduled for "+mn+".";
-    return "Hi "+name+"! Here are your lessons for "+mn+":\n\n"+items.map(schedLine).join("\n")+
+    return "Here are your lessons for "+mn+":\n\n"+items.map(schedLine).join("\n")+
       "\n\n"+items.length+" lesson"+(items.length===1?"":"s")+".";
   }
   function renderSchedule(){
@@ -306,10 +305,9 @@
       document.body.appendChild(ta); ta.focus(); ta.select(); var ok=document.execCommand("copy"); ta.remove(); return ok; }catch(e){ return false; }
   }
   function sendScheduleWA(){
-    var text=$("sch-text").value, d=String((student&&student.contact)||"").replace(/\D/g,"");
-    if(d.length===8) d="65"+d;
-    window.open(d ? "https://wa.me/"+d+"?text="+encodeURIComponent(text)
-                  : "https://api.whatsapp.com/send?text="+encodeURIComponent(text), "_blank");
+    // Contacts aren't reliably linked yet — open WhatsApp with the text and let the tutor pick who
+    // to send it to, rather than dialling a possibly-wrong saved number.
+    window.open("https://api.whatsapp.com/send?text="+encodeURIComponent($("sch-text").value), "_blank");
   }
 
   function renderProgress(rows){
