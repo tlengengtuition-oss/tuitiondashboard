@@ -186,6 +186,17 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-09-30 — Monthly schedule: logged lessons only (no phantom projections)
+
+Reversed the v133 "project like the calendar" approach — it re-projected the weekly slot onto every
+matching weekday and only suppressed a day if a lesson *claimed* that exact occurrence (slot_id|
+slot_date). When a lesson was moved by adding a new day rather than postponing (leaving the original
+slot occurrence un-resolved), the projection filled the old day back in — a phantom (e.g. a Friday
+2–3:30pm showing on 16/10 when that lesson had moved to Thu 15/10). `schedFor` now: if the month has
+any logged lessons, show only those real rows (cancelled omitted) — never re-project; only a month
+with nothing logged yet falls back to previewing the weekly slots. So a logged month is exactly your
+real lessons, phantom-free.
+
 ### 2026-09-29 — Monthly schedule now matches the Calendar exactly
 
 The schedule projected from weekly slots but skipped projection per-*date*, so a lesson postponed to

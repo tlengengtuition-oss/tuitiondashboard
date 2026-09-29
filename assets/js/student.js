@@ -264,32 +264,24 @@
   function t12(t){ if(!t)return""; var p=t.split(":"),h=+p[0],mi=+p[1],ap=h>=12?"pm":"am",hr=h%12; if(hr===0)hr=12; return hr+(mi?":"+(mi<10?"0"+mi:mi):"")+ap; }
   // "16:00"–"18:00" → "4–6pm" (drops the first meridian when it matches the second)
   function timeRange(s,e){ var a=t12(hhmm(s)),b=t12(hhmm(e)); if(a.slice(-2)===b.slice(-2)) a=a.slice(0,-2); return a+"–"+b; }
-  // Occurrences for the month — sourced exactly like the Calendar (calendar.js buildBlocks): show the
-  // logged lessons, and project a weekly slot onto a date only where no lesson claims that occurrence
-  // (by slot_id|slot_date, so a postponed lesson vacates its original day) or already sits at that
-  // date+time. Cancelled lessons are omitted (you wouldn't send a cancelled slot).
+  // Occurrences for the month. If the month has any LOGGED lessons, those ARE the schedule — we show
+  // only the real rows (cancelled omitted) and never re-project the weekly slot, so a lesson moved to
+  // another day can't leave a phantom on its old slot day. Only a month with nothing logged yet (e.g.
+  // a future month) falls back to previewing the weekly slots.
   function schedFor(y,m){
     var first=isoD(new Date(y,m,1)), lastD=new Date(y,m+1,0), lastISO=isoD(lastD);
-    var occ={}, timeClaim={};                                        // built from ALL the student's lessons
-    lessons.forEach(function(l){
-      if(l.slot_id && l.slot_date) occ[l.slot_id+"|"+l.slot_date]=1;
-      timeClaim[l.lesson_date+"|"+hhmm(l.start_time)]=1;
-    });
+    var inMonth=lessons.filter(function(l){ return l.lesson_date>=first && l.lesson_date<=lastISO; });
+    if(inMonth.length){
+      return inMonth.filter(function(l){ return l.status!=="cancelled"; })
+        .map(function(l){ return {date:l.lesson_date,start:l.start_time,end:l.end_time}; })
+        .sort(function(a,b){ return (a.date+hhmm(a.start)).localeCompare(b.date+hhmm(b.start)); });
+    }
     var items=[];
-    lessons.forEach(function(l){
-      if(l.lesson_date>=first && l.lesson_date<=lastISO && l.status!=="cancelled")
-        items.push({date:l.lesson_date,start:l.start_time,end:l.end_time});
-    });
     for(var day=1;day<=lastD.getDate();day++){
       var dt=new Date(y,m,day), di=isoD(dt), wd=(dt.getDay()+6)%7;
-      slots.forEach(function(s){
-        if(s.weekday!==wd) return;
-        if(occ[s.id+"|"+di]) return;                                 // this occurrence is logged (maybe moved)
-        if(timeClaim[di+"|"+hhmm(s.start_time)]) return;             // a lesson already sits at this date+time
-        items.push({date:di,start:s.start_time,end:s.end_time});
-      });
+      slots.forEach(function(s){ if(s.weekday===wd) items.push({date:di,start:s.start_time,end:s.end_time}); });
     }
-    return items.sort(function(a,b){return (a.date+hhmm(a.start)).localeCompare(b.date+hhmm(b.start));});
+    return items.sort(function(a,b){ return (a.date+hhmm(a.start)).localeCompare(b.date+hhmm(b.start)); });
   }
   function schedLine(it){ var d=new Date(it.date+"T00:00:00"); return d.getDate()+"/"+(d.getMonth()+1)+" ("+DOW[(d.getDay()+6)%7]+") "+timeRange(it.start,it.end); }
   function monthLabel(y,m){ return new Date(y,m,1).toLocaleString("en-SG",{month:"long",year:"numeric"}); }
