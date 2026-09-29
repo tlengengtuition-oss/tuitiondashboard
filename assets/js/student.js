@@ -1,6 +1,7 @@
 // Per-student profile: header, totals, lesson history, slots, exams.
 (function () {
-  var userId=null, sid=null, student=null, lessons=[], exams=[], noteId=null, lessonId=null, examId=null, cancelConfirming=false;
+  var userId=null, sid=null, student=null, lessons=[], exams=[], slots=[], noteId=null, lessonId=null, examId=null, cancelConfirming=false;
+  var schY=null, schM=null;   // month shown in the "Monthly schedule" card
   var $=function(id){return document.getElementById(id);};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function qid(){var m=location.search.match(/[?&]id=([^&]+)/);return m?decodeURIComponent(m[1]):null;}
@@ -28,8 +29,9 @@
     lessons.forEach(function(l){ if(l.status==="cancelled") l.amount=Number(l.compensation)||0; });
     var xres=await window.sb.from("exams").select("id,exam_date,assessment_type,subject,topics,remarks,score,max_score").eq("student_id",sid);
     exams=xres.data||[];
-    var slres=await window.sb.from("recurring_slots").select("id,weekday,start_time,end_time,subject,rate").eq("student_id",sid);
-    var slots=slres.data||[];
+    var slres=await window.sb.from("recurring_slots").select("id,weekday,start_time,end_time,subject,rate").eq("student_id",sid).eq("active",true);
+    slots=slres.data||[];
+    if(schM==null){ var nn=new Date(); schY=nn.getFullYear(); schM=nn.getMonth(); }
 
     renderHead();
     renderKpis(lessons);
@@ -37,6 +39,7 @@
     renderNotes(lessons);          // tutor: separate notes list
     renderClientLessons(lessons);  // client: combined lessons + notes
     renderSlots(slots);
+    renderSchedule();              // tutor: copy-ready monthly schedule
     renderExams(exams);
     renderProgress(exams);
   }
@@ -256,6 +259,59 @@
     $("p-slots").innerHTML='<div class="slotwrap">'+rows+link+'</div>';
   }
 
+  // ---- Monthly schedule: a copy-ready list of this student's lessons for a month ----
+  function isoD(d){function p(n){return(n<10?"0":"")+n;}return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());}
+  function t12(t){ if(!t)return""; var p=t.split(":"),h=+p[0],mi=+p[1],ap=h>=12?"pm":"am",hr=h%12; if(hr===0)hr=12; return hr+(mi?":"+(mi<10?"0"+mi:mi):"")+ap; }
+  // "16:00"–"18:00" → "4–6pm" (drops the first meridian when it matches the second)
+  function timeRange(s,e){ var a=t12(hhmm(s)),b=t12(hhmm(e)); if(a.slice(-2)===b.slice(-2)) a=a.slice(0,-2); return a+"–"+b; }
+  // Occurrences for the month. A logged lesson wins for its date (so a postponed/edited-time lesson
+  // shows once, at its real time, and a cancelled one drops out); dates with no logged lesson fall
+  // back to the student's weekly slot projected onto them.
+  function schedFor(y,m){
+    var first=isoD(new Date(y,m,1)), lastD=new Date(y,m+1,0), lastISO=isoD(lastD);
+    var loggedDates={}, items=[];
+    lessons.forEach(function(l){
+      if(l.lesson_date<first||l.lesson_date>lastISO) return;
+      loggedDates[l.lesson_date]=1;                                  // this date is decided by logged data
+      if(l.status!=="cancelled") items.push({date:l.lesson_date,start:l.start_time,end:l.end_time});
+    });
+    for(var day=1;day<=lastD.getDate();day++){
+      var dt=new Date(y,m,day), di=isoD(dt), wd=(dt.getDay()+6)%7;
+      if(loggedDates[di]) continue;                                  // logged lessons already cover this date
+      slots.forEach(function(s){ if(s.weekday===wd) items.push({date:di,start:s.start_time,end:s.end_time}); });
+    }
+    return items.sort(function(a,b){return (a.date+hhmm(a.start)).localeCompare(b.date+hhmm(b.start));});
+  }
+  function schedLine(it){ var d=new Date(it.date+"T00:00:00"); return d.getDate()+"/"+(d.getMonth()+1)+" ("+DOW[(d.getDay()+6)%7]+") "+timeRange(it.start,it.end); }
+  function monthLabel(y,m){ return new Date(y,m,1).toLocaleString("en-SG",{month:"long",year:"numeric"}); }
+  function scheduleMsg(y,m){
+    var items=schedFor(y,m), mn=monthLabel(y,m);
+    var name=(student&&(student.recipient_name||student.name))||"";
+    if(!items.length) return "No lessons scheduled for "+mn+".";
+    return "Hi "+name+"! Here are your lessons for "+mn+":\n\n"+items.map(schedLine).join("\n")+
+      "\n\n"+items.length+" lesson"+(items.length===1?"":"s")+".";
+  }
+  function renderSchedule(){
+    if(!$("sch-text"))return;
+    if(schM==null){ var n=new Date(); schY=n.getFullYear(); schM=n.getMonth(); }
+    var items=schedFor(schY,schM);
+    if($("sch-label")) $("sch-label").textContent=monthLabel(schY,schM);
+    $("sch-text").value=scheduleMsg(schY,schM);
+    if($("sch-count")) $("sch-count").textContent=items.length+" lesson"+(items.length===1?"":"s");
+  }
+  function shiftSched(d){ var dt=new Date(schY,schM+d,1); schY=dt.getFullYear(); schM=dt.getMonth(); renderSchedule(); }
+  async function copyText(text){
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); return true; } }catch(e){}
+    try{ var ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.top="-1000px"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.focus(); ta.select(); var ok=document.execCommand("copy"); ta.remove(); return ok; }catch(e){ return false; }
+  }
+  function sendScheduleWA(){
+    var text=$("sch-text").value, d=String((student&&student.contact)||"").replace(/\D/g,"");
+    if(d.length===8) d="65"+d;
+    window.open(d ? "https://wa.me/"+d+"?text="+encodeURIComponent(text)
+                  : "https://api.whatsapp.com/send?text="+encodeURIComponent(text), "_blank");
+  }
+
   function renderProgress(rows){
     var pts=rows.filter(function(e){return e.score!=null&&e.max_score>0&&e.exam_date;})
       .map(function(e){return {t:new Date(e.exam_date+"T00:00:00").getTime(),date:e.exam_date,pct:Math.round(e.score/e.max_score*100),subject:(e.subject||"General")};})
@@ -365,6 +421,13 @@
     $("l-cancel-abort").addEventListener("click",abortCancel);
     $("l-del").addEventListener("click",deleteLesson);
     $("l-modal").addEventListener("click",function(e){if(e.target===$("l-modal"))closeLesson();});
+    if($("sch-prev")) $("sch-prev").addEventListener("click",function(){shiftSched(-1);});
+    if($("sch-next")) $("sch-next").addEventListener("click",function(){shiftSched(1);});
+    if($("sch-copy")) $("sch-copy").addEventListener("click",async function(){
+      var b=$("sch-copy"), ok=await copyText($("sch-text").value);
+      if(ok){ var o=b.textContent; b.textContent="Copied ✓"; setTimeout(function(){b.textContent=o;},1400); }
+    });
+    if($("sch-wa")) $("sch-wa").addEventListener("click",sendScheduleWA);
     $("p-addexam").addEventListener("click",function(){openExam(null);});
     $("x-save").addEventListener("click",saveExam);
     $("x-close").addEventListener("click",closeExam);

@@ -186,6 +186,17 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-09-29 — Student profile: copy-ready "Monthly schedule" to send
+
+Added a **Monthly schedule** card to the student profile (tutor-only) so you can mass-send a student
+their month at a glance instead of counting off the calendar. A ‹ month › picker builds an editable
+message — greeting + one line per lesson formatted `7/10 (Wed) 4–6pm` + a total — with **Copy** and
+**Send on WhatsApp** (opens `wa.me` to the student's contact) buttons and a live count. Occurrences
+come from the student's weekly slots projected across the month; a logged lesson wins for its date
+(so a postponed/edited-time lesson shows once at its real time and a cancelled one drops out).
+`student.js` gains the schedule helpers (`schedFor`/`scheduleMsg`/`timeRange`), stores `slots`
+module-level, and only fetches **active** slots now. No schema change.
+
 ### 2026-09-27 — Discontinuing a student drops them from the Planner (and Calendar)
 
 Discontinuing a student in the Students tab only flipped `students.active` — their recurring slots
