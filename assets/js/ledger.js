@@ -1,7 +1,7 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Bank-transfer payment method (overseas clients, no PayNow).
   function hasBank(p){ return !!(p && p.bank_account_no); }
   function bankObj(p){ return { name:(p.bank_account_name||p.business_name||""), bank:(p.bank_name||""), acct:(p.bank_account_no||""), swift:(p.bank_swift||"") }; }
@@ -742,7 +742,29 @@
       var dur=durHrs(l);
       return "<tr><td>"+prettyDate(l.lesson_date)+"</td><td>"+(dur?hrsLabel(dur):"Lesson")+'</td><td class="r">'+TL.sgd(l.amount)+"</td></tr>";
     }
-    function subjLevel(ls){ var seen={},out=[]; ls.forEach(function(l){ var s=[l.subject,l.level].filter(Boolean).join(" · "); if(s&&!seen[s]){seen[s]=1;out.push(s);} }); return out.join(", "); }
+    // Label for a student's lessons: SUBJECTS from their planner slots (a student can take several),
+    // LEVEL from their profile (one grade across subjects). Neither is read from the lessons' own
+    // stored fields, so a lesson saved with a stale subject/level (e.g. the student was switched on
+    // the add form) can't mislabel the invoice. Falls back to the lessons only when a student has no
+    // active slot / no profile level. Called per student (single invoice, or one household member).
+    function subjLevel(ls){
+      var out=[], done={};
+      ls.forEach(function(l){
+        var id=l.student_id; if(id==null||done[id])return; done[id]=1;
+        var subs=[], seen={};
+        slots.filter(function(s){return String(s.student_id)===String(id);}).forEach(function(s){
+          if(s.subject && !seen[s.subject]){ seen[s.subject]=1; subs.push(s.subject); }
+        });
+        var lvl=levelById[id]||"";
+        if(!subs.length){   // no active slot → use the subjects the lessons recorded for this student
+          ls.forEach(function(x){ if(String(x.student_id)===String(id) && x.subject && !seen[x.subject]){ seen[x.subject]=1; subs.push(x.subject); } });
+          if(!lvl){ var f=ls.filter(function(x){return String(x.student_id)===String(id);})[0]; lvl=(f&&f.level)||""; }
+        }
+        var label=[subs.join(", "), lvl].filter(Boolean).join(" · ");
+        if(label) out.push(label);
+      });
+      return out.join(", ");
+    }
     // "N hrs @ $R/hr" from the effective (blended) rate = amount / hours — cancellation
     // fees aren't taught hours, so they'd skew this; excluded from the note (their amount
     // still counts in the subtotal/total, just not in this blended-rate line).
@@ -1047,8 +1069,8 @@
     var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,bank_account_name,bank_name,bank_account_no,bank_swift").eq("id",userId).single();
     profile=pr.error?null:pr.data;
 
-    var st=await window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank").order("name");
-    students=st.data||[];nameById={};contactById={};recipientById={};payByBankById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;payByBankById[s.id]=!!s.pay_by_bank;householdBy[s.id]=(function(c){var d=(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;})(s.contact);});
+    var st=await window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank,level").order("name");
+    students=st.data||[];nameById={};contactById={};recipientById={};payByBankById={};levelById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;payByBankById[s.id]=!!s.pay_by_bank;levelById[s.id]=s.level||"";householdBy[s.id]=(function(c){var d=(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;})(s.contact);});
     studentOptions();
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);

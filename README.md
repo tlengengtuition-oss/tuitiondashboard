@@ -186,6 +186,16 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-09-30 — Invoice subject/level: subjects from Planner, level from profile
+
+An invoice read its "Bill to" subject/level from each lesson's own stored fields, so a lesson saved
+with a stale subject/level (e.g. the student was switched on the add form without the subject
+updating) mislabelled the invoice — one student showing another's level. Rewrote the invoice's
+`subjLevel` to source **subjects from the student's active Planner slots** (a student can take several)
+and **level from their profile** (one grade across subjects), never from the lesson fields; falls back
+to the lessons only when a student has no active slot / no profile level. Ledger now loads student
+`level` into `levelById`. Fixes wrong levels on invoices without needing to correct old lesson rows.
+
 ### 2026-09-30 — Monthly schedule: logged lessons only (no phantom projections)
 
 Reversed the v133 "project like the calendar" approach — it re-projected the weekly slot onto every
