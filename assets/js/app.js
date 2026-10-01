@@ -178,6 +178,18 @@ window.TL = (function () {
     } catch (e) { /* non-fatal */ }
   }
 
+  // ---- scheduled discontinuation (students.end_date) ----
+  // One shared definition so every surface agrees: lessons run through end_date
+  // INCLUSIVE; after that the student is "ended" (treated as discontinued).
+  function todayISO() {
+    var n = new Date(), p = function (x) { return (x < 10 ? "0" : "") + x; };
+    return n.getFullYear() + "-" + p(n.getMonth() + 1) + "-" + p(n.getDate());
+  }
+  // Has the student's end date already passed? (so they belong in Discontinued)
+  function isEnded(endDate) { return !!endDate && endDate < todayISO(); }
+  // Is a given lesson date beyond the student's end date? (so don't project/generate it)
+  function pastEnd(endDate, dateISO) { return !!endDate && dateISO > endDate; }
+
   // Singapore postal-code → address via OneMap (public gov API, CORS-open, no key needed).
   // Best-effort convenience: returns { address } or { error }; callers degrade to manual entry.
   function titleCase(s) {
@@ -216,5 +228,6 @@ window.TL = (function () {
 
   return { requireAuth: requireAuth, signOut: signOut, mountShell: mountShell,
            sgd: sgd, hoursBetween: hoursBetween, amount: amount, examMarks: examMarks,
-           promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal };
+           promotePastLessons: promotePastLessons, postalLookup: postalLookup, wirePostal: wirePostal,
+           todayISO: todayISO, isEnded: isEnded, pastEnd: pastEnd };
 })();

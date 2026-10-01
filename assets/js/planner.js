@@ -134,17 +134,18 @@
   }
 
   async function load(){
-    var st=await window.sb.from("students").select("id,name,active,contact").order("name");
+    var st=await window.sb.from("students").select("id,name,active,contact,end_date").order("name");
     if(!st.error){
-      allStudents=st.data||[];students=allStudents.filter(function(s){return s.active!==false;});studentOptions();
+      allStudents=st.data||[];students=allStudents.filter(function(s){return s.active!==false && !TL.isEnded(s.end_date);});studentOptions();
       hhById={};allStudents.forEach(function(s){hhById[s.id]=hhKey(s.contact);});
     }
     var res=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split");
     if(res.error){$("p-total").textContent="Couldn't load schedule: "+res.error.message;return;}
     allSlots=res.data||[];
-    // Only show slots for active students — a discontinued student drops off the planner.
+    // Only show slots for active students — a discontinued student (or one whose scheduled
+    // end date has passed) drops off the planner.
     if(allStudents.length){
-      var actIds={}; allStudents.forEach(function(s){ if(s.active!==false) actIds[s.id]=1; });
+      var actIds={}; allStudents.forEach(function(s){ if(s.active!==false && !TL.isEnded(s.end_date)) actIds[s.id]=1; });
       allSlots=allSlots.filter(function(s){ return actIds[s.student_id]; });
     }
     fillSubjects(allSlots.map(function(s){return s.subject;}));render();

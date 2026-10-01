@@ -1,7 +1,7 @@
 // Ledger — KPIs, outstanding by student, mark paid, add lesson, log-week-from-schedule.
 (function () {
   function fillSubjects(list){var el=document.getElementById("dl-subject");if(!el)return;var u=[];(list||[]).forEach(function(s){s=(s||"").trim();if(s&&u.indexOf(s)<0)u.push(s);});el.innerHTML=u.sort().map(function(s){return "<option value=\""+s.replace(/"/g,"&quot;")+"\">";}).join("");}
-  var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
+  var userId = null, nameById = {}, contactById = {}, recipientById = {}, payByBankById = {}, levelById = {}, endById = {}, students = [], slots = [], profile = null, outGroups = {}, monthById = {}, editLessonId = null, allLessons = [], period = null, genWeekOff = 0, genMonthOff = 0, selectedLessons = {}, lastUnpaid = [], householdBy = {}, selectedRecords = {}, lastRecordRows = [], payIds = [];
   // Bank-transfer payment method (overseas clients, no PayNow).
   function hasBank(p){ return !!(p && p.bank_account_no); }
   function bankObj(p){ return { name:(p.bank_account_name||p.business_name||""), bank:(p.bank_name||""), acct:(p.bank_account_no||""), swift:(p.bank_swift||"") }; }
@@ -79,6 +79,7 @@
       var wd=(d.getDay()+6)%7,di=iso(d);
       slots.forEach(function(s){
         if(s.weekday!==wd)return;
+        if(TL.pastEnd(endById[s.student_id],di))return;   // student's lessons end on their end_date
         if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
         rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
       });
@@ -617,7 +618,7 @@
   }
 
   function studentOptions(){
-    var act=students.filter(function(s){return s.active!==false;});
+    var act=students.filter(function(s){return s.active!==false && !TL.isEnded(s.end_date);});
     $("m-student").innerHTML=act.length?act.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+"</option>";}).join(""):'<option value="">— add a student first —</option>';
   }
   function splitAmt(rate,s,e,split){var sp=(split&&split>1)?split:1;return Math.round(TL.amount(rate,s,e)/sp*100)/100;}
@@ -702,6 +703,7 @@
       var d=new Date(y,m,day),wd=(d.getDay()+6)%7,di=iso(d);
       slots.forEach(function(s){
         if(s.weekday!==wd)return;
+        if(TL.pastEnd(endById[s.student_id],di))return;   // student's lessons end on their end_date
         if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
         rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
       });
@@ -721,6 +723,7 @@
     var rows=[];
     slots.forEach(function(s){
       var d=new Date(mon);d.setDate(mon.getDate()+s.weekday);var di=iso(d);
+      if(TL.pastEnd(endById[s.student_id],di))return;   // student's lessons end on their end_date
       if(seen[s.student_id+"|"+di+"|"+hm(s.start_time)])return;
       rows.push({tutor_id:userId,student_id:s.student_id,slot_id:s.id,lesson_date:di,slot_date:di,start_time:s.start_time,end_time:s.end_time,subject:s.subject,level:s.level,rate:s.rate,split:s.split||1,amount:splitAmt(s.rate,hm(s.start_time),hm(s.end_time),s.split),status:statusFor(di,hm(s.end_time)),paid:false});
     });
@@ -1064,8 +1067,8 @@
     var pr=await window.sb.from("profiles").select("business_name,paynow_type,paynow_id,invoice_prefix,reminder_message,invoice_message,bank_account_name,bank_name,bank_account_no,bank_swift").eq("id",userId).single();
     profile=pr.error?null:pr.data;
 
-    var st=await window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank,level").order("name");
-    students=st.data||[];nameById={};contactById={};recipientById={};payByBankById={};levelById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;payByBankById[s.id]=!!s.pay_by_bank;levelById[s.id]=s.level||"";householdBy[s.id]=(function(c){var d=(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;})(s.contact);});
+    var st=await window.sb.from("students").select("id,name,active,contact,recipient_name,pay_by_bank,level,end_date").order("name");
+    students=st.data||[];nameById={};contactById={};recipientById={};payByBankById={};levelById={};endById={};householdBy={};students.forEach(function(s){nameById[s.id]=s.name;contactById[s.id]=s.contact;recipientById[s.id]=s.recipient_name;payByBankById[s.id]=!!s.pay_by_bank;levelById[s.id]=s.level||"";endById[s.id]=s.end_date||null;householdBy[s.id]=(function(c){var d=(c||"").replace(/\D/g,"");if(d.length===10&&d.slice(0,2)==="65")d=d.slice(2);return d||null;})(s.contact);});
     studentOptions();
 
     var sl=await window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true);

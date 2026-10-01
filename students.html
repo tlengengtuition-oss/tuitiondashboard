@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Students · T-Leng Tuition</title>
-<link rel="stylesheet" href="assets/css/app.css?v=136">
+<link rel="stylesheet" href="assets/css/app.css?v=137">
 <style>
   a.slink{color:var(--navy);font-weight:700;text-decoration:none}
   a.slink:hover{text-decoration:underline}
@@ -96,6 +96,11 @@
         <input id="m-recipient" type="text" placeholder="leave blank to address the student">
       </div>
       <div class="field">
+        <label for="m-enddate">Lessons run until <span class="muted">(optional — e.g. after O-Levels; leave blank if ongoing)</span></label>
+        <input id="m-enddate" type="date">
+        <div class="muted" style="font-size:12px;margin-top:3px">After this date they move to Discontinued automatically — no more lessons are generated and they drop off the Planner. Clear it to bring them back.</div>
+      </div>
+      <div class="field">
         <label for="m-notes">Notes</label>
         <input id="m-notes" type="text" placeholder="optional">
       </div>
@@ -128,9 +133,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=136"></script>
-<script src="assets/js/supabase.js?v=136"></script>
-<script src="assets/js/app.js?v=136"></script>
-<script src="assets/js/students.js?v=136"></script>
+<script src="assets/js/config.js?v=137"></script>
+<script src="assets/js/supabase.js?v=137"></script>
+<script src="assets/js/app.js?v=137"></script>
+<script src="assets/js/students.js?v=137"></script>
 </body>
 </html>

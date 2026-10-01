@@ -186,6 +186,26 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-01 — Scheduled discontinuation: a "lessons run until" date per student (v137)
+
+Students can now be given an optional **end date** (e.g. after O-Levels) so logging stops automatically
+instead of relying on remembering to discontinue them. Lessons run through the end date **inclusive**;
+after it the student is treated as discontinued everywhere, with no new lessons generated and no phantom
+projections:
+
+- **Students form** — new "Lessons run until" field; passed the date, a student shows an `ended …` badge
+  and moves to the Discontinued section automatically (computed from the date — nothing is deleted).
+  Reactivating a past-end student also clears the stale end date. A future date shows an `ends …` badge.
+- **Ledger** — Log week / Log month / custom range all skip any date past a student's end date.
+- **Calendar** — no projected ("not logged") blocks appear for a student after their end date.
+- **Planner & add-lesson pickers** — an ended student drops off the Planner and the manual
+  add-lesson student dropdowns, same as a discontinued one.
+- One shared definition in `TL` (`isEnded` / `pastEnd`, end date inclusive) so every surface agrees.
+
+**Requires a one-time migration** — run `db/migration_student_end_date.sql` in Supabase (adds the
+`end_date` column to `students`) **before** this ships to main, or the student/ledger/calendar/planner
+loads will error on the missing column.
+
 ### 2026-09-30 — Invoice subject: from the billed lessons (not all Planner slots)
 
 Refined the previous change: sourcing subjects from the Planner slots meant a student with e.g. Math

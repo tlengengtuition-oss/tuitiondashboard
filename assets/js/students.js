@@ -14,10 +14,11 @@
       $("m-title").textContent="Edit student";$("m-save").textContent="Save changes";
       $("m-name").value=st.name||"";
       $("m-level").value=st.level||"";$("m-contact").value=st.contact||"";$("m-location").value=st.location||"";$("m-recipient").value=st.recipient_name||"";$("m-notes").value=st.notes||"";
+      if($("m-enddate"))$("m-enddate").value=st.end_date||"";
     }else{
       editingId=null;
       $("m-title").textContent="Add student";$("m-save").textContent="Save student";
-      ["m-name","m-level","m-contact","m-location","m-recipient","m-notes"].forEach(function(id){$(id).value="";});
+      ["m-name","m-level","m-contact","m-location","m-recipient","m-notes","m-enddate"].forEach(function(id){if($(id))$(id).value="";});
     }
     $("m-name").focus();
   }
@@ -28,6 +29,7 @@
       level:$("m-level").value.trim()||null,contact:$("m-contact").value.trim()||null,
       location:$("m-location").value.trim()||null,
       recipient_name:$("m-recipient").value.trim()||null,
+      end_date:($("m-enddate")&&$("m-enddate").value)||null,
       notes:$("m-notes").value.trim()||null};
     $("m-save").disabled=true;
     var res=editingId
@@ -77,7 +79,12 @@
     load();
   }
   async function setActive(id,active){
-    var res=await window.sb.from("students").update({active:active}).eq("id",id);
+    // Reactivating a student whose scheduled end date has already passed must also clear that
+    // date — otherwise they'd immediately fall back into Discontinued (end_date in the past).
+    var cur=students.filter(function(s){return s.id===id;})[0];
+    var fields={active:active};
+    if(active && cur && TL.isEnded(cur.end_date)) fields.end_date=null;
+    var res=await window.sb.from("students").update(fields).eq("id",id);
     if(res.error){alert("Couldn't update: "+res.error.message);return;}
     // Keep the weekly schedule in step: discontinuing removes the student's recurring slots from the
     // Planner/Calendar (both filter active slots); reactivating brings them back. Lessons are untouched.
@@ -87,6 +94,15 @@
   }
 
   // ---------- list ----------
+  // A student is effectively active only if not discontinued AND their end date (if any) hasn't passed.
+  function isActive(s){ return s.active!==false && !TL.isEnded(s.end_date); }
+  function fmtD(d){ if(!d)return ""; var t=new Date(d+"T00:00:00"); return isNaN(t)?d:t.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}); }
+  function endBadge(r){
+    if(!r.end_date)return "";
+    return TL.isEnded(r.end_date)
+      ? ' <span class="age bad" title="Scheduled end date has passed">ended '+esc(fmtD(r.end_date))+'</span>'
+      : ' <span class="age warn" title="Scheduled to discontinue">ends '+esc(fmtD(r.end_date))+'</span>';
+  }
   function rowHtml(r,active){
     var acts=active
       ? '<button class="tact" data-view="'+r.id+'">Profile</button>'+
@@ -99,7 +115,7 @@
         '<button class="tact" data-on="'+r.id+'">Reactivate</button>'+
         '<button class="tact del" data-del="'+r.id+'">Remove</button>';
     return '<tr class="'+(active?"":"inactive")+'" data-id="'+r.id+'">'+
-      '<td class="name" data-label="Name"><a class="slink" href="student.html?id='+r.id+'">'+esc(r.name)+"</a></td>"+
+      '<td class="name" data-label="Name"><a class="slink" href="student.html?id='+r.id+'">'+esc(r.name)+"</a>"+endBadge(r)+"</td>"+
       '<td data-label="Parent">'+(r.recipient_name?esc(r.recipient_name):'<span class="muted">—</span>')+"</td>"+
       '<td data-label="Level">'+(r.level?esc(r.level):'<span class="muted">—</span>')+"</td>"+
       '<td data-label="Contact">'+(r.contact?esc(r.contact):'<span class="muted">—</span>')+"</td>"+
@@ -156,8 +172,8 @@
     ["s-level","s-parent","s-status"].forEach(function(id){var el=$(id);if(el)el.classList.toggle("on",!!el.value);});
     if($("s-clear"))$("s-clear").style.display=anyFilter?"":"none";
 
-    var actAll=students.filter(function(s){return s.active!==false;});
-    var offAll=students.filter(function(s){return s.active===false;});
+    var actAll=students.filter(isActive);
+    var offAll=students.filter(function(s){return !isActive(s);});
     var act=(fStat==="off")?[]:actAll.filter(pass);
     var off=(fStat==="active")?[]:offAll.filter(pass);
     $("s-count").textContent=anyFilter?(act.length+off.length)+" of "+students.length+" shown":(actAll.length?actAll.length+(actAll.length===1?" active student":" active students"):"");
@@ -175,7 +191,7 @@
     }else{$("disc-title").style.display="none";$("disc-card").style.display="none";}
   }
   async function load(){
-    var res=await window.sb.from("students").select("id,name,kind,level,contact,location,notes,active,recipient_name").order("name");
+    var res=await window.sb.from("students").select("id,name,kind,level,contact,location,notes,active,recipient_name,end_date").order("name");
     if(res.error){$("s-count").textContent="Couldn't load students: "+res.error.message;return;}
     students=res.data||[];
     fillStuFilters();

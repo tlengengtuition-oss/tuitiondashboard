@@ -11,7 +11,7 @@
   var HOUR_PX = 46, MIN_HR = 6;
 
   var userId = null, anchor = null, mode = "week";
-  var students = [], slots = [], exams = [], nameById = {}, locById = {}, hhById = {}, loadedStatic = false;
+  var students = [], slots = [], exams = [], nameById = {}, locById = {}, hhById = {}, endById = {}, loadedStatic = false;
   var lessonCache = {}, pending = {}, lastBlocks = [], hidden = {};
 
   function pad(n){ return (n<10?"0":"")+n; }
@@ -59,13 +59,13 @@
   // ---- data ----
   async function loadStatic(){
     var r=await Promise.all([
-      window.sb.from("students").select("id,name,location,contact,active,level"),
+      window.sb.from("students").select("id,name,location,contact,active,level,end_date"),
       window.sb.from("recurring_slots").select("id,student_id,weekday,start_time,end_time,subject,level,rate,split").eq("active",true),
       window.sb.from("exams").select("id,student_id,exam_date,assessment_type,subject")
     ]);
     students=r[0].error?[]:(r[0].data||[]);
-    nameById={}; locById={}; hhById={};
-    students.forEach(function(s){ nameById[s.id]=s.name; locById[s.id]=s.location||""; hhById[s.id]=hhKey(s.contact); });
+    nameById={}; locById={}; hhById={}; endById={};
+    students.forEach(function(s){ nameById[s.id]=s.name; locById[s.id]=s.location||""; hhById[s.id]=hhKey(s.contact); endById[s.id]=s.end_date||null; });
     slots=r[1].error?[]:(r[1].data||[]);
     exams=r[2].error?[]:(r[2].data||[]);
     loadedStatic=true;
@@ -156,6 +156,7 @@
       var di=iso(d), wd=(d.getDay()+6)%7;
       slots.forEach(function(s){
         if(s.weekday!==wd) return;
+        if(TL.pastEnd(endById[s.student_id], di)) return;                    // past the student's end date — no projection
         if(claimed.occ[s.id+"|"+di]) return;                                 // this occurrence is logged
         if(claimed.time[s.student_id+"|"+di+"|"+hhmm(s.start_time)]) return; // one-off / pre-backfill fallback
         blocks.push({ id:"slot-"+s.id+"-"+di, dateISO:di, day:wd, startMin:toMin(s.start_time), endMin:toMin(s.end_time),
@@ -401,7 +402,7 @@
 
   // ---- add a one-off lesson straight from the calendar ----
   function studentOpts(){
-    var act=students.filter(function(s){return s.active!==false;});
+    var act=students.filter(function(s){return s.active!==false && !TL.isEnded(s.end_date);});
     return act.length ? act.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+'</option>';}).join("")
                       : '<option value="">— add a student first —</option>';
   }

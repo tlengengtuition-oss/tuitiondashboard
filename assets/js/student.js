@@ -18,7 +18,7 @@
     if(!sid){$("p-head").innerHTML='<div class="card"><p>No student selected. <a href="students.html">Back to students</a>.</p></div>';return;}
     await TL.promotePastLessons();
 
-    var sres=await window.sb.from("students").select("id,name,kind,level,contact,location,recipient_name,notes,active,pay_by_bank").eq("id",sid).single();
+    var sres=await window.sb.from("students").select("id,name,kind,level,contact,location,recipient_name,notes,active,pay_by_bank,end_date").eq("id",sid).single();
     if(sres.error||!sres.data){$("p-head").innerHTML='<div class="card"><p>Couldn\'t load this student. <a href="students.html">Back to students</a>.</p></div>';return;}
     student=sres.data;setTitle(student.name);
 
@@ -279,6 +279,7 @@
     var items=[];
     for(var day=1;day<=lastD.getDate();day++){
       var dt=new Date(y,m,day), di=isoD(dt), wd=(dt.getDay()+6)%7;
+      if(student && TL.pastEnd(student.end_date, di)) continue;   // stop projecting after the student's end date
       slots.forEach(function(s){ if(s.weekday===wd) items.push({date:di,start:s.start_time,end:s.end_time}); });
     }
     return items.sort(function(a,b){ return (a.date+hhmm(a.start)).localeCompare(b.date+hhmm(b.start)); });
