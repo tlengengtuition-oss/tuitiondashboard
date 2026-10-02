@@ -96,12 +96,17 @@
   // ---------- list ----------
   // A student is effectively active only if not discontinued AND their end date (if any) hasn't passed.
   function isActive(s){ return s.active!==false && !TL.isEnded(s.end_date); }
-  function fmtD(d){ if(!d)return ""; var t=new Date(d+"T00:00:00"); return isNaN(t)?d:t.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"}); }
-  function endBadge(r){
+  // Short, quiet date: "30 Nov" (same year) or "30 Nov 2027" (different year).
+  function fmtD(d){
+    if(!d)return ""; var t=new Date(d+"T00:00:00"); if(isNaN(t))return d;
+    var opts=t.getFullYear()===new Date().getFullYear()?{day:"numeric",month:"short"}:{day:"numeric",month:"short",year:"numeric"};
+    return t.toLocaleDateString("en-SG",opts);
+  }
+  // A quiet grey line under the name — not a loud badge.
+  function endLine(r){
     if(!r.end_date)return "";
-    return TL.isEnded(r.end_date)
-      ? ' <span class="age bad" title="Scheduled end date has passed">ended '+esc(fmtD(r.end_date))+'</span>'
-      : ' <span class="age warn" title="Scheduled to discontinue">ends '+esc(fmtD(r.end_date))+'</span>';
+    var word=TL.isEnded(r.end_date)?"ended ":"ends ";
+    return '<div class="muted" style="font-size:12px;font-weight:500;margin-top:1px">'+word+esc(fmtD(r.end_date))+'</div>';
   }
   function rowHtml(r,active){
     var acts=active
@@ -115,7 +120,7 @@
         '<button class="tact" data-on="'+r.id+'">Reactivate</button>'+
         '<button class="tact del" data-del="'+r.id+'">Remove</button>';
     return '<tr class="'+(active?"":"inactive")+'" data-id="'+r.id+'">'+
-      '<td class="name" data-label="Name"><a class="slink" href="student.html?id='+r.id+'">'+esc(r.name)+"</a>"+endBadge(r)+"</td>"+
+      '<td class="name" data-label="Name"><a class="slink" href="student.html?id='+r.id+'">'+esc(r.name)+"</a>"+endLine(r)+"</td>"+
       '<td data-label="Parent">'+(r.recipient_name?esc(r.recipient_name):'<span class="muted">—</span>')+"</td>"+
       '<td data-label="Level">'+(r.level?esc(r.level):'<span class="muted">—</span>')+"</td>"+
       '<td data-label="Contact">'+(r.contact?esc(r.contact):'<span class="muted">—</span>')+"</td>"+
