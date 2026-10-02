@@ -64,6 +64,7 @@
     $("e-level").value=student.level||"";$("e-contact").value=student.contact||"";
     $("e-location").value=student.location||"";
     $("e-recipient").value=student.recipient_name||"";$("e-notes").value=student.notes||"";
+    if($("e-enddate"))$("e-enddate").value=student.end_date||"";
     $("e-paybank").checked=!!student.pay_by_bank;
     $("e-msg").textContent="";$("e-msg").className="msg";
     $("e-modal").classList.add("on");
@@ -78,6 +79,7 @@
       level:$("e-level").value.trim()||null,contact:$("e-contact").value.trim()||null,
       location:$("e-location").value.trim()||null,
       recipient_name:$("e-recipient").value.trim()||null,notes:$("e-notes").value.trim()||null,
+      end_date:($("e-enddate")&&$("e-enddate").value)||null,
       pay_by_bank:$("e-paybank").checked
     }).eq("id",sid);
     b.disabled=false;
