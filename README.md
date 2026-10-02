@@ -186,6 +186,22 @@ db/
 
 A running log of Raphael's changes, newest first.
 
+### 2026-10-02 — Explicit `one_off` flag on lessons; Planner can hard-delete slots again (v143)
+
+The ✦ "one-off" status used to be *inferred* from `slot_id IS NULL`, which was fragile: deleting a
+weekly slot nulled `slot_id` on its past lessons (DB `on delete set null`) and silently mislabelled
+real recurring lessons as one-off. Now each lesson stores its own `one_off boolean` — set at creation
+(generated / logged-from-slot → false; manual ad-hoc adds in the Ledger or Calendar → true) — and every
+✦ display (calendar block, detail tag, CSV/Google-Calendar sync) reads that column instead of
+`slot_id`. Because the label no longer depends on the slot existing, **Planner "Remove" hard-deletes
+again** (reverting v142's retire-only rule) — a slot is just a template, and binning it loses no lesson
+history. (Rationale corrected from v142: slots hold no analytic data the Ledger doesn't already have;
+the real risk was the mislabelling, which the explicit flag removes.)
+
+**Requires a one-time migration** — run `db/migration_lesson_one_off.sql` in Supabase (adds the
+`one_off` column and backfills it from `slot_id`) **before** this ships to main, or the Calendar loads
+and lesson inserts will error on the missing column.
+
 ### 2026-10-02 — Planner "Remove" retires a slot instead of deleting it (v142)
 
 Deleting a weekly slot from the Planner used to wipe `slot_id` off every lesson it had generated

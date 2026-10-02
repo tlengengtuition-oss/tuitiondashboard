@@ -679,8 +679,8 @@
       status:statusFor(date,end),paid:paid,paid_date:paid?date:null,postponed:$("m-postponed").checked,compensation:null};
     $("m-save").disabled=true;
     var res=editLessonId
-      ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)
-      : await window.sb.from("lessons").insert(Object.assign({tutor_id:userId},fields));
+      ? await window.sb.from("lessons").update(fields).eq("id",editLessonId)   // editing never changes one_off
+      : await window.sb.from("lessons").insert(Object.assign({tutor_id:userId,one_off:true},fields));   // manual add = one-off
     $("m-save").disabled=false;
     if(res.error){msg.textContent=res.error.message;msg.className="msg err";return;}
     // Ticking/unticking "already paid" here must flow through to any invoice covering this lesson.
