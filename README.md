@@ -186,16 +186,18 @@ db/
 
 A running log of Raphael's changes, newest first.
 
-### 2026-10-02 — Removing a Planner slot no longer orphans its lessons as "one-off" (v141)
+### 2026-10-02 — Planner "Remove" retires a slot instead of deleting it (v142)
 
 Deleting a weekly slot from the Planner used to wipe `slot_id` off every lesson it had generated
 (the DB's `on delete set null` rule on `lessons.slot_id`), so all that student's logged lessons lost
-their recurring link and showed as **✦ one-off**. `removeSlot` now checks first: a slot with logged
-lessons is **deactivated** (leaves the Planner, stops generating new lessons, history stays linked)
-instead of hard-deleted; only a slot with no lessons is deleted outright. The Planner query now also
-filters `active=true` so a deactivated slot actually disappears from the grid. (Discontinuing a student
-was never the cause — that only deactivates slots, keeping `slot_id` intact.) Pre-existing behaviour,
-now fixed going forward; lessons orphaned by past deletions can't be auto-relinked (their slot is gone).
+their recurring link and showed as **✦ one-off**. `removeSlot` now **never hard-deletes** — it always
+**deactivates** the slot (`active:false`): it leaves the Planner, stops projecting on the Calendar, and
+stops generating new lessons, while the slot and its lessons stay stored and linked (kept for data /
+analytics). It comes back by re-adding the slot or reactivating the student. The Planner query now also
+filters `active=true` so a deactivated slot disappears from the grid. (Discontinuing a student was never
+the cause of the one-off relabelling — that only deactivates slots, keeping `slot_id` intact.)
+Pre-existing behaviour, now fixed going forward; lessons orphaned by past hard deletions can't be
+auto-relinked (their slot is gone).
 
 ### 2026-10-01 — Scheduled discontinuation: a "lessons run until" date per student (v137)
 

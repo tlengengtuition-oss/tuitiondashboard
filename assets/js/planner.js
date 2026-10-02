@@ -152,24 +152,16 @@
   }
 
   async function removeSlot(id){
-    // If this slot has logged lessons, DON'T hard-delete it: the DB's "on delete set null" rule
-    // would wipe slot_id off all those lessons, orphaning them (they'd show as ✦ one-off and lose
-    // their recurring link). Deactivate instead — it leaves the Planner and stops generating new
-    // lessons, but the history stays intact. Only a slot with no lessons is safe to delete outright.
-    var chk=await window.sb.from("lessons").select("id").eq("slot_id",id);
-    if(chk.error){alert("Couldn't check this slot's lessons: "+chk.error.message);return;}
-    var n=(chk.data||[]).length;
-    if(n>0){
-      if(!confirm("Remove this weekly slot from the planner?\n\nIt has "+n+" logged lesson"+(n===1?"":"s")+
-                  " — those stay in your records (still linked, not marked one-off). The slot just stops "+
-                  "showing here and stops generating new lessons."))return;
-      var up=await window.sb.from("recurring_slots").update({active:false}).eq("id",id);
-      if(up.error){alert("Couldn't remove: "+up.error.message);return;}
-    }else{
-      if(!confirm("Remove this weekly slot? It has no logged lessons, so it'll be deleted."))return;
-      var del=await window.sb.from("recurring_slots").delete().eq("id",id);
-      if(del.error){alert("Couldn't remove: "+del.error.message);return;}
-    }
+    // Never hard-delete a slot: deleting it cascades slot_id=NULL onto its lessons (DB "on delete
+    // set null"), orphaning them as ✦ one-off, AND throws away the slot itself — both are history
+    // we want to keep for analytics. "Remove" = retire: deactivate it so it leaves the Planner,
+    // stops projecting, and stops generating new lessons, while everything stays stored and linked.
+    // Reactivating the student (or re-adding the slot) brings it back.
+    if(!confirm("Remove this weekly slot from the planner?\n\nIt stops showing here and stops "+
+                "generating new lessons. Any logged lessons stay in your records (still linked), and "+
+                "nothing is deleted — add the slot back anytime, or it returns if you reactivate the student."))return;
+    var up=await window.sb.from("recurring_slots").update({active:false}).eq("id",id);
+    if(up.error){alert("Couldn't remove: "+up.error.message);return;}
     load();
   }
 
